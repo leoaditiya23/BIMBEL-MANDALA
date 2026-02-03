@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@source "../views/**/*.blade.php";
+
+@theme {
+    --color-blue-700: #1d4ed8;
+    --color-blue-600: #2563eb;
+    --color-orange-500: #f97316;
+    --color-orange-400: #fb923c;
+}
+
+/* Scrollbar halus agar mirip Admin */
+@utility custom-scrollbar {
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+        background: var(--color-orange-500);
+    }
+}
