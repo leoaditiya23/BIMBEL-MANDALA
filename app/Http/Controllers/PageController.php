@@ -93,27 +93,24 @@ class PageController extends Controller
      * ==========================================
      */
     public function adminOverview() {
-        $stats = [
-            'total_siswa' => User::where('role', 'siswa')->count(),
-            'total_mentor' => User::where('role', 'mentor')->count(),
-            'total_program' => DB::table('programs')->count(),
-            'total_pendapatan' => DB::table('enrollments')->where('status_pembayaran', 'verified')->sum('total_harga'),
-        ];
+    $stats = [
+        'total_siswa' => User::where('role', 'siswa')->count(),
+        'total_mentor' => User::where('role', 'mentor')->count(),
+        'total_program' => DB::table('programs')->count(),
+        'total_pendapatan' => DB::table('enrollments')->where('status_pembayaran', 'verified')->sum('total_harga'),
+    ];
 
-        $recent_enrollments = DB::table('enrollments')
-            ->join('users', 'enrollments.user_id', '=', 'users.id')
-            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
-            ->orderBy('enrollments.created_at', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($item) {
-                $item->created_at = Carbon::parse($item->created_at);
-                return $item;
-            });
+    $recent_enrollments = DB::table('enrollments')
+        ->join('users', 'enrollments.user_id', '=', 'users.id')
+        ->leftJoin('programs', 'enrollments.program_id', '=', 'programs.id') // Pakai leftJoin biar aman
+        ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
+        ->orderBy('enrollments.created_at', 'desc')
+        ->limit(5)
+        ->get();
 
-        return view('admin.overview', compact('stats', 'recent_enrollments'));
-    }
+    // JANGAN REDIRECT! Harus return view
+    return view('admin.overview', compact('stats', 'recent_enrollments'));
+}
 
     public function adminSettings() { return view('admin.settings'); }
 
@@ -260,7 +257,7 @@ class PageController extends Controller
             DB::table('enrollments')->where('id', $enrollmentId)->update(['bukti_pembayaran' => $fileName]);
         }
 
-        return redirect()->route('siswa.programs')->with('success', 'Pendaftaran Anda berhasil dikirim!');
+        return redirect()->route('program.reguler')->with('success', 'Pendaftaran berhasil!');
     }
 
     public function uploadBukti(Request $request, $id) {

@@ -1,5 +1,4 @@
 @extends('siswa.dashboard_siswa_layout')
-
 @section('siswa_content')
 <div x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
     <div class="mb-8">
@@ -64,3 +63,42 @@
     </div>
 </div>
 @endsection
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Cek apakah ada parameter pendaftaran=berhasil di URL
+        if (urlParams.get('pendaftaran') === 'berhasil') {
+            
+            // 1. Matikan paksa loading yang mungkin masih nyangkut
+            Swal.close();
+
+            // 2. Munculkan pop-up sukses
+            Swal.fire({
+                title: 'PENDAFTARAN TERKIRIM!',
+                html: `
+                    <div class="text-center">
+                        <p style="margin-bottom: 20px; color: #666;">Data kamu sudah kami terima. Silakan konfirmasi ke WhatsApp Admin untuk aktivasi akun.</p>
+                        <a href="https://wa.me/628123456789?text=Halo%20Admin,%20saya%20sudah%20daftar%20program%20reguler" 
+                           target="_blank" 
+                           style="background-color: #25D366; color: white; padding: 12px 25px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">
+                           KONFIRMASI VIA WHATSAPP
+                        </a>
+                    </div>
+                `,
+                icon: 'success',
+                confirmButtonText: 'OKE, SAYA PAHAM',
+                confirmButtonColor: '#2563eb',
+                allowOutsideClick: false,
+                customClass: {
+                    popup: 'rounded-[2rem]'
+                }
+            }).then(() => {
+                // 3. Hapus parameter di URL supaya kalau di-refresh pop-up gak muncul lagi
+                window.history.replaceState({}, document.title, window.location.pathname);
+            });
+        }
+    });
+</script>
