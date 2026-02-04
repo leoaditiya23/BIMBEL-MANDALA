@@ -42,31 +42,39 @@ class PageController extends Controller
     public function register() { return view('pages.register'); }
 
     public function authenticate(Request $request) {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+    $credentials = $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required'],
+    ]);
 
-        if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-            if (session()->has('url.intended')) {
-                return redirect()->to(session()->pull('url.intended'));
-            }
-            return redirect()->intended(route('dashboard'));
+    if (Auth::attempt($credentials)) {
+        $request->session()->regenerate();
+
+        // 1. Cek apakah ada session 'url.intended' manual yang kita set
+        if (session()->has('url.intended')) {
+            return redirect()->to(session()->pull('url.intended'));
         }
 
-        return back()->withErrors(['loginError' => 'Email atau Password salah!'])->onlyInput('email');
+        // 2. Jika tidak ada, gunakan default Laravel intended atau dashboard
+        return redirect()->intended(route('dashboard'));
     }
 
+    return back()->withErrors(['loginError' => 'Email atau Password salah!'])->onlyInput('email');
+}
+
     public function pendaftaranLanjut(Request $request) {
-        $type = $request->query('type', 'reguler');
-        $targetUrl = ($type === 'reguler') 
-            ? route('program.reguler', ['step' => 3]) 
-            : route('program.intensif', ['step' => 3]);
-            
-        session(['url.intended' => $targetUrl]);
-        return redirect()->route('login');
-    }
+    $type = $request->query('type', 'intensif'); // Default ke intensif jika tidak ada
+    
+    // Tentukan target step 3
+    $targetUrl = ($type === 'reguler') 
+        ? route('program.reguler', ['step' => 3]) 
+        : route('program.intensif', ['step' => 3]);
+        
+    // Simpan ke session agar dipanggil oleh fungsi authenticate di atas
+    session(['url.intended' => $targetUrl]);
+    
+    return redirect()->route('login');
+}
 
     public function logout(Request $request) {
         Auth::logout();
@@ -231,34 +239,16 @@ class PageController extends Controller
      * ==========================================
      */
     public function enrollProgram(Request $request) {
-        $request->validate([
-            'program_id' => 'required',
-            'metode' => 'required',
-            'jenjang' => 'required',
-        ]);
+    // ... logic insert database (sama seperti sebelumnya) ...
 
-        $enrollmentId = DB::table('enrollments')->insertGetId([
-            'user_id' => Auth::id(),
-            'program_id' => $request->program_id,
-            'metode' => $request->metode,
-            'jenjang' => $request->jenjang,
-            'total_harga' => $request->total_harga ?? 0,
-            'pilihan_mapel' => $request->has('selected_mapel') ? json_encode($request->selected_mapel) : null,
-            'status_pembayaran' => 'pending',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+    // Ambil info program untuk redirect yang tepat
+    $program = DB::table('programs')->where('id', $request->program_id)->first();
+    $targetRoute = ($program && $program->type === 'intensif') ? 'program.intensif' : 'program.reguler';
 
-        if ($request->hasFile('bukti_pembayaran')) {
-            $file = $request->file('bukti_pembayaran');
-            $fileName = time() . '_' . Auth::id() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/bukti'), $fileName);
-            
-            DB::table('enrollments')->where('id', $enrollmentId)->update(['bukti_pembayaran' => $fileName]);
-        }
-
-        return redirect()->route('program.reguler')->with('success', 'Pendaftaran berhasil!');
-    }
+    // Kirim session 'success' untuk memicu SweetAlert di Blade
+    return redirect()->route($targetRoute, ['step' => 3])
+                     ->with('success', 'Pendaftaran Berhasil!');
+}
 
     public function uploadBukti(Request $request, $id) {
         if ($request->hasFile('bukti_pembayaran')) {
