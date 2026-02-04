@@ -42,39 +42,29 @@ class PageController extends Controller
     public function register() { return view('pages.register'); }
 
     public function authenticate(Request $request) {
-    $credentials = $request->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required'],
-    ]);
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+        ]);
 
-    if (Auth::attempt($credentials)) {
-        $request->session()->regenerate();
-
-        // 1. Cek apakah ada session 'url.intended' manual yang kita set
-        if (session()->has('url.intended')) {
-            return redirect()->to(session()->pull('url.intended'));
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
+            if (session()->has('url.intended')) {
+                return redirect()->to(session()->pull('url.intended'));
+            }
+            return redirect()->intended(route('dashboard'));
         }
-
-        // 2. Jika tidak ada, gunakan default Laravel intended atau dashboard
-        return redirect()->intended(route('dashboard'));
+        return back()->withErrors(['loginError' => 'Email atau Password salah!'])->onlyInput('email');
     }
 
-    return back()->withErrors(['loginError' => 'Email atau Password salah!'])->onlyInput('email');
-}
-
     public function pendaftaranLanjut(Request $request) {
-    $type = $request->query('type', 'intensif'); // Default ke intensif jika tidak ada
-    
-    // Tentukan target step 3
-    $targetUrl = ($type === 'reguler') 
-        ? route('program.reguler', ['step' => 3]) 
-        : route('program.intensif', ['step' => 3]);
-        
-    // Simpan ke session agar dipanggil oleh fungsi authenticate di atas
-    session(['url.intended' => $targetUrl]);
-    
-    return redirect()->route('login');
-}
+        $type = $request->query('type', 'intensif');
+        $targetUrl = ($type === 'reguler') 
+            ? route('program.reguler', ['step' => 3]) 
+            : route('program.intensif', ['step' => 3]);
+        session(['url.intended' => $targetUrl]);
+        return redirect()->route('login');
+    }
 
     public function logout(Request $request) {
         Auth::logout();
@@ -97,30 +87,31 @@ class PageController extends Controller
 
     /**
      * ==========================================
-     * 4. FITUR ADMIN (VIEWS & PROSES)
+     * 4. FITUR ADMIN (VIEWS)
      * ==========================================
      */
     public function adminOverview() {
-    $stats = [
-        'total_siswa' => User::where('role', 'siswa')->count(),
-        'total_mentor' => User::where('role', 'mentor')->count(),
-        'total_program' => DB::table('programs')->count(),
-        'total_pendapatan' => DB::table('enrollments')->where('status_pembayaran', 'verified')->sum('total_harga'),
-    ];
+        $stats = [
+            'total_siswa' => User::where('role', 'siswa')->count(),
+            'total_mentor' => User::where('role', 'mentor')->count(),
+            'total_program' => DB::table('programs')->count(),
+            'total_pendapatan' => DB::table('enrollments')->where('status_pembayaran', 'verified')->sum('total_harga'),
+        ];
 
-    $recent_enrollments = DB::table('enrollments')
-        ->join('users', 'enrollments.user_id', '=', 'users.id')
-        ->leftJoin('programs', 'enrollments.program_id', '=', 'programs.id') // Pakai leftJoin biar aman
-        ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
-        ->orderBy('enrollments.created_at', 'desc')
-        ->limit(5)
-        ->get();
+        $recent_enrollments = DB::table('enrollments')
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->leftJoin('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
+            ->orderBy('enrollments.created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($item) {
+                $item->created_at = Carbon::parse($item->created_at);
+                return $item;
+            });
 
-    // JANGAN REDIRECT! Harus return view
-    return view('admin.overview', compact('stats', 'recent_enrollments'));
-}
-
-    public function adminSettings() { return view('admin.settings'); }
+        return view('admin.overview', compact('stats', 'recent_enrollments'));
+    }
 
     public function adminPrograms() {
         $programs = DB::table('programs')
@@ -141,9 +132,12 @@ class PageController extends Controller
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
             ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
             ->where('enrollments.status_pembayaran', 'pending')
-            ->whereNotNull('enrollments.bukti_pembayaran')->get();
+            ->whereNotNull('enrollments.bukti_pembayaran')
+            ->get();
         return view('admin.payments', compact('payments'));
     }
+
+    public function adminSettings() { return view('admin.settings'); }
 
     /**
      * ==========================================
@@ -169,8 +163,7 @@ class PageController extends Controller
     }
 
     public function siswaSchedule() {
-        $schedule = []; 
-        return view('siswa.schedule', compact('schedule'));
+        return view('siswa.schedule', ['schedule' => []]);
     }
 
     public function siswaBilling() {
@@ -203,33 +196,22 @@ class PageController extends Controller
             'total_classes' => DB::table('programs')->where('mentor_id', $user->id)->count(),
             'today_sessions' => 0 
         ];
-
-        $today_schedule = []; 
-        $assignments = []; 
-
-        return view('mentor.overview', compact('stats', 'today_schedule', 'assignments'));
+        return view('mentor.overview', compact('stats'));
     }
 
     public function mentorClasses() {
-        $user = Auth::user();
-        $classes = DB::table('programs')
-            ->where('mentor_id', $user->id)
-            ->get();
+        $classes = DB::table('programs')->where('mentor_id', Auth::id())->get();
         return view('mentor.classes', compact('classes'));
     }
 
     public function mentorSchedule() {
-        $user = Auth::user();
-        
-        // Nama variabel diubah menjadi $schedule (tanpa s) agar cocok dengan Blade kamu
         $schedule = DB::table('enrollments')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
             ->join('users', 'enrollments.user_id', '=', 'users.id')
-            ->where('programs.mentor_id', $user->id)
+            ->where('programs.mentor_id', Auth::id())
             ->where('enrollments.status_pembayaran', 'verified')
             ->select('enrollments.*', 'programs.name as program_name', 'users.name as student_name')
             ->get();
-
         return view('mentor.schedule', compact('schedule'));
     }
 
@@ -239,16 +221,10 @@ class PageController extends Controller
      * ==========================================
      */
     public function enrollProgram(Request $request) {
-    // ... logic insert database (sama seperti sebelumnya) ...
-
-    // Ambil info program untuk redirect yang tepat
-    $program = DB::table('programs')->where('id', $request->program_id)->first();
-    $targetRoute = ($program && $program->type === 'intensif') ? 'program.intensif' : 'program.reguler';
-
-    // Kirim session 'success' untuk memicu SweetAlert di Blade
-    return redirect()->route($targetRoute, ['step' => 3])
-                     ->with('success', 'Pendaftaran Berhasil!');
-}
+        $program = DB::table('programs')->where('id', $request->program_id)->first();
+        $targetRoute = ($program && $program->type === 'intensif') ? 'program.intensif' : 'program.reguler';
+        return redirect()->route($targetRoute, ['step' => 3])->with('success', 'Pendaftaran Berhasil!');
+    }
 
     public function uploadBukti(Request $request, $id) {
         if ($request->hasFile('bukti_pembayaran')) {
@@ -258,6 +234,7 @@ class PageController extends Controller
             
             DB::table('enrollments')->where('id', $id)->update([
                 'bukti_pembayaran' => $fileName, 
+                'status_pembayaran' => 'pending',
                 'updated_at' => now()
             ]);
             return back()->with('success', 'Bukti transfer berhasil diperbarui!');
@@ -273,7 +250,25 @@ class PageController extends Controller
         return back()->with('success', 'Pembayaran telah diverifikasi!');
     }
 
+    public function rejectPayment($id) {
+        $enrollment = DB::table('enrollments')->where('id', $id)->first();
+        if ($enrollment) {
+            if ($enrollment->bukti_pembayaran) {
+                $filePath = public_path('uploads/bukti/' . $enrollment->bukti_pembayaran);
+                if (file_exists($filePath)) { unlink($filePath); }
+            }
+            DB::table('enrollments')->where('id', $id)->delete();
+            return back()->with('error', 'Data pendaftaran telah dihapus.');
+        }
+        return back()->with('error', 'Data tidak ditemukan.');
+    }
+
     public function storeProgram(Request $request) {
+        $request->validate([
+            'name' => 'required',
+            'price' => 'required|numeric',
+        ]);
+
         DB::table('programs')->insert([
             'name' => $request->name, 
             'jenjang' => $request->jenjang, 

@@ -42,14 +42,14 @@ Route::middleware(['guest'])->group(function () {
  */
 Route::middleware(['auth'])->group(function () {
     
-    // Dashboard Utama
+    // Dashboard Utama (Redirector)
     Route::get('/dashboard', [PageController::class, 'dashboard'])->name('dashboard');
 
-    // Profile (Jika kamu sudah buat fungsinya di PageController)
+    // Profile
     Route::get('/profile', [PageController::class, 'editProfile'])->name('profile.edit');
     Route::put('/profile', [PageController::class, 'updateProfile'])->name('profile.update');
 
-    // Proses Pendaftaran & Pembayaran
+    // Proses Pendaftaran & Pembayaran Siswa
     Route::post('/enroll-program', [PageController::class, 'enrollProgram'])->name('enroll.program');
     Route::post('/upload-bukti/{id}', [PageController::class, 'uploadBukti'])->name('upload.bukti');
 
@@ -57,19 +57,25 @@ Route::middleware(['auth'])->group(function () {
      * --- FITUR ADMIN ---
      */
     Route::prefix('admin')->group(function () {
+        // Views
         Route::get('/overview', [PageController::class, 'adminOverview'])->name('admin.overview');
         Route::get('/programs', [PageController::class, 'adminPrograms'])->name('admin.programs');
         Route::get('/mentors', [PageController::class, 'adminMentors'])->name('admin.mentors');
         Route::get('/payments', [PageController::class, 'adminPayments'])->name('admin.payments');
+        Route::get('/settings', [PageController::class, 'adminSettings'])->name('admin.settings');
 
+        // Program Management
         Route::post('/programs/store', [PageController::class, 'storeProgram'])->name('programs.store');
         Route::put('/programs/update/{id}', [PageController::class, 'updateProgram'])->name('programs.update');
         Route::delete('/programs/delete/{id}', [PageController::class, 'deleteProgram'])->name('programs.delete');
 
+        // Mentor Management
         Route::post('/mentors/store', [PageController::class, 'storeMentor'])->name('mentors.store');
         Route::delete('/mentors/delete/{id}', [PageController::class, 'deleteMentor'])->name('mentors.delete');
 
-        Route::post('/verify-enrollment/{id}', [PageController::class, 'verifyEnrollment'])->name('verify.payment');
+        // Payment Verification (Penting!)
+        Route::post('/verify-enrollment/{id}', [PageController::class, 'verifyEnrollment'])->name('admin.payments.verify');
+        Route::delete('/reject-payment/{id}', [PageController::class, 'rejectPayment'])->name('admin.payments.reject');
     });
 
     /**
