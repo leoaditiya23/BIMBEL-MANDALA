@@ -100,13 +100,13 @@ class PageController extends Controller
 
         $recent_enrollments = DB::table('enrollments')
             ->join('users', 'enrollments.user_id', '=', 'users.id')
-            ->leftJoin('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
             ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
             ->orderBy('enrollments.created_at', 'desc')
             ->limit(5)
             ->get()
             ->map(function($item) {
-                $item->created_at = Carbon::parse($item->created_at);
+                $item->created_at = \Carbon\Carbon::parse($item->created_at);
                 return $item;
             });
 
@@ -132,12 +132,24 @@ class PageController extends Controller
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
             ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
             ->where('enrollments.status_pembayaran', 'pending')
-            ->whereNotNull('enrollments.bukti_pembayaran')
             ->get();
+
         return view('admin.payments', compact('payments'));
     }
 
     public function adminSettings() { return view('admin.settings'); }
+
+    public function adminMessages() {
+        $messages = DB::table('messages')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($msg) {
+                $msg->created_at = Carbon::parse($msg->created_at);
+                return $msg;
+            });
+            
+        return view('admin.messages', compact('messages'));
+    }
 
     /**
      * ==========================================
@@ -221,25 +233,30 @@ class PageController extends Controller
      * ==========================================
      */
     public function enrollProgram(Request $request) {
-        $program = DB::table('programs')->where('id', $request->program_id)->first();
-        $targetRoute = ($program && $program->type === 'intensif') ? 'program.intensif' : 'program.reguler';
-        return redirect()->route($targetRoute, ['step' => 3])->with('success', 'Pendaftaran Berhasil!');
-    }
+        $request->validate([
+            'program_id'       => 'required',
+            'total_harga'      => 'required',
+            'bukti_pembayaran' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
 
-    public function uploadBukti(Request $request, $id) {
+        $namaFile = null;
         if ($request->hasFile('bukti_pembayaran')) {
             $file = $request->file('bukti_pembayaran');
-            $fileName = time() . '_' . Auth::id() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/bukti'), $fileName);
-            
-            DB::table('enrollments')->where('id', $id)->update([
-                'bukti_pembayaran' => $fileName, 
-                'status_pembayaran' => 'pending',
-                'updated_at' => now()
-            ]);
-            return back()->with('success', 'Bukti transfer berhasil diperbarui!');
+            $namaFile = time() . '_user_' . Auth::id() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/bukti'), $namaFile);
         }
-        return back()->with('error', 'Gagal mengupload file.');
+
+        DB::table('enrollments')->insert([
+            'user_id'           => Auth::id(),
+            'program_id'        => $request->program_id,
+            'total_harga'       => $request->total_harga,
+            'bukti_pembayaran'  => $namaFile,
+            'status_pembayaran' => 'pending',
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
+
+        return redirect()->route('siswa.billing')->with('success', 'Pendaftaran berhasil! Admin akan segera memverifikasi.');
     }
 
     public function verifyEnrollment($id) {
@@ -276,7 +293,34 @@ class PageController extends Controller
             'price' => $request->price, 
             'mentor_id' => $request->mentor_id, 
             'created_at' => now(),
+            'updated_at' => now(),
         ]);
         return back()->with('success', 'Program baru berhasil ditambahkan!');
+    }
+
+    public function storeMessage(Request $request) {
+    $request->validate([
+        'name'     => 'required|string|max:255',
+        'whatsapp' => 'required', // Tambahkan validasi wa
+        'email'    => 'nullable|email', // Tambahkan validasi email
+        'message'  => 'required|string',
+    ]);
+
+    DB::table('messages')->insert([
+        'name'       => $request->name,
+        'whatsapp'   => $request->whatsapp, // Simpan WA
+        'email'      => $request->email,    // Simpan Email
+        'message'    => $request->message,
+        'is_read'    => false,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return back()->with('success', 'Pesan Anda berhasil dikirim! Admin akan segera menghubungi via WhatsApp.');
+}
+
+    public function deleteMessage($id) {
+        DB::table('messages')->where('id', $id)->delete();
+        return back()->with('success', 'Pesan berhasil dihapus.');
     }
 }

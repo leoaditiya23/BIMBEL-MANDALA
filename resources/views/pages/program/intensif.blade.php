@@ -219,8 +219,14 @@ get basePrice() {
 <div x-show="step === 3" x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="opacity-0 translate-y-4" x-cloak>
     <form action="{{ route('enroll.program') }}" method="POST" enctype="multipart/form-data">
         @csrf
-        {{-- Hidden Inputs untuk Controller --}}
-        <input type="hidden" name="program_id" :value="kategori">
+        
+        {{-- LOGIKA PENENTU ID PROGRAM (Pastikan ID ini sesuai dengan database kamu) --}}
+        <input type="hidden" name="program_id" :value="
+            kategori === 'UTBK-SAINTEK' ? 1 : 
+            (kategori === 'UTBK-SOSHUM' ? 2 : 
+            (kategori === 'TKA-SD' ? 3 : 4))
+        ">
+        
         <input type="hidden" name="metode" :value="metode">
         <input type="hidden" name="total_harga" :value="totalPrice">
         <input type="hidden" name="jenjang" :value="kategori.includes('UTBK') ? 'SMA' : (kategori.includes('SMP') ? 'SMP' : 'SD')">
@@ -250,29 +256,32 @@ get basePrice() {
             {{-- Upload Kanan --}}
             <div class="lg:col-span-2 space-y-6">
                 <div class="bg-orange-50 rounded-3xl p-8 border border-orange-100 text-center">
-                    <p class="text-[10px] font-black text-orange-800 uppercase tracking-widest mb-4">Transfer Ke Rekening Mandiri</p>
-                    <div class="text-xl font-black text-slate-800 mb-6">900 1234 5678 00</div>
+                    <p class="text-[10px] font-black text-orange-800 uppercase tracking-widest mb-2">Transfer Ke Rekening Mandiri</p>
+                    <div class="text-xl font-black text-slate-800 mb-1">900 1234 5678 00</div>
+                    <p class="text-[9px] font-bold text-slate-400 mb-6 uppercase">A.N MANDALA ACADEMY</p>
                     
                     <label class="cursor-pointer group block">
-                        <div :class="buktiBayar ? 'bg-green-500 text-white border-green-600' : 'bg-white text-orange-600 border-orange-200'" 
+                        <div :class="buktiBayar ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-white text-orange-600 border-orange-200'" 
                              class="px-6 py-4 rounded-2xl font-black text-[10px] uppercase transition-all shadow-sm flex items-center justify-center space-x-2 border-2">
                             <i class="fas" :class="buktiBayar ? 'fa-check-circle' : 'fa-camera'"></i>
-                            <span x-text="buktiBayar ? 'File Terpilih' : 'Upload Bukti Bayar'"></span>
+                            <span x-text="buktiBayar ? 'Bukti Terupload' : 'Upload Bukti Bayar'"></span>
                         </div>
-                        {{-- REVISI: Tambahkan showPayment = true di sini agar pop-up langsung muncul --}}
-                        <input type="file" name="bukti_pembayaran" class="hidden" 
-                               @change="buktiBayar = $event.target.files[0]; if(buktiBayar) showPayment = true">
+                        <input type="file" name="bukti_pembayaran" class="hidden" required
+                               @change="buktiBayar = $event.target.files[0]">
                     </label>
+                    @error('bukti_pembayaran')
+                        <p class="text-red-500 text-[10px] mt-2 font-bold">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <button type="submit" 
                         :disabled="!buktiBayar"
-                        :class="!buktiBayar ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'bg-slate-900 hover:bg-orange-600'"
-                        class="w-full text-white py-6 rounded-3xl font-black uppercase tracking-widest transition shadow-2xl">
-                    Konfirmasi Selesai
+                        :class="!buktiBayar ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'bg-slate-900 hover:bg-orange-600 active:scale-95'"
+                        class="w-full text-white py-6 rounded-3xl font-black uppercase tracking-widest transition-all shadow-2xl">
+                    Konfirmasi & Daftar Sekarang
                 </button>
                 
-                <button type="button" @click="step = 2" class="w-full text-slate-400 font-black uppercase text-[10px] tracking-widest">Kembali</button>
+                <button type="button" @click="step = 2" class="w-full text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition">Kembali</button>
             </div>
         </div>
     </form>

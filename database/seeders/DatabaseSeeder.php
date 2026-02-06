@@ -11,14 +11,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Panggil UserSeeder terlebih dahulu (Admin, Mentor, Siswa)
-        // Kemudian panggil ProgramSeeder (Reguler, Intensif)
+        // Memanggil seeder secara berurutan
         $this->call([
             UserSeeder::class,
             ProgramSeeder::class,
         ]);
-        
-        // Baris bawaan factory di bawah ini bisa kamu hapus atau biarkan dikomentari
-        // \App\Models\User::factory(10)->create();
     }
 }

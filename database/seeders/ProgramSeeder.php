@@ -11,19 +11,21 @@ class ProgramSeeder extends Seeder
     {
         DB::table('programs')->insert([
             [
-                'name' => 'Program Reguler',
+                'name' => 'Reguler SD - Matematika',
+                'jenjang' => 'SD',
                 'type' => 'reguler',
-                'price' => 150000,
-                'description' => 'Pendalaman materi harian untuk membantu tugas sekolah & ujian semester.',
+                'price' => 500000,
+                'mentor_id' => 2, // ID si Budi Mentor
                 'created_at' => now(),
             ],
             [
-                'name' => 'Program Intensif',
+                'name' => 'Intensif UTBK - Soshum',
+                'jenjang' => 'SMA',
                 'type' => 'intensif',
-                'price' => 500000,
-                'description' => 'Persiapan khusus UTBK, CPNS, dan Sekolah Kedinasan. Fokus latihan soal.',
+                'price' => 1500000,
+                'mentor_id' => 2,
                 'created_at' => now(),
-            ]
+            ],
         ]);
     }
 }

@@ -10,25 +10,25 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Admin
+        // Akun Admin
         User::create([
             'name' => 'Admin Mandala',
             'email' => 'admin@gmail.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('admin123'),
             'role' => 'admin',
         ]);
 
-        // Mentor
+        // Akun Mentor
         User::create([
-            'name' => 'Tutor Budi',
+            'name' => 'Budi Mentor',
             'email' => 'mentor@gmail.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('mentor123'),
             'role' => 'mentor',
         ]);
 
-        // Siswa
+        // Akun Siswa
         User::create([
-            'name' => 'Siswa Archel',
+            'name' => 'Siswa Contoh',
             'email' => 'siswa@gmail.com',
             'password' => Hash::make('password'),
             'role' => 'siswa',

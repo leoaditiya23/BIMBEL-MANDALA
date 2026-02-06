@@ -1,6 +1,7 @@
 <div :class="sidebarOpen ? 'w-72' : 'w-20'" 
      class="bg-blue-700 h-screen p-6 text-white flex flex-col shadow-2xl transition-all duration-300 relative z-50 flex-shrink-0 overflow-visible">
     
+    {{-- Toggle Button --}}
     <button 
         @click="sidebarOpen = !sidebarOpen" 
         class="absolute -right-4 top-10 bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg z-[60] border-2 border-white focus:outline-none cursor-pointer hover:bg-orange-600 transition-colors">
@@ -8,6 +9,7 @@
            :class="sidebarOpen ? 'fa-angle-left' : 'fa-angle-right'"></i>
     </button>
 
+    {{-- Logo / Brand --}}
     <div class="flex items-center space-x-3 mb-10 flex-shrink-0 overflow-hidden h-10">
         <div class="w-10 h-10 bg-white rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg border border-blue-100">
             <i class="fas fa-shield-alt text-blue-700 text-lg"></i>
@@ -17,54 +19,72 @@
         </span>
     </div>
 
+    {{-- Navigation Menu --}}
     <nav class="space-y-2 flex-grow overflow-y-auto overflow-x-hidden custom-scrollbar">
-        <p x-show="sidebarOpen" class="px-3 text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-4 opacity-50 uppercase">Navigasi Admin</p>
+        <p x-show="sidebarOpen" class="px-3 text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-4 opacity-50">Navigasi Admin</p>
         
+        {{-- Overview --}}
         <a href="{{ route('admin.overview') }}" 
            class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.overview') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
             <div class="w-8 flex justify-center items-center">
                 <i class="fas fa-chart-pie text-lg"></i>
             </div>
-            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Overview</span>
+            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Overview</span>
             @if(request()->routeIs('admin.overview'))
                 <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
             @endif
         </a>
 
+        {{-- Paket Bimbel --}}
         <a href="{{ route('admin.programs') }}" 
            class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.programs') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
             <div class="w-8 flex justify-center items-center">
                 <i class="fas fa-layer-group text-lg"></i>
             </div>
-            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Paket Bimbel</span>
+            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Paket Bimbel</span>
             @if(request()->routeIs('admin.programs'))
                 <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
             @endif
         </a>
 
+        {{-- Manajemen Mentor --}}
         <a href="{{ route('admin.mentors') }}" 
            class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.mentors') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
             <div class="w-8 flex justify-center items-center">
                 <i class="fas fa-user-tie text-lg"></i>
             </div>
-            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Manajemen Mentor</span>
+            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Manajemen Mentor</span>
             @if(request()->routeIs('admin.mentors'))
                 <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
             @endif
         </a>
 
+        {{-- Verifikasi Bayar --}}
         <a href="{{ route('admin.payments') }}" 
            class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.payments') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
             <div class="w-8 flex justify-center items-center">
                 <i class="fas fa-check-double text-lg"></i>
             </div>
-            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Verifikasi Bayar</span>
+            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Verifikasi Bayar</span>
             @if(request()->routeIs('admin.payments'))
+                <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
+            @endif
+        </a>
+
+        {{-- Pesan Masuk --}}
+        <a href="{{ route('admin.messages') }}" 
+           class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.messages') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+            <div class="w-8 flex justify-center items-center">
+                <i class="fas fa-envelope text-lg"></i>
+            </div>
+            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Pesan Masuk</span>
+            @if(request()->routeIs('admin.messages'))
                 <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
             @endif
         </a>
     </nav>
 
+    {{-- Logout --}}
     <div class="pt-4 border-t border-blue-600/50 flex-shrink-0">
         <form action="{{ route('logout') }}" method="POST">
             @csrf

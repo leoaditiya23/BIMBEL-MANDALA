@@ -1,13 +1,12 @@
 @extends('siswa.dashboard_siswa_layout')
 
 @section('siswa_content')
-<div x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
+<div x-data="{ openModal: false, imgSrc: '' }" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
     <div class="mb-8">
         <h2 class="text-3xl font-black text-slate-800">Pembayaran</h2>
         <p class="text-sm text-slate-500">Kelola semua transaksi pembayaran Anda</p>
     </div>
 
-    <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
             <p class="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Total Pembayaran</p>
@@ -23,7 +22,6 @@
         </div>
     </div>
 
-    <!-- Billing Table -->
     <div class="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">
         <h3 class="font-black text-slate-800 mb-6">Riwayat Pembayaran</h3>
         
@@ -58,9 +56,9 @@
                                 <td class="py-4 px-4 text-slate-600">{{ $payment->created_at->format('d M Y') }}</td>
                                 <td class="py-4 px-4">
                                     @if($payment->status_pembayaran === 'pending' && $payment->bukti_pembayaran)
-                                        <a href="{{ asset('storage/' . $payment->bukti_pembayaran) }}" target="_blank" class="text-blue-600 hover:text-blue-800 font-bold text-sm">
-                                            <i class="fas fa-image mr-1"></i>Lihat
-                                        </a>
+                                        <button type="button" @click="imgSrc = '{{ asset('uploads/bukti/' . $payment->bukti_pembayaran) }}'; openModal = true" class="text-blue-600 hover:text-blue-800 font-bold text-sm">
+                                            <i class="fas fa-image mr-1"></i>Lihat Bukti
+                                        </button>
                                     @else
                                         <button class="text-slate-400 cursor-default text-sm">-</button>
                                     @endif
@@ -77,5 +75,26 @@
             </div>
         @endif
     </div>
+
+    <div x-show="openModal" 
+         x-cloak
+         class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4 transition-opacity duration-300"
+         @click="openModal = false">
+        
+        <div class="relative max-w-4xl w-full flex flex-col items-center" @click.stop>
+            
+            <button @click="openModal = false" class="absolute -top-12 right-0 md:-right-10 text-white text-4xl hover:text-red-500 transition-colors z-[10000]">
+                <i class="fas fa-times-circle"></i>
+            </button>
+            
+            <img :src="imgSrc" class="w-full h-auto max-h-[85vh] rounded-xl shadow-2xl border-2 border-white/20 object-contain">
+            
+            <p class="mt-4 text-white/50 text-xs font-bold uppercase tracking-widest">Klik area luar untuk menutup</p>
+        </div>
+    </div>
 </div>
+
+<style>
+    [x-cloak] { display: none !important; }
+</style>
 @endsection

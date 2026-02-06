@@ -2,7 +2,6 @@
 @section('title', 'Admin Panel - Mandala')
 
 @section('content')
-{{-- Kontainer Utama - Kunci agar tidak ada double scroll --}}
 <div x-data="{ sidebarOpen: true }" class="h-screen w-full bg-slate-50 flex overflow-hidden font-jakarta">
     
     <aside 
@@ -24,6 +23,7 @@
             </span>
         </div>
 
+        {{-- Navigasi Utama --}}
         <nav class="flex-grow px-4 space-y-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
             <p x-show="sidebarOpen" class="px-3 text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-4 opacity-40">Navigasi Utama</p>
             
@@ -56,10 +56,22 @@
                 <div class="w-8 flex justify-center items-center">
                     <i class="fas fa-check-double text-lg"></i>
                 </div>
-                <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Verifikasi Bayar</span>
+                <span x-show="sidebarOpen" class="ml-3 font-bold text-sm text-nowrap">Verifikasi Bayar</span>
+            </a>
+
+            <a href="{{ route('admin.messages') }}" 
+               class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.messages') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+                <div class="w-8 flex justify-center items-center">
+                    <i class="fas fa-envelope text-lg"></i>
+                </div>
+                <span x-show="sidebarOpen" class="ml-3 font-bold text-sm text-nowrap">Pesan Masuk</span>
+                @if(request()->routeIs('admin.messages'))
+                    <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
+                @endif
             </a>
         </nav>
 
+        {{-- Footer Sidebar (Logout) --}}
         <div class="p-4 border-t border-blue-600/50 flex-shrink-0">
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
@@ -82,6 +94,7 @@
                     @if(request()->routeIs('admin.overview')) Dashboard Overview
                     @elseif(request()->routeIs('admin.programs')) Programs Management
                     @elseif(request()->routeIs('admin.mentors')) Mentor Directory
+                    @elseif(request()->routeIs('admin.messages')) Pesan Masuk
                     @else Payment Verification @endif
                 </h1>
             </div>
@@ -104,36 +117,17 @@
                 @yield('admin_content')
             </div>
         </main>
-
-        <footer class="mt-12 py-6 px-8 border-t border-slate-200 bg-white text-slate-500 text-[11px] font-medium flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center space-x-2">
-                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                <p>Sistem Aktif &copy; 2026 <span class="font-bold text-blue-600 uppercase">Mandala Bimbel</span></p>
-            </div>
-            
-            <div class="flex items-center space-x-6 uppercase tracking-widest">
-                <a href="{{ route('about') }}" class="hover:text-blue-600 transition-colors">Tentang Kami</a>
-                <a href="{{ route('contact') }}" class="hover:text-orange-500 transition-colors">Hubungi Kontak</a>
-                <span class="text-slate-300">v1.0.2</span>
-            </div>
-        </footer>
     </div>
 </div>
 
 <style>
-    /* Reset & Clean Up */
     body > nav, body > footer { display: none !important; }
     body { overflow: hidden !important; height: 100vh; }
-    
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
     .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
-
-    /* Scrollbar Minimalis di Kanan Saja */
     .custom-main-scroll::-webkit-scrollbar { width: 8px; }
     .custom-main-scroll::-webkit-scrollbar-track { background: #f8fafc; }
     .custom-main-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    .custom-main-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
     [x-cloak] { display: none !important; }
 </style>
 @endsection
