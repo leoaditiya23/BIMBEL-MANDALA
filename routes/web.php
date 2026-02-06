@@ -17,7 +17,7 @@ Route::get('/faq', [PageController::class, 'faq'])->name('faq.index');
 Route::get('/tentang-kami', [PageController::class, 'about'])->name('about');
 Route::get('/kontak', [PageController::class, 'contact'])->name('contact');
 
-// PROSES KIRIM PESAN (Bisa diakses tanpa login)
+// PROSES KIRIM PESAN
 Route::post('/kontak/kirim', [PageController::class, 'storeMessage'])->name('contact.store');
 
 // JEMBATAN PENDAFTARAN
@@ -47,7 +47,6 @@ Route::middleware(['auth'])->group(function () {
 
     // Proses Pendaftaran & Upload Bukti (Siswa)
     Route::post('/enroll-program', [PageController::class, 'enrollProgram'])->name('enroll.program');
-    Route::post('/upload-bukti/{id}', [PageController::class, 'uploadBukti'])->name('upload.bukti');
 
     /**
      * --- FITUR ADMIN ---
@@ -59,22 +58,24 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/payments', [PageController::class, 'adminPayments'])->name('admin.payments');
         Route::get('/settings', [PageController::class, 'adminSettings'])->name('admin.settings');
         
-        // REVISI: Rute Messages (Menghilangkan double prefix 'admin/admin/')
         Route::get('/messages', [PageController::class, 'adminMessages'])->name('admin.messages');
         Route::delete('/messages/{id}', [PageController::class, 'deleteMessage'])->name('admin.messages.delete');
 
-        // Payment Verification & Reject (Disederhanakan)
+        // Payment Verification & Reject
         Route::post('/verify-payment/{id}', [PageController::class, 'verifyEnrollment'])->name('admin.payments.verify');
         Route::delete('/reject-payment/{id}', [PageController::class, 'rejectPayment'])->name('admin.payments.reject');
 
         // Program Management
-        Route::post('/programs/store', [PageController::class, 'storeProgram'])->name('programs.store');
-        Route::put('/programs/update/{id}', [PageController::class, 'updateProgram'])->name('programs.update');
-        Route::delete('/programs/delete/{id}', [PageController::class, 'deleteProgram'])->name('programs.delete');
+        Route::post('/programs/store', [PageController::class, 'storeProgram'])->name('admin.programs.store');
+        Route::put('/programs/update/{id}', [PageController::class, 'updateProgram'])->name('admin.programs.update');
+        Route::delete('/programs/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.programs.delete');
+
+        // Mentor Management (Tambahan agar Fitur Edit Mentor berfungsi)
+        Route::put('/mentors/update/{id}', [PageController::class, 'updateMentor'])->name('admin.mentors.update');
     });
 
     /**
-     * --- FITUR MENTOR & SISWA ---
+     * --- FITUR MENTOR ---
      */
     Route::prefix('mentor')->group(function () {
         Route::get('/overview', [PageController::class, 'mentorOverview'])->name('mentor.overview');
@@ -82,6 +83,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/schedule', [PageController::class, 'mentorSchedule'])->name('mentor.schedule');
     });
 
+    /**
+     * --- FITUR SISWA ---
+     */
     Route::prefix('siswa')->group(function () {
         Route::get('/overview', [PageController::class, 'siswaOverview'])->name('siswa.overview');
         Route::get('/programs', [PageController::class, 'siswaPrograms'])->name('siswa.programs');
