@@ -70,8 +70,10 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/programs/update/{id}', [PageController::class, 'updateProgram'])->name('admin.programs.update');
         Route::delete('/programs/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.programs.delete');
 
-        // Mentor Management (Tambahan agar Fitur Edit Mentor berfungsi)
+        // Mentor Management (REVISI: Ditambahkan store khusus agar tidak redirect ke overview)
+        Route::post('/mentors/store', [PageController::class, 'storeRegister'])->name('admin.mentors.store');
         Route::put('/mentors/update/{id}', [PageController::class, 'updateMentor'])->name('admin.mentors.update');
+        Route::delete('/mentors/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.mentors.delete'); // Tambahkan ini jika belum ada
     });
 
     /**

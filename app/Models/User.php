@@ -15,15 +15,16 @@ class User extends Authenticatable
      * Atribut yang dapat diisi (Mass Assignable).
      * Kolom ini harus sesuai dengan input di Register & DatabaseSeeder.
      */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'role',             
-        'whatsapp',         
-        'jenjang',          
-        'is_trial_claimed', 
-    ];
+   protected $fillable = [
+    'name',
+    'email',
+    'password',
+    'role',             
+    'whatsapp',         
+    'specialization',   
+    'jenjang',          
+    'is_trial_claimed', 
+];
 
     /**
      * Atribut yang disembunyikan saat serialisasi (JSON).

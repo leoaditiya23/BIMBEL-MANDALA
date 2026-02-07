@@ -206,22 +206,26 @@ class PageController extends Controller
         return back()->with('success', 'Data mentor berhasil diperbarui!');
     }
 
-    // FUNGSI BARU: REGISTER MENTOR (Logic storeRegister untuk admin)
     public function storeRegister(Request $request) {
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
+            'role' => 'nullable|string',
+            'specialization' => 'nullable|string|max:255',
+            'whatsapp' => 'nullable|string|max:20',
         ]);
 
         User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role ?? 'user', // Jika dari form admin, role akan menjadi mentor
+            'role' => $request->role ?? 'mentor', // Paksa ke mentor jika datang dari halaman admin mentor
+            'specialization' => $request->specialization,
+            'whatsapp' => $request->whatsapp,
         ]);
 
-        return back()->with('success', 'Pendaftaran berhasil!');
+        return back()->with('success', 'Mentor berhasil didaftarkan!');
     }
 
     public function adminPayments() {
