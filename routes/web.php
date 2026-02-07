@@ -5,7 +5,7 @@ use App\Http\Controllers\PageController;
 
 /*
 |--------------------------------------------------------------------------
-| Web Routes - Mandala Bimbel (Final Sync)
+| Web Routes - Mandala Bimbel (Final Sync & CRUD Mentor)
 |--------------------------------------------------------------------------
 */
 
@@ -70,10 +70,10 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/programs/update/{id}', [PageController::class, 'updateProgram'])->name('admin.programs.update');
         Route::delete('/programs/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.programs.delete');
 
-        // Mentor Management (REVISI: Ditambahkan store khusus agar tidak redirect ke overview)
+        // Mentor Management
         Route::post('/mentors/store', [PageController::class, 'storeRegister'])->name('admin.mentors.store');
         Route::put('/mentors/update/{id}', [PageController::class, 'updateMentor'])->name('admin.mentors.update');
-        Route::delete('/mentors/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.mentors.delete'); // Tambahkan ini jika belum ada
+        Route::delete('/mentors/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.mentors.delete');
     });
 
     /**
@@ -83,6 +83,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/overview', [PageController::class, 'mentorOverview'])->name('mentor.overview');
         Route::get('/classes', [PageController::class, 'mentorClasses'])->name('mentor.classes');
         Route::get('/schedule', [PageController::class, 'mentorSchedule'])->name('mentor.schedule');
+        
+        // CREATE / STORE ACTIONS
+        Route::post('/assignments/store', [PageController::class, 'storeAssignment'])->name('mentor.assignments.store');
+        Route::post('/materials/store', [PageController::class, 'storeMaterial'])->name('mentor.storeMaterial');
+        Route::post('/grades/store', [PageController::class, 'storeGrade'])->name('mentor.storeGrade');
+
+        // DELETE ACTIONS (Untuk CRUD Materi & Tugas)
+        Route::delete('/materials/delete/{id}', [PageController::class, 'deleteMaterial'])->name('mentor.materials.delete');
+        Route::delete('/assignments/delete/{id}', [PageController::class, 'deleteAssignment'])->name('mentor.assignments.delete');
     });
 
     /**

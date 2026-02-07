@@ -2,7 +2,7 @@
 
 @section('admin_content')
     <div class="p-8" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
-        <h2 class="text-3xl font-black text-slate-800 mb-8 tracking-tighter">Ringkasan <span class="text-blue-600">Dashboard</span></h2>
+        <h2 class="text-3xl font-black text-slate-800 mb-8 tracking-tighter">Ringkasan <span class="text-slate-800">Dashboard</span></h2>
         
         {{-- Stat Cards Section --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">

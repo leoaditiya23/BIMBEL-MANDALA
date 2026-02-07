@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -183,14 +184,12 @@ class PageController extends Controller
 
     public function adminMentors() {
         $mentors = User::where('role', 'mentor')->get()->map(function($mentor) {
-            // Hitung jumlah program yang diampu mentor ini
             $mentor->program_count = DB::table('programs')->where('mentor_id', $mentor->id)->count();
             return $mentor;
         });
         return view('admin.mentors', compact('mentors'));
     }
 
-    // FUNGSI BARU: UPDATE MENTOR
     public function updateMentor(Request $request, $id) {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -220,7 +219,7 @@ class PageController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role ?? 'mentor', // Paksa ke mentor jika datang dari halaman admin mentor
+            'role' => $request->role ?? 'mentor',
             'specialization' => $request->specialization,
             'whatsapp' => $request->whatsapp,
         ]);
@@ -343,38 +342,213 @@ class PageController extends Controller
         return redirect()->route('siswa.billing')->with('success', 'Pendaftaran berhasil!');
     }
 
-    /**
+   /**
      * ==========================================
      * 6. FITUR MENTOR
      * ==========================================
      */
-    public function mentorOverview() {
+    public function mentorOverview()
+    {
         $user = Auth::user();
+
+        $today_schedule = DB::table('enrollments')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->where('programs.mentor_id', $user->id)
+            ->where('enrollments.status_pembayaran', 'verified')
+            ->whereDate('enrollments.created_at', Carbon::today())
+            ->select('enrollments.*', 'programs.name as program_name', 'users.name as student_name')
+            ->get()
+            ->map(function($item) {
+                $item->created_at = Carbon::parse($item->created_at);
+                return $item;
+            });
+
         $stats = [
-            'total_students' => DB::table('enrollments')
+            'total_siswa' => DB::table('enrollments')
                 ->join('programs', 'enrollments.program_id', '=', 'programs.id')
                 ->where('programs.mentor_id', $user->id)
                 ->where('enrollments.status_pembayaran', 'verified')
-                ->distinct('enrollments.user_id')->count('enrollments.user_id'),
-            'total_classes' => DB::table('programs')->where('mentor_id', $user->id)->count(),
-            'today_sessions' => 0 
+                ->distinct('enrollments.user_id')
+                ->count(),
+            'total_kelas' => DB::table('programs')
+                ->where('mentor_id', $user->id)
+                ->count(),
         ];
-        return view('mentor.overview', compact('stats'));
+
+        $assignments = DB::table('assignments')
+            ->where('mentor_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($item) {
+                $item->created_at = Carbon::parse($item->created_at);
+                return $item;
+            });
+
+        return view('mentor.overview', compact('user', 'today_schedule', 'stats', 'assignments'));
     }
 
-    public function mentorClasses() {
-        $classes = DB::table('programs')->where('mentor_id', Auth::id())->get();
+    public function storeAssignment(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'link' => 'nullable|url',
+            'file' => 'nullable|mimes:pdf|max:2048', 
+        ]);
+
+        $fileName = null;
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileName = time() . '_tugas_' . Auth::id() . '.' . $file->getClientOriginalExtension();
+            $file->storeAs('assignments', $fileName, 'public');
+            $fileName = 'assignments/' . $fileName; 
+        }
+
+        DB::table('assignments')->insert([
+            'mentor_id' => Auth::id(),
+            'title' => $request->title,
+            'description' => $request->description,
+            'link' => $request->link,
+            'file_path' => $fileName,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('success', 'Tugas berhasil dipublikasikan!');
+    }
+
+    public function deleteAssignment($id)
+    {
+        $assignment = DB::table('assignments')->where('id', $id)->where('mentor_id', Auth::id())->first();
+        if ($assignment) {
+            if ($assignment->file_path) {
+                Storage::disk('public')->delete($assignment->file_path);
+            }
+            DB::table('assignments')->where('id', $id)->delete();
+            return back()->with('success', 'Tugas berhasil dihapus!');
+        }
+        return back()->with('error', 'Tugas tidak ditemukan.');
+    }
+
+    public function mentorClasses() 
+    {
+        $classes = DB::table('programs')
+            ->where('mentor_id', Auth::id())
+            ->get()
+            ->map(function($class) {
+                $class->student_count = DB::table('enrollments')
+                    ->where('program_id', $class->id)
+                    ->where('status_pembayaran', 'verified')
+                    ->count();
+                
+                $class->students = DB::table('enrollments')
+                    ->join('users', 'enrollments.user_id', '=', 'users.id')
+                    ->where('enrollments.program_id', $class->id)
+                    ->where('enrollments.status_pembayaran', 'verified')
+                    ->select('users.id', 'users.name')
+                    ->get();
+
+                $class->materials = DB::table('session_materials')
+                    ->where('program_id', $class->id)
+                    ->orderBy('session_number', 'asc')
+                    ->get();
+
+                return $class;
+            });
+            
         return view('mentor.classes', compact('classes'));
     }
 
-    public function mentorSchedule() {
+    // --- HELPER UNTUK YOUTUBE EMBED ---
+    private function convertYoutube($url) {
+        if (!$url) return null;
+        $pattern = '/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i';
+        if (preg_match($pattern, $url, $matches)) {
+            return "https://www.youtube.com/embed/" . $matches[1];
+        }
+        return $url;
+    }
+
+    public function storeMaterial(Request $request)
+    {
+        $request->validate([
+            'program_id' => 'required',
+            'session_number' => 'required',
+            'title' => 'required',
+            'file' => 'nullable|mimes:pdf,ppt,pptx|max:5120',
+            'video_url' => 'nullable|url'
+        ]);
+
+        $path = null;
+        if ($request->hasFile('file')) {
+            $path = $request->file('file')->store('materials', 'public');
+        }
+
+        // Konversi link Youtube ke format Embed sebelum simpan
+        $embedUrl = $this->convertYoutube($request->video_url);
+
+        DB::table('session_materials')->insert([
+            'program_id' => $request->program_id,
+            'session_number' => $request->session_number,
+            'title' => $request->title,
+            'file_path' => $path,
+            'video_url' => $embedUrl,
+            'created_at' => now(),
+        ]);
+
+        return back()->with('success', 'Materi berhasil ditambahkan!');
+    }
+
+    public function deleteMaterial($id)
+    {
+        $material = DB::table('session_materials')->where('id', $id)->first();
+        if ($material) {
+            if ($material->file_path) {
+                Storage::disk('public')->delete($material->file_path);
+            }
+            DB::table('session_materials')->where('id', $id)->delete();
+            return back()->with('success', 'Materi berhasil dihapus!');
+        }
+        return back()->with('error', 'Materi tidak ditemukan.');
+    }
+
+    public function storeGrade(Request $request)
+    {
+        $request->validate([
+            'program_id' => 'required',
+            'student_id' => 'required',
+            'title' => 'required|string',
+            'score' => 'required|integer|min:0|max:100',
+        ]);
+
+        DB::table('grades')->insert([
+            'program_id' => $request->program_id,
+            'student_id' => $request->student_id,
+            'mentor_id' => Auth::id(),
+            'title' => $request->title,
+            'score' => $request->score,
+            'mentor_note' => $request->note,
+            'created_at' => now(),
+        ]);
+
+        return back()->with('success', 'Nilai siswa berhasil disimpan!');
+    }
+
+    public function mentorSchedule() 
+    {
         $schedule = DB::table('enrollments')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
             ->join('users', 'enrollments.user_id', '=', 'users.id')
             ->where('programs.mentor_id', Auth::id())
             ->where('enrollments.status_pembayaran', 'verified')
             ->select('enrollments.*', 'programs.name as program_name', 'users.name as student_name')
-            ->get();
+            ->get()
+            ->map(function($item) {
+                $item->created_at = Carbon::parse($item->created_at);
+                return $item;
+            });
+
         return view('mentor.schedule', compact('schedule'));
     }
 

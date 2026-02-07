@@ -9,15 +9,17 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-        Schema::table('users', function (Blueprint $table) {
-            // Kita tambahkan kolom specialization dan whatsapp setelah kolom email
-            // nullable() artinya boleh dikosongkan (tidak wajib diisi)
+    public function up()
+{
+    Schema::table('users', function (Blueprint $table) {
+        if (!Schema::hasColumn('users', 'specialization')) {
             $table->string('specialization')->nullable()->after('email');
+        }
+        if (!Schema::hasColumn('users', 'whatsapp')) {
             $table->string('whatsapp')->nullable()->after('specialization');
-        });
-    }
+        }
+    });
+}
 
     /**
      * Reverse the migrations.

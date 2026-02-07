@@ -4,7 +4,7 @@
 <div class="p-8" x-data="{ openModal: false, imgSrc: '', paymentId: '', paymentName: '' }">
     <div class="mb-8 flex justify-between items-end">
         <div>
-            <h2 class="text-3xl font-black text-blue-600 tracking-tighter">Verifikasi Pembayaran</h2>
+            <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Verifikasi Pembayaran</h2>
             <p class="text-sm text-slate-500 mt-1 font-medium">Kelola pendaftaran masuk. Anda bisa memverifikasi atau menolak pendaftar di sini.</p>
         </div>
         <div class="bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100">
