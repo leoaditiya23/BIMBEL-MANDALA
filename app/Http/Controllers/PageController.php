@@ -315,39 +315,99 @@ class PageController extends Controller
      */
     public function siswaOverview() {
         $user = Auth::user();
-        $recent_programs = DB::table('programs')
-            ->join('enrollments', 'programs.id', '=', 'enrollments.program_id')
-            ->where('enrollments.user_id', $user->id)
-            ->select('programs.*', 'enrollments.status_pembayaran')->limit(5)->get();
-        return view('siswa.overview', compact('recent_programs'));
-    }
 
+        // 1. Ambil Program Aktif (Hanya yang sudah diverifikasi admin)
+        $recent_programs = DB::table('enrollments')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->leftJoin('users as mentors', 'programs.mentor_id', '=', 'mentors.id')
+            ->where('enrollments.user_id', $user->id)
+            ->where('enrollments.status_pembayaran', 'verified')
+            ->select('programs.*', 'mentors.name as mentor_name')
+            ->limit(5)
+            ->get();
+
+        // 2. Kalkulasi Stats Otomatis (Dengan proteksi Schema agar tidak error)
+        $stats = [
+            'attendance' => \Illuminate\Support\Facades\Schema::hasTable('attendances') 
+                ? (DB::table('attendances')->where('user_id', $user->id)->avg('status') ?? 0) 
+                : 0,
+            'completed_tasks' => \Illuminate\Support\Facades\Schema::hasTable('task_submissions') 
+                ? DB::table('task_submissions')->where('user_id', $user->id)->count() 
+                : 0,
+            'total_tasks' => \Illuminate\Support\Facades\Schema::hasTable('assignments') 
+                ? DB::table('assignments')->count() 
+                : 0,
+            'average_score' => \Illuminate\Support\Facades\Schema::hasTable('grades') 
+                ? (DB::table('grades')->where('student_id', $user->id)->avg('score') ?? 0) 
+                : 0,
+            'class_rank' => "New", 
+        ];
+
+        // 3. Ambil Aktivitas Terbaru (Data asli dari database)
+        $activities = DB::table('enrollments')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->where('enrollments.user_id', $user->id)
+            ->select('programs.name as title', 'enrollments.created_at', DB::raw("'Pendaftaran Program' as type"), 'enrollments.status_pembayaran as status')
+            ->orderBy('enrollments.created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Pastikan ketiga variabel ini dikirim ke view
+        return view('siswa.overview', compact('recent_programs', 'stats', 'activities'));
+    }
     public function siswaPrograms() {
         $user = Auth::user();
-        $programs = DB::table('programs')
-            ->join('enrollments', 'programs.id', '=', 'enrollments.program_id')
+
+        // Mengambil daftar semua program yang pernah didaftarkan siswa (baik verified maupun pending)
+        $my_programs = DB::table('enrollments')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->leftJoin('users as mentors', 'programs.mentor_id', '=', 'mentors.id')
             ->where('enrollments.user_id', $user->id)
-            ->select('programs.*', 'enrollments.id as enrollment_id', 'enrollments.status_pembayaran', 'enrollments.bukti_pembayaran')->get();
-        return view('siswa.programs', compact('programs'));
+            ->select(
+                'programs.*', 
+                'mentors.name as mentor_name', 
+                'enrollments.status_pembayaran', 
+                'enrollments.created_at as registration_date'
+            )
+            ->get();
+
+        return view('siswa.programs', [
+    'programs' => $my_programs 
+]);
+    } 
+    public function siswaSchedule() {
+        $user = Auth::user();
+
+        // Mengambil jadwal berdasarkan program yang sudah diikuti (enroll) dan diverifikasi
+        $schedules = DB::table('enrollments')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->where('enrollments.user_id', $user->id)
+            ->where('enrollments.status_pembayaran', 'verified')
+            ->select(
+                'programs.name as program_name',
+                'programs.hari',       // Pastikan ada kolom 'hari' di tabel programs
+                'programs.jam_mulai',  // Pastikan ada kolom 'jam_mulai'
+                'programs.jam_selesai' // Pastikan ada kolom 'jam_selesai'
+            )
+            ->get();
+
+        return view('siswa.schedule', compact('schedules'));
     }
-
-    public function siswaSchedule() { return view('siswa.schedule', ['schedule' => []]); }
-
-    public function siswaBilling() {
+public function siswaBilling() {
     $user = Auth::user();
+
     $payments = DB::table('enrollments')
         ->join('programs', 'enrollments.program_id', '=', 'programs.id')
         ->where('enrollments.user_id', $user->id)
-        ->select('enrollments.*', 'programs.name as program_name') // Pastikan enrollments.* ikut terambil
-        ->get()
-        ->map(function($item) {
-            $item->created_at = Carbon::parse($item->created_at);
-            return $item;
-        });
-    
+        ->select(
+            'enrollments.*', 
+            'programs.name as program_name'
+        )
+        ->orderBy('enrollments.created_at', 'desc')
+        ->get();
+
     return view('siswa.billing', compact('payments'));
 }
-
     public function enrollProgram(Request $request) {
     $request->validate([
         'program_id'       => 'required',
@@ -358,19 +418,23 @@ class PageController extends Controller
     $user = Auth::user();
     
     // Ambil 3 digit terakhir nomor WA sebagai kode unik
-    $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp);
+    // Jika WA kosong, default ke 000 agar tidak error
+    $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp ?? '000');
     $uniqueCode = (int) substr($cleanPhone, -3); 
     
-    // Total yang harus dibayar (Misal: 750.000 + 123 = 750.123)
+    // Total yang harus dibayar (Misal: 1.500.000 + 863 = 1.500.863)
     $finalAmount = $request->total_harga + $uniqueCode;
 
+    // Proses Upload File
     $namaFile = time() . '_user_' . $user->id . '.' . $request->file('bukti_pembayaran')->getClientOriginalExtension();
     $request->file('bukti_pembayaran')->move(public_path('uploads/bukti'), $namaFile);
 
+    // Insert ke Database
     DB::table('enrollments')->insert([
         'user_id'           => $user->id,
         'program_id'        => $request->program_id,
-        'total_harga'       => $finalAmount, // Simpan harga + kode unik
+        'total_harga'       => $finalAmount,
+        'payment_code'      => $uniqueCode, // REVISI: Tambahkan ini agar tidak error General Error 1364
         'status_pembayaran' => 'pending',
         'bukti_pembayaran'  => $namaFile,
         'created_at'        => now(),
