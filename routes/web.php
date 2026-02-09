@@ -2,10 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 
 /*
 |--------------------------------------------------------------------------
-| Web Routes - Mandala Bimbel (Final Sync & CRUD Mentor)
+| Web Routes - Mandala Bimbel (Final Sync & Verified)
 |--------------------------------------------------------------------------
 */
 
@@ -35,14 +36,13 @@ Route::middleware(['guest'])->group(function () {
     Route::get('/login', [PageController::class, 'login'])->name('login');
     Route::post('/login', [PageController::class, 'authenticate'])->name('login.store');
     Route::get('/daftar', [PageController::class, 'register'])->name('register');
-    
-    // UBAH BAGIAN INI: Dari storeRegister menjadi registerStore
     Route::post('/daftar', [PageController::class, 'registerStore'])->name('register.store');
+    
+    // Reset Password
+    Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
 });
-use App\Http\Controllers\Auth\ForgotPasswordController;
 
-Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
-Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
 /**
  * 3. RUTE AUTH (Wajib Login)
  */
@@ -75,10 +75,10 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/programs/update/{id}', [PageController::class, 'updateProgram'])->name('admin.programs.update');
         Route::delete('/programs/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.programs.delete');
 
-        // Mentor Management
-        Route::post('/mentors/store', [PageController::class, 'storeRegister'])->name('admin.mentors.store');
+        // Mentor Management (Disesuaikan dengan View & Controller)
+        Route::post('/mentors/store', [PageController::class, 'storeMentor'])->name('admin.mentors.store');
         Route::put('/mentors/update/{id}', [PageController::class, 'updateMentor'])->name('admin.mentors.update');
-        Route::delete('/mentors/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.mentors.delete');
+        Route::delete('/mentors/delete/{id}', [PageController::class, 'deleteMentor'])->name('admin.mentors.delete');
     });
 
     /**
@@ -94,7 +94,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/materials/store', [PageController::class, 'storeMaterial'])->name('mentor.storeMaterial');
         Route::post('/grades/store', [PageController::class, 'storeGrade'])->name('mentor.storeGrade');
 
-        // DELETE ACTIONS (Untuk CRUD Materi & Tugas)
+        // DELETE ACTIONS
         Route::delete('/materials/delete/{id}', [PageController::class, 'deleteMaterial'])->name('mentor.materials.delete');
         Route::delete('/assignments/delete/{id}', [PageController::class, 'deleteAssignment'])->name('mentor.assignments.delete');
     });
