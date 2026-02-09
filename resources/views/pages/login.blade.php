@@ -33,6 +33,7 @@
             </form>
             <p class="mt-8 text-center text-slate-500 italic">Belum punya akun? <a href="{{ route('register') }}" class="text-orange-500 font-bold hover:underline">Daftar</a></p>
         </div>
+        
         <div class="hidden md:flex w-1/2 bg-blue-600 items-center justify-center text-white p-12 relative overflow-hidden">
              <div class="absolute inset-0 opacity-10" style="background-image: url('https://www.transparenttextures.com/patterns/cubes.png');"></div>
             <div class="text-center relative z-10">
@@ -43,4 +44,26 @@
         </div>
     </div>
 </div>
+
+{{-- SCRIPT POPUP BERHASIL DAFTAR --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+@if(session('success'))
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+            title: 'PENDAFTARAN BERHASIL!',
+            text: "{{ session('success') }}",
+            icon: 'success',
+            confirmButtonColor: '#2563eb', 
+            confirmButtonText: 'OKE, SAYA MENGERTI',
+            customClass: {
+                popup: 'rounded-[30px]',
+                confirmButton: 'rounded-xl px-10 py-3 font-bold'
+            }
+        });
+    });
+</script>
+@endif
+
 @endsection

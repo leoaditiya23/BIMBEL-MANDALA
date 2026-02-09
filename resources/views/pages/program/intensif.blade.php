@@ -215,81 +215,90 @@ get basePrice() {
     </div>
 </div>
 
-                   {{-- STEP 3: INVOICE & BUKTI --}}
-<div x-show="step === 3" x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="opacity-0 translate-y-4" x-cloak>
-    <form action="{{ route('enroll.program') }}" method="POST" enctype="multipart/form-data">
-        @csrf
-        
-        {{-- LOGIKA PENENTU ID PROGRAM (Pastikan ID ini sesuai dengan database kamu) --}}
-        <input type="hidden" name="program_id" :value="
-            kategori === 'UTBK-SAINTEK' ? 1 : 
-            (kategori === 'UTBK-SOSHUM' ? 2 : 
-            (kategori === 'TKA-SD' ? 3 : 4))
-        ">
-        
-        <input type="hidden" name="metode" :value="metode">
-        <input type="hidden" name="total_harga" :value="totalPrice">
-        <input type="hidden" name="jenjang" :value="kategori.includes('UTBK') ? 'SMA' : (kategori.includes('SMP') ? 'SMP' : 'SD')">
-
-        <div class="grid lg:grid-cols-5 gap-8 items-start">
-            {{-- Ringkasan Kiri --}}
-            <div class="lg:col-span-3 bg-slate-50 border border-slate-100 rounded-[2rem] p-8">
-                <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter mb-6 flex items-center">
-                    <i class="fas fa-file-invoice-dollar mr-3 text-orange-600"></i> Ringkasan Pesanan
-                </h3>
-                <div class="space-y-4">
-                    <div class="flex justify-between pb-4 border-b border-slate-200">
-                        <span class="text-[10px] font-black text-slate-400 uppercase">Program</span>
-                        <span class="font-black text-slate-800 uppercase text-xs" x-text="kategori"></span>
-                    </div>
-                    <div class="flex justify-between pb-4 border-b border-slate-200">
-                        <span class="text-[10px] font-black text-slate-400 uppercase">Metode</span>
-                        <span class="font-black text-slate-800 uppercase text-xs" x-text="metode"></span>
-                    </div>
-                    <div class="flex justify-between pt-4">
-                        <span class="font-black text-slate-800 uppercase text-xs">Total Pembayaran</span>
-                        <span class="font-black text-orange-600 text-xl" x-text="'Rp ' + totalPrice.toLocaleString('id-ID')"></span>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Upload Kanan --}}
-            <div class="lg:col-span-2 space-y-6">
-                <div class="bg-orange-50 rounded-3xl p-8 border border-orange-100 text-center">
-                    <p class="text-[10px] font-black text-orange-800 uppercase tracking-widest mb-2">Transfer Ke Rekening Mandiri</p>
-                    <div class="text-xl font-black text-slate-800 mb-1">900 1234 5678 00</div>
-                    <p class="text-[9px] font-bold text-slate-400 mb-6 uppercase">A.N MANDALA ACADEMY</p>
+            {{-- STEP 3: INVOICE & BUKTI (VERSI NOMINAL UNIK) --}}
+            <div x-show="step === 3" x-transition:enter="transition ease-out duration-300 transform" x-transition:enter-start="opacity-0 translate-y-4" x-cloak>
+                <form action="{{ route('enroll.program') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
                     
-                    <label class="cursor-pointer group block">
-                        <div :class="buktiBayar ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-white text-orange-600 border-orange-200'" 
-                             class="px-6 py-4 rounded-2xl font-black text-[10px] uppercase transition-all shadow-sm flex items-center justify-center space-x-2 border-2">
-                            <i class="fas" :class="buktiBayar ? 'fa-check-circle' : 'fa-camera'"></i>
-                            <span x-text="buktiBayar ? 'Bukti Terupload' : 'Upload Bukti Bayar'"></span>
-                        </div>
-                        <input type="file" name="bukti_pembayaran" class="hidden" required
-                               @change="buktiBayar = $event.target.files[0]">
-                    </label>
-                    @error('bukti_pembayaran')
-                        <p class="text-red-500 text-[10px] mt-2 font-bold">{{ $message }}</p>
-                    @enderror
-                </div>
+                    {{-- Hidden Inputs --}}
+                    <input type="hidden" name="program_id" :value="
+                        kategori === 'UTBK-SAINTEK' ? 1 : 
+                        (kategori === 'UTBK-SOSHUM' ? 2 : 
+                        (kategori === 'TKA-SD' ? 3 : 4))
+                    ">
+                    <input type="hidden" name="total_harga" :value="totalPrice">
 
-                <button type="submit" 
-                        :disabled="!buktiBayar"
-                        :class="!buktiBayar ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'bg-slate-900 hover:bg-orange-600 active:scale-95'"
-                        class="w-full text-white py-6 rounded-3xl font-black uppercase tracking-widest transition-all shadow-2xl">
-                    Konfirmasi & Daftar Sekarang
-                </button>
-                
-                <button type="button" @click="step = 2" class="w-full text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition">Kembali</button>
-            </div>
-        </div>
-    </form>
-</div>
+                    <div class="grid lg:grid-cols-5 gap-8 items-start">
+                        {{-- Ringkasan Kiri --}}
+                        <div class="lg:col-span-3 bg-slate-50 border border-slate-100 rounded-[2rem] p-8">
+                            <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter mb-6 flex items-center">
+                                <i class="fas fa-file-invoice-dollar mr-3 text-orange-600"></i> Ringkasan Pesanan
+                            </h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between pb-4 border-b border-slate-200">
+                                    <span class="text-[10px] font-black text-slate-400 uppercase">Program</span>
+                                    <span class="font-black text-slate-800 uppercase text-xs" x-text="kategori"></span>
+                                </div>
+                                
+                                {{-- TOTAL DENGAN KODE UNIK --}}
+                                <div class="pt-6 bg-slate-900 rounded-3xl p-6 text-white shadow-lg border-b-4 border-orange-500">
+                                    <span class="text-[10px] font-black text-white/50 uppercase tracking-widest">Total Pembayaran (+Kode Unik)</span>
+                                    <div class="flex items-baseline gap-1 mt-1">
+                                        <h3 class="text-3xl font-black text-orange-500" 
+                                            x-text="'Rp ' + (totalPrice + parseInt('{{ substr(preg_replace('/[^0-9]/', '', Auth::user()->whatsapp ?? '000'), -3) }}')).toLocaleString('id-ID')">
+                                        </h3>
+                                    </div>
+                                    <p class="text-[9px] text-white/70 mt-3 leading-relaxed italic">
+                                        <i class="fas fa-magic mr-1 text-orange-400"></i>
+                                        Sistem menyisipkan 3 digit terakhir nomor WA Anda sebagai kode verifikasi. Mohon transfer <strong>tepat</strong> sesuai angka di atas.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Info Bank & Upload Kanan --}}
+                        <div class="lg:col-span-2 space-y-4">
+                            <div class="bg-orange-50 rounded-3xl p-6 border border-orange-100 text-center">
+                                <p class="text-[10px] font-black text-orange-800 uppercase tracking-widest mb-1">Transfer Ke Mandiri</p>
+                                <div class="text-xl font-black text-slate-800">900 1234 5678 00</div>
+                                <p class="text-[9px] font-bold text-slate-400 mb-6 uppercase text-center">A.N MANDALA ACADEMY</p>
+                                
+                                <label class="cursor-pointer group block">
+                                    <div :class="buktiBayar ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-white text-orange-600 border-orange-200'" 
+                                         class="px-6 py-4 rounded-2xl font-black text-[10px] uppercase transition-all shadow-sm flex items-center justify-center space-x-2 border-2">
+                                        <i class="fas" :class="buktiBayar ? 'fa-check-circle' : 'fa-camera'"></i>
+                                        <span x-text="buktiBayar ? 'Bukti Terupload' : 'Upload Bukti Bayar'"></span>
+                                    </div>
+                                    <input type="file" name="bukti_pembayaran" class="hidden" required
+                                           @change="buktiBayar = $event.target.files[0]">
+                                </label>
+                                @error('bukti_pembayaran')
+                                    <p class="text-red-500 text-[10px] mt-2 font-bold">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <button type="submit" 
+                                    :disabled="!buktiBayar"
+                                    :class="!buktiBayar ? 'opacity-50 cursor-not-allowed bg-slate-400' : 'bg-slate-900 hover:bg-orange-600 active:scale-95'"
+                                    class="w-full text-white py-6 rounded-3xl font-black uppercase tracking-widest transition-all shadow-2xl">
+                                Konfirmasi Sekarang
+                            </button>
+
+                            <button type="button" @click="step = 2" 
+                                    class="w-full text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition text-center">
+                                Kembali
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div> {{-- Tutup Step 3 --}}
+
+        </div> {{-- Tutup Padding md:p-14 --}}
+    </div> {{-- Tutup Container White Rounded --}}
+</div> {{-- Tutup Container Utama --}}
 
 <style>
     [x-cloak] { display: none !important; }
     * { font-style: normal !important; font-family: 'Plus Jakarta Sans', sans-serif; }
-    h1, h2, h3, h4, span, p, button { font-style: normal !important; }
 </style>
 @endsection

@@ -407,74 +407,82 @@ class="relative">
                             </div>
                         </div>
                     </div>
+{{-- STEP 3: PEMBAYARAN (VERSI NOMINAL UNIK) --}}
+<div x-show="step === 3" x-transition x-cloak>
+    <form action="{{ route('enroll.program') }}" method="POST" enctype="multipart/form-data">
+        @csrf
+        {{-- Hidden Inputs --}}
+        <input type="hidden" name="program_id" value="1"> {{-- Sesuaikan ID Program --}}
+        <input type="hidden" name="total_harga" :value="totalPrice">
+        <input type="hidden" name="jenjang" :value="jenjang">
 
-                    {{-- STEP 3: PEMBAYARAN --}}
-                    <div x-show="step === 3" x-transition x-cloak>
-                        <div class="grid md:grid-cols-2 gap-10">
-                            <div>
-                                <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight mb-6">RINGKASAN PESANAN</h3>
-                                <div class="bg-slate-900 rounded-[2rem] p-8 text-white shadow-xl relative overflow-hidden">
-                                    <div class="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                                    <div class="space-y-4 relative z-10">
-                                        <div class="flex justify-between border-b border-white/10 pb-3">
-                                            <span class="text-[10px] text-white/50 font-bold uppercase tracking-widest">JENJANG</span>
-                                            <span class="font-bold text-sm uppercase" x-text="jenjang"></span>
-                                        </div>
-                                        <div class="border-b border-white/10 pb-4">
-                                            <span class="text-[10px] text-white/50 font-bold uppercase tracking-widest block mb-2">MAPEL:</span>
-                                            <div class="flex flex-wrap gap-1.5">
-                                                <template x-for="m in selectedMapel">
-                                                    <span class="bg-white/10 text-[9px] font-bold px-3 py-1 rounded-lg uppercase" x-text="m"></span>
-                                                </template>
-                                            </div>
-                                        </div>
-                                        <div class="pt-2">
-                                            <p class="text-[10px] text-white/50 font-bold uppercase tracking-widest">TOTAL INVESTASI</p>
-                                            <h3 class="text-4xl font-black tracking-tighter mt-1" x-text="'Rp ' + totalPrice.toLocaleString('id-ID')"></h3>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="space-y-6">
-                                <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">TRANSFER PEMBAYARAN</h3>
-                                <div class="bg-blue-50 border-2 border-blue-100 rounded-[2rem] p-6 space-y-3 text-center">
-                                    <span class="text-blue-600 font-black text-xs px-3 py-1 bg-white rounded-lg border border-blue-200 uppercase">BCA - Mandala Group</span>
-                                    <div class="text-3xl font-black text-slate-800 tracking-wider py-2">8901 2233 44</div>
-                                </div>
-
-                                <div class="space-y-3">
-                                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">UPLOAD BUKTI TRANSFER</span>
-                                    <label class="block border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center cursor-pointer hover:bg-slate-50 transition relative h-40 flex items-center justify-center overflow-hidden">
-                                        <input type="file" name="bukti_pembayaran" @change="handleFileUpload" class="hidden" accept="image/*" required>
-                                        <template x-if="!buktiTransfer">
-                                            <div class="text-slate-400">
-                                                <i class="fas fa-camera text-2xl mb-2"></i>
-                                                <p class="text-[10px] font-bold uppercase">KLIK UNTUK UPLOAD</p>
-                                            </div>
-                                        </template>
-                                        <template x-if="buktiTransfer">
-                                            <img :src="buktiTransfer" class="absolute inset-0 w-full h-full object-cover rounded-[1.5rem]">
-                                        </template>
-                                    </label>
-                                </div>
-                            </div>
+        <div class="grid md:grid-cols-2 gap-10">
+            {{-- KIRI: RINGKASAN & TOTAL --}}
+            <div class="space-y-6">
+                <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">RINGKASAN PESANAN</h3>
+                <div class="bg-slate-900 rounded-[2rem] p-8 text-white shadow-xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                    
+                    <div class="space-y-4 relative z-10">
+                        <div class="flex justify-between border-b border-white/10 pb-3">
+                            <span class="text-[10px] text-white/50 font-bold uppercase tracking-widest">PROGRAM</span>
+                            <span class="font-bold text-sm uppercase" x-text="jenjang"></span>
                         </div>
-
-                        <div class="mt-12 flex flex-col md:flex-row gap-4">
-                            <button type="button" @click="step = 2" class="flex-1 bg-slate-100 text-slate-500 py-6 rounded-2xl font-bold uppercase">KEMBALI</button>
-                            <button type="submit" 
-                                    @click.prevent="showConfirmation($event)"
-                                    :disabled="!buktiTransfer" 
-                                    class="w-full bg-orange-500 text-white py-6 rounded-2xl font-bold uppercase shadow-xl tracking-[0.2em] disabled:opacity-50 transition-all hover:scale-[1.02]">
-                                KONFIRMASI SEKARANG
-                            </button>
+                        
+                        {{-- TOTAL DENGAN KODE UNIK --}}
+                        <div class="pt-4 bg-white/5 p-6 rounded-2xl border border-white/10">
+                            <p class="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-1">TOTAL TRANSFER (Hingga Digit Terakhir)</p>
+                            <h3 class="text-4xl font-black tracking-tighter text-orange-500" 
+                                x-text="'Rp ' + (totalPrice + parseInt('{{ substr(preg_replace('/[^0-9]/', '', Auth::user()->whatsapp ?? '000'), -3) }}')).toLocaleString('id-ID')">
+                            </h3>
+                            <div class="mt-3 flex items-start gap-2">
+                                <i class="fas fa-info-circle text-orange-500 mt-0.5 text-xs"></i>
+                                <p class="text-[9px] text-white/60 leading-tight italic">
+                                    Sistem menggunakan 3 digit terakhir nomor WhatsApp Anda sebagai kode unik untuk verifikasi otomatis.
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </form>
+                </div>
+            </div>
+
+            {{-- KANAN: INSTRUKSI BANK & UPLOAD --}}
+            <div class="space-y-6">
+                <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">TRANSFER PEMBAYARAN</h3>
+                
+                <div class="bg-blue-50 border-2 border-blue-100 rounded-[2rem] p-6 text-center">
+                    <span class="text-blue-600 font-black text-[10px] px-3 py-1 bg-white rounded-lg border border-blue-200 uppercase">BCA - Mandala Group</span>
+                    <div class="text-3xl font-black text-slate-800 tracking-wider py-2">8901 2233 44</div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">A.N MANDALA ACADEMY</p>
+                </div>
+
+                <div class="space-y-3">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">UPLOAD BUKTI TRANSFER</span>
+                    <label class="block border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center cursor-pointer hover:bg-slate-50 transition relative h-40 flex items-center justify-center overflow-hidden">
+                        <input type="file" name="bukti_pembayaran" @change="handleFileUpload" class="hidden" accept="image/*" required>
+                        <template x-if="!buktiTransfer">
+                            <div class="text-slate-400">
+                                <i class="fas fa-camera text-2xl mb-2"></i>
+                                <p class="text-[10px] font-bold uppercase">KLIK UNTUK UPLOAD</p>
+                            </div>
+                        </template>
+                        <template x-if="buktiTransfer">
+                            <img :src="buktiTransfer" class="absolute inset-0 w-full h-full object-cover rounded-[1.5rem]">
+                        </template>
+                    </label>
+                </div>
             </div>
         </div>
-    </div>
+
+        <div class="mt-12 flex flex-col md:flex-row gap-4">
+            <button type="button" @click="step = 2" class="flex-1 bg-slate-100 text-slate-500 py-6 rounded-2xl font-bold uppercase hover:bg-slate-200 transition">KEMBALI</button>
+            <button type="submit" 
+                    :disabled="!buktiTransfer" 
+                    class="w-full bg-orange-500 text-white py-6 rounded-2xl font-bold uppercase shadow-xl tracking-[0.2em] disabled:opacity-50 hover:bg-orange-600 transition-all">
+                KONFIRMASI SEKARANG
+            </button>
+        </div>
+    </form>
 </div>
 
 @if(session('success'))

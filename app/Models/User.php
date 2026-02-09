@@ -11,31 +11,30 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    /**
-     * Atribut yang dapat diisi (Mass Assignable).
-     * Kolom ini harus sesuai dengan input di Register & DatabaseSeeder.
-     */
-   protected $fillable = [
-    'name',
-    'email',
-    'password',
-    'role',             
-    'whatsapp',         
-    'specialization',   
-    'jenjang',          
-    'is_trial_claimed', 
-];
+    protected $fillable = [
+        'name',
+        'email',
+        'username',      
+        'password',
+        'role',             
+        'whatsapp',         
+        'specialization',   
+        'jenjang',          
+        'is_trial_claimed', 
+        'birth_date',    
+        'gender',        
+        'school',        
+        'referral',      
+    ];
 
-    /**
-     * Atribut yang disembunyikan saat serialisasi (JSON).
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
     /**
-     * Casting tipe data kolom.
+     * REVISI DI SINI:
+     * Pastikan format casting benar untuk Laravel 11
      */
     protected function casts(): array
     {
@@ -43,29 +42,23 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_trial_claimed' => 'boolean',
+            'birth_date' => 'date', 
         ];
     }
 
-    /**
-     * RELASI: Seorang User (Siswa) bisa memiliki banyak pendaftaran program.
-     * Digunakan di PageController@dashboard untuk menarik data $my_programs.
-     */
+    // ... sisa kode relasi dan helper (enrollments, programs, isAdmin, dll) tetap sama
+    // Tidak ada perubahan pada fungsi-fungsi di bawahnya sesuai permintaan Anda.
+
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);
     }
 
-    /**
-     * RELASI: Seorang User (Mentor) bisa mengajar banyak program.
-     */
     public function programs(): HasMany
     {
         return $this->hasMany(Program::class, 'mentor_id');
     }
 
-    /**
-     * HELPER: Mengecek Role User
-     */
     public function isAdmin(): bool
     {
         return $this->role === 'admin';

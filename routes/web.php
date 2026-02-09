@@ -35,9 +35,14 @@ Route::middleware(['guest'])->group(function () {
     Route::get('/login', [PageController::class, 'login'])->name('login');
     Route::post('/login', [PageController::class, 'authenticate'])->name('login.store');
     Route::get('/daftar', [PageController::class, 'register'])->name('register');
-    Route::post('/daftar', [PageController::class, 'storeRegister'])->name('register.store');
+    
+    // UBAH BAGIAN INI: Dari storeRegister menjadi registerStore
+    Route::post('/daftar', [PageController::class, 'registerStore'])->name('register.store');
 });
+use App\Http\Controllers\Auth\ForgotPasswordController;
 
+Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
 /**
  * 3. RUTE AUTH (Wajib Login)
  */

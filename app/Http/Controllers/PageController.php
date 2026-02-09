@@ -42,6 +42,38 @@ class PageController extends Controller
     public function login() { return view('pages.login'); }
     public function register() { return view('pages.register'); }
 
+    /**
+     * LOGIKA REGISTRASI KHUSUS SISWA (REVISI BARU)
+     * Mengelola pendaftaran dari halaman register.blade.php
+     */
+    public function registerStore(Request $request) {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'username' => 'required|string|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+            'birth_date' => 'required|date',
+            'gender' => 'required',
+            'phone' => 'required',
+            'school' => 'required',
+        ]);
+
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'username' => $request->username,
+            'password' => Hash::make($request->password),
+            'role' => 'siswa', // Hardcoded sebagai siswa sesuai permintaan
+            'birth_date' => $request->birth_date,
+            'gender' => $request->gender,
+            'whatsapp' => $request->phone,
+            'school' => $request->school,
+            'referral' => $request->referral,
+        ]);
+
+        return redirect()->route('login')->with('success', 'Pendaftaran berhasil! Silakan masuk dengan akun Anda.');
+    }
+
     public function authenticate(Request $request) {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
@@ -228,14 +260,14 @@ class PageController extends Controller
     }
 
     public function adminPayments() {
-        $payments = DB::table('enrollments')
-            ->join('users', 'enrollments.user_id', '=', 'users.id')
-            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
-            ->where('enrollments.status_pembayaran', 'pending')
-            ->get();
-        return view('admin.payments', compact('payments'));
-    }
+    $payments = DB::table('enrollments')
+        ->join('users', 'enrollments.user_id', '=', 'users.id')
+        ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+        ->select('enrollments.*', 'users.name as user_name', 'users.whatsapp as user_wa', 'programs.name as program_name')
+        ->where('enrollments.status_pembayaran', 'pending')
+        ->get();
+    return view('admin.payments', compact('payments'));
+}
 
     public function verifyEnrollment($id) {
         DB::table('enrollments')->where('id', $id)->update([
@@ -302,45 +334,51 @@ class PageController extends Controller
     public function siswaSchedule() { return view('siswa.schedule', ['schedule' => []]); }
 
     public function siswaBilling() {
-        $user = Auth::user();
-        $payments = DB::table('enrollments')
-            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->where('enrollments.user_id', $user->id)
-            ->select('enrollments.*', 'programs.name as program_name')
-            ->get()
-            ->map(function($item) {
-                $item->created_at = Carbon::parse($item->created_at);
-                return $item;
-            });
-        return view('siswa.billing', compact('payments'));
-    }
+    $user = Auth::user();
+    $payments = DB::table('enrollments')
+        ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+        ->where('enrollments.user_id', $user->id)
+        ->select('enrollments.*', 'programs.name as program_name') // Pastikan enrollments.* ikut terambil
+        ->get()
+        ->map(function($item) {
+            $item->created_at = Carbon::parse($item->created_at);
+            return $item;
+        });
+    
+    return view('siswa.billing', compact('payments'));
+}
 
     public function enrollProgram(Request $request) {
-        $request->validate([
-            'program_id'       => 'required',
-            'total_harga'      => 'required',
-            'bukti_pembayaran' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
+    $request->validate([
+        'program_id'       => 'required',
+        'total_harga'      => 'required|numeric',
+        'bukti_pembayaran' => 'required|image|max:2048',
+    ]);
 
-        $namaFile = null;
-        if ($request->hasFile('bukti_pembayaran')) {
-            $file = $request->file('bukti_pembayaran');
-            $namaFile = time() . '_user_' . Auth::id() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/bukti'), $namaFile);
-        }
+    $user = Auth::user();
+    
+    // Ambil 3 digit terakhir nomor WA sebagai kode unik
+    $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp);
+    $uniqueCode = (int) substr($cleanPhone, -3); 
+    
+    // Total yang harus dibayar (Misal: 750.000 + 123 = 750.123)
+    $finalAmount = $request->total_harga + $uniqueCode;
 
-        DB::table('enrollments')->insert([
-            'user_id'           => Auth::id(),
-            'program_id'        => $request->program_id,
-            'total_harga'       => $request->total_harga,
-            'bukti_pembayaran'  => $namaFile,
-            'status_pembayaran' => 'pending',
-            'created_at'        => now(),
-            'updated_at'        => now(),
-        ]);
+    $namaFile = time() . '_user_' . $user->id . '.' . $request->file('bukti_pembayaran')->getClientOriginalExtension();
+    $request->file('bukti_pembayaran')->move(public_path('uploads/bukti'), $namaFile);
 
-        return redirect()->route('siswa.billing')->with('success', 'Pendaftaran berhasil!');
-    }
+    DB::table('enrollments')->insert([
+        'user_id'           => $user->id,
+        'program_id'        => $request->program_id,
+        'total_harga'       => $finalAmount, // Simpan harga + kode unik
+        'status_pembayaran' => 'pending',
+        'bukti_pembayaran'  => $namaFile,
+        'created_at'        => now(),
+        'updated_at'        => now(),
+    ]);
+
+    return redirect()->route('siswa.billing')->with('success', 'Berhasil! Admin akan memverifikasi pembayaran Anda.');
+}
 
    /**
      * ==========================================
