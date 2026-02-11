@@ -93,6 +93,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/assignments/store', [PageController::class, 'storeAssignment'])->name('mentor.assignments.store');
         Route::post('/materials/store', [PageController::class, 'storeMaterial'])->name('mentor.storeMaterial');
         Route::post('/grades/store', [PageController::class, 'storeGrade'])->name('mentor.storeGrade');
+        Route::post('/attendance/store', [PageController::class, 'storeAttendance'])->name('mentor.storeAttendance');
 
         // DELETE ACTIONS
         Route::delete('/materials/delete/{id}', [PageController::class, 'deleteMaterial'])->name('mentor.materials.delete');
