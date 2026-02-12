@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,9 +39,14 @@ Route::middleware(['guest'])->group(function () {
     Route::get('/daftar', [PageController::class, 'register'])->name('register');
     Route::post('/daftar', [PageController::class, 'registerStore'])->name('register.store');
     
-    // Reset Password
+    // --- FITUR LUPA PASSWORD (LENGKAP) ---
+    // 1. Minta Link Reset (Input Email)
     Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
     Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+    
+    // 2. Form Reset (Setelah Klik Link di Email)
+    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
 });
 
 /**
@@ -75,7 +81,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/programs/update/{id}', [PageController::class, 'updateProgram'])->name('admin.programs.update');
         Route::delete('/programs/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.programs.delete');
 
-        // Mentor Management (Disesuaikan dengan View & Controller)
+        // Mentor Management
         Route::post('/mentors/store', [PageController::class, 'storeMentor'])->name('admin.mentors.store');
         Route::put('/mentors/update/{id}', [PageController::class, 'updateMentor'])->name('admin.mentors.update');
         Route::delete('/mentors/delete/{id}', [PageController::class, 'deleteMentor'])->name('admin.mentors.delete');

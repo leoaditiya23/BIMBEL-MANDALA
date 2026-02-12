@@ -24,7 +24,11 @@
                     <input type="email" name="email" value="{{ old('email') }}" class="w-full px-5 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-600 transition" placeholder="email@anda.com" required>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">Password</label>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-bold text-slate-700">Password</label>
+                        {{-- LINK LUPA PASSWORD DITAMBAHKAN DISINI --}}
+                        <a href="{{ route('password.request') }}" class="text-[11px] font-black text-blue-600 hover:text-orange-500 uppercase tracking-tight transition">Lupa Password?</a>
+                    </div>
                     <input type="password" name="password" class="w-full px-5 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-600 transition" placeholder="••••••••" required>
                 </div>
                 <button type="submit" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black shadow-lg hover:bg-orange-500 transition active:scale-95 duration-200">
@@ -57,6 +61,25 @@
             icon: 'success',
             confirmButtonColor: '#2563eb', 
             confirmButtonText: 'OKE, SAYA MENGERTI',
+            customClass: {
+                popup: 'rounded-[30px]',
+                confirmButton: 'rounded-xl px-10 py-3 font-bold'
+            }
+        });
+    });
+</script>
+@endif
+
+{{-- POPUP STATUS RESET PASSWORD --}}
+@if (session('status'))
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+            title: 'BERHASIL!',
+            text: "{{ session('status') }}",
+            icon: 'success',
+            confirmButtonColor: '#2563eb',
+            confirmButtonText: 'MANTAP',
             customClass: {
                 popup: 'rounded-[30px]',
                 confirmButton: 'rounded-xl px-10 py-3 font-bold'
