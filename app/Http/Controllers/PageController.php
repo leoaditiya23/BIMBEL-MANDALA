@@ -326,7 +326,7 @@ class PageController extends Controller
             ->limit(5)
             ->get();
 
-        // 3. AMBIL AKTIVITAS TERBARU (Ini yang tadi hilang)
+        // 3. AMBIL AKTIVITAS TERBARU
         $activities = DB::table('enrollments')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
             ->where('enrollments.user_id', $user->id)
@@ -494,23 +494,28 @@ class PageController extends Controller
 
     public function mentorClasses() {
         $user = Auth::user();
-        $classes = DB::table('programs')->where('mentor_id', $user->id)->get()->map(function($class) {
-            // 1. Ambil data siswa
+        $today = date('Y-m-d');
+
+        $classes = DB::table('programs')->where('mentor_id', $user->id)->get()->map(function($class) use ($today) {
+            // 1. Ambil data siswa + Status Absensi Hari Ini
             $class->students = DB::table('enrollments')
                 ->join('users', 'enrollments.user_id', '=', 'users.id')
+                ->leftJoin('attendances', function($join) use ($today) {
+                    $join->on('users.id', '=', 'attendances.student_id')
+                         ->where('attendances.date', '=', $today);
+                })
                 ->where('enrollments.program_id', $class->id)
                 ->where('enrollments.status_pembayaran', 'verified')
-                ->select('users.id', 'users.name')->get();
+                ->select('users.id', 'users.name', 'attendances.status as status')
+                ->get();
             
-            // 2. HITUNG JUMLAH SISWA (Ini yang tadi hilang)
             $class->student_count = $class->students->count();
 
-            // 3. Ambil data materi
+            // 2. Ambil data materi
             $class->materials = Schema::hasTable('program_materials') 
                 ? DB::table('program_materials')->where('program_id', $class->id)->get() 
                 : collect([]);
             
-            // 4. Set total sesi
             $class->total_sessions = $class->total_sessions ?? 12; 
             
             return $class;
@@ -518,18 +523,80 @@ class PageController extends Controller
         return view('mentor.classes', compact('classes'));
     }
 
-    public function storeMaterial(Request $request) {
-        $filePath = $request->hasFile('file') ? $request->file('file')->store('materials', 'public') : null;
-        DB::table('program_materials')->insert([
-            'program_id' => $request->program_id,
-            'session_number' => $request->session_number,
-            'title' => $request->title,
-            'video_url' => $request->video_url,
-            'file_path' => $filePath,
-            'created_at' => now(),
-            'updated_at' => now(),
+    // FUNGSI BARU UNTUK TOGGLE ABSEN VIA AJAX
+    public function toggleAbsen(Request $request) {
+        $request->validate([
+            'class_id' => 'required',
+            'is_active' => 'required|boolean'
         ]);
-        return back()->with('success', 'Materi berhasil diunggah!');
+
+        DB::table('programs')->where('id', $request->class_id)->update([
+            'is_absen_active' => $request->is_active,
+            'updated_at' => now()
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Status absensi diperbarui']);
+    }
+
+    public function storeMaterial(Request $request) {
+        $request->validate([
+            'program_id'     => 'required',
+            'session_number' => 'required|integer',
+            'title'          => 'required|string|max:255',
+            'video_url'      => 'nullable|url',
+            'file'           => 'nullable|file|mimes:pdf,ppt,pptx,doc,docx|max:10240',
+        ]);
+
+        $filePath = null;
+        if ($request->hasFile('file')) {
+            $filePath = $request->file('file')->store('materials', 'public');
+        }
+
+        DB::table('program_materials')->insert([
+            'program_id'     => $request->program_id,
+            'session_number' => $request->session_number,
+            'title'          => $request->title,
+            'video_url'      => $request->video_url,
+            'file_path'      => $filePath,
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        return back()->with('success', 'Materi dan file berhasil diunggah!');
+    }
+
+    /**
+     * FUNGSI UPDATE MATERIAL (PERBAIKAN ERROR 500)
+     */
+    public function updateMaterial(Request $request, $id) {
+        $request->validate([
+            'session_number' => 'required|integer',
+            'title'          => 'required|string|max:255',
+            'video_url'      => 'nullable|url',
+            'file'           => 'nullable|file|mimes:pdf,ppt,pptx,doc,docx|max:10240',
+        ]);
+
+        $material = DB::table('program_materials')->where('id', $id)->first();
+        if (!$material) return back()->with('error', 'Materi tidak ditemukan.');
+
+        $data = [
+            'session_number' => $request->session_number,
+            'title'          => $request->title,
+            'video_url'      => $request->video_url,
+            'updated_at'     => now(),
+        ];
+
+        if ($request->hasFile('file')) {
+            // Hapus file lama jika ada
+            if ($material->file_path) {
+                Storage::disk('public')->delete($material->file_path);
+            }
+            $data['file_path'] = $request->file('file')->store('materials', 'public');
+        }
+
+        DB::table('program_materials')->where('id', $id)->update($data);
+
+        return back()->with('success', 'Materi berhasil diperbarui!');
     }
 
     public function storeAttendance(Request $request) {
