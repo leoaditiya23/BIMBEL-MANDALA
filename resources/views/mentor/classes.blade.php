@@ -255,7 +255,7 @@
         <button type="button" @click="editingMaterial ? (editingMaterial = null) : (modalMateri = false)" class="flex-1 py-4 text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 rounded-[18px] hover:bg-slate-200 transition-all">
             <span x-text="editingMaterial ? 'Batal Edit' : 'Keluar'"></span>
         </button>
-        <button type="submit" class="flex-1 py-4 text-[10px] font-black uppercase tracking-widest bg-slate-800 text-white rounded-[18px] hover:bg-indigo-600 transition-all shadow-lg" x-text="editingMaterial ? 'Perbarui Sesi' : 'Simpan Sesi'"></button>
+        <button type="submit" class="flex-1 py-4 text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 rounded-[18px] hover:bg-slate-200 transition-all" x-text="editingMaterial ? 'Perbarui Sesi' : 'Simpan Sesi'"></button>
     </div>
 </form>
                 

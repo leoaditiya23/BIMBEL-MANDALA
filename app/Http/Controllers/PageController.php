@@ -642,18 +642,31 @@ class PageController extends Controller
     }
 
     public function mentorSchedule() {
-        $schedule = DB::table('enrollments')
-            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->join('users', 'enrollments.user_id', '=', 'users.id')
-            ->where('programs.mentor_id', Auth::id())
-            ->where('enrollments.status_pembayaran', 'verified')
-            ->select('enrollments.*', 'programs.name as program_name', 'users.name as student_name')
-            ->get()->map(function($item) {
-                $item->created_at = Carbon::parse($item->created_at);
-                return $item;
-            });
-        return view('mentor.schedule', compact('schedule'));
-    }
+    $schedule = DB::table('enrollments')
+        ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+        ->join('users', 'enrollments.user_id', '=', 'users.id')
+        ->where('programs.mentor_id', Auth::id())
+        ->where('enrollments.status_pembayaran', 'verified')
+        ->select(
+            'enrollments.id', 
+            'programs.name as program_name', 
+            'programs.jenjang', 
+            'programs.hari', 
+            'programs.jam_mulai', 
+            'programs.jam_selesai', // Tambahkan ini jika ada di database
+            'users.name as student_name',
+            'users.id as student_id',
+            'enrollments.created_at'
+        )
+        ->get()
+        ->map(function($item) {
+            // Pastikan format jam rapi (H:i)
+            $item->jam_mulai = $item->jam_mulai ? \Carbon\Carbon::parse($item->jam_mulai)->format('H:i') : '--:--';
+            return $item;
+        });
+
+    return view('mentor.schedule', compact('schedule'));
+}
 
     public function storeMessage(Request $request) {
         $request->validate(['name' => 'required', 'whatsapp' => 'required', 'message' => 'required']);

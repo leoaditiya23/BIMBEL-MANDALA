@@ -1,7 +1,8 @@
 @extends('admin.dashboard_admin')
 
 @section('admin_content')
-<div class="p-8">
+{{-- REVISI: Ganti p-8 menjadi w-full agar alignment konsisten dengan navbar --}}
+<div class="w-full">
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
         <div>
             <h2 class="text-3xl font-black text-slate-800 tracking-tight">Pesan Masuk</h2>

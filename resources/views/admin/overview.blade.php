@@ -1,7 +1,9 @@
 @extends('admin.dashboard_admin')
 
 @section('admin_content')
-    <div class="p-8" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
+    {{-- REVISI: Hapus p-8, ganti jadi w-full agar sejajar lurus dengan header --}}
+    <div class="w-full" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
+        
         <h2 class="text-3xl font-black text-slate-800 mb-8 tracking-tighter">Ringkasan <span class="text-slate-800">Dashboard</span></h2>
         
         {{-- Stat Cards Section --}}

@@ -1,7 +1,8 @@
 @extends('admin.dashboard_admin')
 
 @section('admin_content')
-<div class="p-8" x-data="{ 
+{{-- REVISI: Ubah p-8 menjadi w-full agar sejajar lurus dengan header --}}
+<div class="w-full" x-data="{ 
     showProgramModal: false, 
     showEditModal: false,
     editData: { id: '', name: '', jenjang: '', price: '', mentor_id: '', type: '' }

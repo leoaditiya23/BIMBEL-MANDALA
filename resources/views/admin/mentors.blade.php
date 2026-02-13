@@ -1,13 +1,15 @@
 @extends('admin.dashboard_admin')
 
 @section('admin_content')
-<div class="p-8">
+{{-- REVISI: Ganti p-8 menjadi w-full agar sejajar lurus dengan Header --}}
+<div class="w-full">
     <div x-data="{ 
         showAddModal: false, 
         showEditModal: false,
         selectedMentor: { id: '', name: '', email: '', specialization: '', whatsapp: '' }
     }">
         
+        {{-- Konten Header Mentor --}}
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
             <div>
                 <h2 class="text-3xl font-black text-slate-800 tracking-tight">Manajemen Mentor</h2>

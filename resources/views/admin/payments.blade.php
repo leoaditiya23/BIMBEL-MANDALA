@@ -1,7 +1,8 @@
 @extends('admin.dashboard_admin')
 
 @section('admin_content')
-<div class="p-8" x-data="{ openModal: false, imgSrc: '', paymentId: '', paymentName: '' }">
+{{-- REVISI: Ubah p-8 menjadi w-full agar sejajar sempurna dengan Header --}}
+<div class="w-full" x-data="{ openModal: false, imgSrc: '', paymentId: '', paymentName: '' }">
     <div class="mb-8 flex justify-between items-end">
         <div>
             <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Verifikasi Pembayaran</h2>

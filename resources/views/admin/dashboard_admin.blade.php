@@ -88,7 +88,7 @@
     <div class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto custom-main-scroll">
         
         <header class="sticky top-0 h-20 bg-white border-b border-slate-200 flex justify-between items-center px-8 flex-shrink-0 z-40 shadow-sm">
-            <div class="flex flex-col">
+            <div class="flex flex-col text-left">
                 <h2 class="text-[10px] font-black text-blue-700 uppercase tracking-[0.2em] mb-1">Mandala Portal</h2>
                 <h1 class="text-slate-900 font-extrabold text-xl tracking-tight">
                     @if(request()->routeIs('admin.overview')) Dashboard Overview
@@ -112,8 +112,9 @@
             </div>
         </header>
 
-        <main class="flex-1 p-8">
-            <div class="max-w-7xl mx-auto">
+        {{-- REVISI: Menggunakan w-full dan menghapus max-w-7xl/mx-auto agar sejajar dengan Header px-8 --}}
+        <main class="flex-1 px-8 py-8 md:py-10" style="display: block !important;">
+            <div style="width: 100% !important; max-width: none !important; margin: 0 !important; text-align: left !important;">
                 @yield('admin_content')
             </div>
         </main>

@@ -12,8 +12,8 @@
             @include('mentor.header')
         </div>
 
-        <main class="flex-1 p-6 md:p-8">
-            <div class="max-w-7xl mx-auto">
+        <main class="flex-1 px-8 py-6 md:px-12 md:py-10">
+            <div class="w-full text-left">
                 @yield('mentor_content')
             </div>
         </main>
