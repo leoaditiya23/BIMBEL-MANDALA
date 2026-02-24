@@ -4,6 +4,13 @@
 
 @section('content')
 
+<style>
+    /* Scale halaman home lebih kecil - 82% dari ukuran asli */
+    html {
+        zoom: 0.82 !important;
+    }
+</style>
+
 {{-- 1. HERO SECTION --}}
 <section class="min-h-[85vh] px-10 flex flex-col md:flex-row items-stretch justify-between bg-slate-50 overflow-hidden">
     <div class="md:w-1/2 space-y-8 py-12 flex flex-col justify-center">

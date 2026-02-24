@@ -9,6 +9,16 @@
     --color-orange-400: #fb923c;
 }
 
+/* Scale down 20% untuk semua halaman */
+html {
+    zoom: 0.8;
+}
+
+/* Footer dengan profesional scale */
+footer {
+    zoom: 1.05;
+}
+
 /* Scrollbar halus agar mirip Admin */
 @utility custom-scrollbar {
     &::-webkit-scrollbar {

@@ -121,11 +121,11 @@
         </div>
     </nav>
 
-    <main>
+    <main class="overflow-hidden">
         @yield('content')
     </main>
 
-    <footer class="bg-slate-900 text-white py-16 px-10 mt-20 relative overflow-hidden">
+    <footer class="bg-slate-900 text-white py-16 px-10 mt-12 relative overflow-hidden">
         <div class="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
         <div class="container mx-auto grid md:grid-cols-3 gap-10">
             <div class="text-left">
