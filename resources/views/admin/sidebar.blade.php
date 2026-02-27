@@ -35,14 +35,38 @@
             @endif
         </a>
 
-        {{-- Paket Bimbel --}}
+       {{-- Paket Bimbel (Main CRUD - Menampilkan Semua) --}}
         <a href="{{ route('admin.programs') }}" 
-           class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.programs') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+            class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.programs') && !request()->route('type') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
             <div class="w-8 flex justify-center items-center">
                 <i class="fas fa-layer-group text-lg"></i>
             </div>
             <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Paket Bimbel</span>
-            @if(request()->routeIs('admin.programs'))
+            @if(request()->routeIs('admin.programs') && !request()->route('type'))
+                <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
+            @endif
+        </a>
+
+        {{-- Harga Reguler (Filtered) --}}
+        <a href="{{ route('admin.programs', ['type' => 'reguler']) }}" 
+            class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->fullUrlIs(route('admin.programs', ['type' => 'reguler'])) ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+            <div class="w-8 flex justify-center items-center">
+                <i class="fas fa-tags text-lg"></i>
+            </div>
+            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Harga Reguler</span>
+            @if(request()->fullUrlIs(route('admin.programs', ['type' => 'reguler'])))
+                <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
+            @endif
+        </a>
+
+        {{-- Harga Intensif (Filtered) --}}
+        <a href="{{ route('admin.programs', ['type' => 'intensif']) }}" 
+            class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->fullUrlIs(route('admin.programs', ['type' => 'intensif'])) ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+            <div class="w-8 flex justify-center items-center">
+                <i class="fas fa-bolt text-lg"></i>
+            </div>
+            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Harga Intensif</span>
+            @if(request()->fullUrlIs(route('admin.programs', ['type' => 'intensif'])))
                 <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
             @endif
         </a>

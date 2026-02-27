@@ -19,7 +19,7 @@ return new class extends Migration
             // Logika Berdasarkan Diagram Alur
             $table->enum('metode', ['online', 'offline'])->default('online');
             
-            // TAMBAHAN: Kolom untuk membedakan materi (TKA atau UTBK saja)
+            // Kolom untuk membedakan materi (TKA atau UTBK saja)
             $table->string('sub_type')->nullable(); 
             
             // Kolom untuk Reguler Online (Fokus Jenjang)
@@ -29,15 +29,25 @@ return new class extends Migration
             $table->string('mapel')->nullable();
             $table->string('alamat_semarang')->nullable();
             $table->string('jadwal_pertemuan')->nullable();
-            $table->boolean('ambil_mengaji')->default(false);
             
+            // --- REVISI: FITUR DINAMIS & TAMBAH JAM ---
+            $table->boolean('ambil_mengaji')->default(false);
+            $table->integer('extra_meetings_count')->default(0); // Menyimpan jumlah jam/pertemuan tambahan
+            
+            // Menyimpan "Snapshot" harga saat pendaftaran (agar laporan keuangan tidak berubah jika admin ganti harga di masa depan)
+            $table->integer('base_price_at_enroll')->default(0); 
+            $table->integer('extra_price_at_enroll')->default(0); 
+            $table->integer('quran_price_at_enroll')->default(0); 
+            // ------------------------------------------
+
             // Kolom untuk Kelas Intensif (Pilihan Batch)
             $table->string('batch_intensif')->nullable(); 
             
             // Status & Keuangan
-            $table->integer('total_harga')->default(0); // Menggunakan integer agar simpel untuk mata uang IDR
+            $table->integer('total_harga')->default(0); 
+            $table->integer('payment_code')->nullable(); // Untuk menyimpan kode unik (misal 3 angka terakhir WA)
             
-            // TAMBAHAN: Kolom untuk menyimpan nama file bukti transfer
+            // Kolom untuk menyimpan nama file bukti transfer
             $table->string('bukti_pembayaran')->nullable(); 
             
             $table->enum('status_pembayaran', ['pending', 'verified'])->default('pending');

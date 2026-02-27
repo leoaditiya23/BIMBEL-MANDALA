@@ -10,21 +10,22 @@
     showPayment: false,
     buktiBayar: null,
 
-    // Jabarkan harga per program secara spesifik (sudah harga pas)
-    listHarga: {
-        'UTBK-SAINTEK': 1500000,
-        'UTBK-SOSHUM': 1500000,
-        'TKA-SD': 800000,
-        'TKA-SMP': 1000000
+    // Ambil data harga dari database
+    programsData: {!! json_encode($programsByName ?? []) !!},
+
+    // Dapatkan harga berdasarkan kategori yang dipilih
+    getHarga(kategori) {
+        if (!this.programsData || !this.programsData[kategori]) return 1500000;
+        return this.programsData[kategori].price ?? 1500000;
     },
     
     // Total hanya mengambil dari kategori yang dipilih
 get totalPrice() {
-    return this.listHarga[this.kategori] || 0;
+    return this.getHarga(this.kategori);
 },
 // Tambahkan variabel pembantu untuk label invoice jika perlu
 get basePrice() {
-    return this.listHarga[this.kategori] || 0;
+    return this.getHarga(this.kategori);
 },
 
     paketMateri: {

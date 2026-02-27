@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use App\Models\User;
+use App\Models\Mentor; 
 use Carbon\Carbon;
 
 class PageController extends Controller
@@ -18,21 +19,27 @@ class PageController extends Controller
      * 1. HALAMAN PUBLIK
      * ==========================================
      */
-    public function index() { return view('pages.home'); }
+    public function index() { 
+        $mentors = Mentor::all(); 
+        return view('pages.home', compact('mentors')); 
+    }
+
     public function faq() { return view('pages.faq'); }
     public function about() { return view('pages.about'); }
     public function contact() { return view('pages.contact'); }
 
     public function reguler(Request $request) {
         $programs = DB::table('programs')->where('type', 'reguler')->get();
+        $programsByJenjang = $programs->keyBy('jenjang')->toArray();
         $step = $request->query('step', 1);
-        return view('pages.program.reguler', compact('programs', 'step'));
+        return view('pages.program.reguler', compact('programs', 'programsByJenjang', 'step'));
     }
 
     public function intensif(Request $request) {
         $programs = DB::table('programs')->where('type', 'intensif')->get();
+        $programsByName = $programs->keyBy('name')->toArray();
         $step = $request->query('step', 1);
-        return view('pages.program.intensif', compact('programs', 'step'));
+        return view('pages.program.intensif', compact('programs', 'programsByName', 'step'));
     }
 
     /**
@@ -68,7 +75,7 @@ class PageController extends Controller
             'referral' => $request->referral,
         ]);
 
-        return redirect()->route('login')->with('success', 'Pendaftaran berhasil! Silakan masuk dengan akun Anda.');
+        return redirect()->route('login')->with('success', 'Pendaftaran berhasil! Silakan masuk.');
     }
 
     public function authenticate(Request $request) {
@@ -79,6 +86,7 @@ class PageController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+            
             if (session()->has('url.intended')) {
                 return redirect()->to(session()->pull('url.intended'));
             }
@@ -92,6 +100,7 @@ class PageController extends Controller
         $targetUrl = ($type === 'reguler') 
             ? route('program.reguler', ['step' => 3]) 
             : route('program.intensif', ['step' => 3]);
+        
         session(['url.intended' => $targetUrl]);
         return redirect()->route('login');
     }
@@ -111,25 +120,23 @@ class PageController extends Controller
     public function dashboard() {
         if (!Auth::check()) return redirect()->route('login');
         $user = Auth::user();
-        if ($user->role === 'admin') return redirect()->route('admin.overview');
-        if ($user->role === 'mentor') return redirect()->route('mentor.overview');
-        return redirect()->route('siswa.overview');
+        
+        return match($user->role) {
+            'admin' => redirect()->route('admin.overview'),
+            'mentor' => redirect()->route('mentor.overview'),
+            default => redirect()->route('siswa.overview'),
+        };
     }
 
     /**
      * ==========================================
-     * 4. FITUR ADMIN (VIEWS & CRUD)
+     * 4. FITUR ADMIN (VIEWS & CRUD) - REVISED
      * ==========================================
      */
     public function adminOverview() {
-        $totalSiswaVerified = DB::table('enrollments')
-            ->where('status_pembayaran', 'verified')
-            ->distinct('user_id')
-            ->count();
-
         $stats = [
             'total_pendapatan' => DB::table('enrollments')->where('status_pembayaran', 'verified')->sum('total_harga'),
-            'total_siswa'     => $totalSiswaVerified, 
+            'total_siswa'     => DB::table('enrollments')->where('status_pembayaran', 'verified')->distinct('user_id')->count(), 
             'total_mentor'    => User::where('role', 'mentor')->count(),
             'total_program'   => DB::table('programs')->count(),
         ];
@@ -137,29 +144,57 @@ class PageController extends Controller
         $recent_enrollments = DB::table('enrollments')
             ->join('users', 'enrollments.user_id', '=', 'users.id')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
+            ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name', 'programs.jenjang as program_jenjang')
             ->orderBy('enrollments.created_at', 'desc')
-            ->limit(5)
-            ->get();
+            ->paginate(10);
 
         return view('admin.overview', compact('stats', 'recent_enrollments'));
     }
 
-    public function adminPrograms() {
-        $programs = DB::table('programs')
+    // Fungsi Terpadu untuk Manajemen Program (Menggantikan 3 fungsi sebelumnya)
+    public function adminPrograms(Request $request, $type = null) {
+        $query = DB::table('programs')
             ->leftJoin('users', 'programs.mentor_id', '=', 'users.id')
-            ->select('programs.*', 'users.name as mentor_name')
-            ->get()
-            ->map(function($program) {
-                $program->jumlah_peserta = DB::table('enrollments')
-                    ->where('program_id', $program->id)
-                    ->where('status_pembayaran', 'verified')
-                    ->count();
-                return $program;
-            });
+            ->select('programs.*', 'users.name as mentor_name');
+
+        if ($type) {
+            $query->where('programs.type', $type);
+            $title = "Manajemen Program " . ucfirst($type);
+        } else {
+            $title = "Katalog Semua Program";
+        }
+
+        $programs = $query->get()->map(function($program) {
+            $program->jumlah_peserta = DB::table('enrollments')
+                ->where('program_id', $program->id)
+                ->where('status_pembayaran', 'verified')
+                ->count();
+            return $program;
+        });
 
         $mentors = User::where('role', 'mentor')->get();
-        return view('admin.programs', compact('programs', 'mentors'));
+        return view('admin.programs', compact('programs', 'mentors', 'title', 'type'));
+    }
+
+    public function updateProgramPrice(Request $request) {
+        $request->validate([
+            'id' => 'required',
+            'price' => 'required|numeric',
+            'quran_price' => 'nullable|numeric'
+        ]);
+
+        $updated = DB::table('programs')
+            ->where('id', $request->id)
+            ->update([
+                'price' => (int) $request->price,
+                'quran_price' => (int) ($request->quran_price ?? 0),
+                'updated_at' => now(),
+            ]);
+
+        if ($updated) {
+            return back()->with('success', 'Harga berhasil diperbarui ke Rp ' . number_format($request->price));
+        }
+        return back()->with('info', 'Tidak ada perubahan data.');
     }
 
     public function storeProgram(Request $request) {
@@ -168,6 +203,8 @@ class PageController extends Controller
             'jenjang' => 'required',
             'type' => 'required',
             'price' => 'required|numeric',
+            'extra_meeting_price' => 'required|numeric',
+            'quran_price' => 'required|numeric',
             'mentor_id' => 'nullable|exists:users,id',
         ]);
 
@@ -176,6 +213,8 @@ class PageController extends Controller
             'jenjang' => $request->jenjang,
             'type' => $request->type,
             'price' => $request->price,
+            'extra_meeting_price' => $request->extra_meeting_price,
+            'quran_price' => $request->quran_price,
             'mentor_id' => $request->mentor_id,
             'created_at' => now(),
             'updated_at' => now(),
@@ -186,26 +225,29 @@ class PageController extends Controller
 
     public function updateProgram(Request $request, $id) {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'harga' => 'required|numeric',
+            'name' => 'required',
+            'price' => 'required|numeric',
+            'extra_meeting_price' => 'nullable|numeric',
+            'quran_price' => 'nullable|numeric',
         ]);
 
-        DB::table('programs')->where('id', $id)->update([
-            'name' => $request->name,
-            'jenjang' => $request->jenjang,
-            'type' => $request->type,
-            'harga' => $request->harga,
-            'mentor_id' => $request->mentor_id,
-            'updated_at' => now(),
-        ]);
+        DB::table('programs')
+            ->where('id', $id)
+            ->update([
+                'name' => $request->name,
+                'price' => (int) $request->price,
+                'extra_meeting_price' => (int) ($request->extra_meeting_price ?? 0),
+                'quran_price' => (int) ($request->quran_price ?? 0),
+                'updated_at' => now(),
+            ]);
 
-        return back()->with('success', 'Program berhasil diperbarui!');
+        return back()->with('success', 'Data program berhasil diperbarui!');
     }
 
     public function deleteProgram($id) {
         $hasSiswa = DB::table('enrollments')->where('program_id', $id)->exists();
         if ($hasSiswa) {
-            return back()->with('error', 'Gagal menghapus! Program ini memiliki siswa aktif.');
+            return back()->with('error', 'Gagal menghapus! Program ini memiliki pendaftar.');
         }
 
         DB::table('programs')->where('id', $id)->delete();
@@ -213,50 +255,63 @@ class PageController extends Controller
     }
 
     public function adminMentors() {
-        $mentors = User::where('role', 'mentor')->orderBy('created_at', 'desc')->get();
+        $mentors = Mentor::orderBy('created_at', 'desc')->get();
         return view('admin.mentors', compact('mentors'));
     }
 
-    public function storeMentor(Request $request) {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:8',
-            'specialization' => 'nullable|string',
-            'whatsapp' => 'nullable|string',
-        ]);
+   public function storeMentor(Request $request) {
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'specialist' => 'required|string|max:255',
+        'whatsapp' => 'required|string|max:20', // Tambahkan validasi wa
+        'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+    ]);
 
-        User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'mentor',
-            'specialization' => $request->specialization,
-            'whatsapp' => $request->whatsapp,
-        ]);
+    $path = $request->hasFile('photo') ? $request->file('photo')->store('mentors', 'public') : null;
 
-        return redirect()->back()->with('success', 'Mentor baru berhasil didaftarkan!');
-    }
+    Mentor::create([
+        'name' => $request->name,
+        'specialist' => $request->specialist,
+        'whatsapp' => $request->whatsapp, // Simpan ke database
+        'photo' => $path,
+    ]);
+
+    return redirect()->back()->with('success', 'Mentor berhasil ditambahkan!');
+}
 
     public function updateMentor(Request $request, $id) {
-        $mentor = User::findOrFail($id);
-        $mentor->update([
-            'name' => $request->name,
-            'specialization' => $request->specialization,
-        ]);
-        return redirect()->back()->with('success', 'Profil mentor berhasil diperbarui!');
+    $mentor = Mentor::findOrFail($id);
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'specialist' => 'required|string|max:255',
+        'whatsapp' => 'required|string|max:20', // Tambahkan validasi wa
+        'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+    ]);
+
+    // Ambil data name, specialist, DAN whatsapp
+    $data = $request->only(['name', 'specialist', 'whatsapp']); 
+    
+    if ($request->hasFile('photo')) {
+        if ($mentor->photo) Storage::disk('public')->delete($mentor->photo);
+        $data['photo'] = $request->file('photo')->store('mentors', 'public');
+    }
+
+    $mentor->update($data); // Data whatsapp akan ter-update di sini
+    return redirect()->back()->with('success', 'Profil mentor berhasil diperbarui!');
+}
+
+    public function deleteMentor($id) {
+        $mentor = Mentor::findOrFail($id);
+        if ($mentor->photo) Storage::disk('public')->delete($mentor->photo);
+        $mentor->delete();
+        return redirect()->back()->with('success', 'Mentor berhasil dihapus!');
     }
 
     public function adminPayments() {
         $payments = DB::table('enrollments')
             ->join('users', 'enrollments.user_id', '=', 'users.id')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->select(
-                'enrollments.*', 
-                'users.name as user_name', 
-                'users.whatsapp as user_wa', 
-                'programs.name as program_name'
-            )
+            ->select('enrollments.*', 'users.name as user_name', 'users.whatsapp as user_wa', 'programs.name as program_name')
             ->where('enrollments.status_pembayaran', 'pending')
             ->orderBy('enrollments.created_at', 'desc')
             ->get();
@@ -308,7 +363,6 @@ class PageController extends Controller
     public function siswaOverview() {
         $user = Auth::user();
 
-        // 1. Ambil Program Aktif
         $recent_programs = DB::table('enrollments')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
             ->leftJoin('users as mentors', 'programs.mentor_id', '=', 'mentors.id')
@@ -317,7 +371,6 @@ class PageController extends Controller
             ->select('programs.*', 'mentors.name as mentor_name')
             ->get();
 
-        // 2. Ambil Tugas Khusus Siswa
         $my_assignments = DB::table('assignments')
             ->join('users as mentors', 'assignments.mentor_id', '=', 'mentors.id')
             ->where('assignments.student_id', $user->id)
@@ -326,21 +379,14 @@ class PageController extends Controller
             ->limit(5)
             ->get();
 
-        // 3. AMBIL AKTIVITAS TERBARU
         $activities = DB::table('enrollments')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
             ->where('enrollments.user_id', $user->id)
-            ->select(
-                'programs.name as title',
-                DB::raw("'Pendaftaran Program' as type"),
-                'enrollments.status_pembayaran as status',
-                'enrollments.created_at'
-            )
+            ->select('programs.name as title', DB::raw("'Pendaftaran Program' as type"), 'enrollments.status_pembayaran as status', 'enrollments.created_at')
             ->orderBy('enrollments.created_at', 'desc')
             ->limit(5)
             ->get();
 
-        // 4. Statistik
         $stats = [
             'completed_tasks' => DB::table('task_submissions')->where('user_id', $user->id)->count(),
             'total_tasks' => DB::table('assignments')->where('student_id', $user->id)->count(),
@@ -351,11 +397,10 @@ class PageController extends Controller
     }
 
     public function siswaPrograms() {
-        $user = Auth::user();
         $my_programs = DB::table('enrollments')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
             ->leftJoin('users as mentors', 'programs.mentor_id', '=', 'mentors.id')
-            ->where('enrollments.user_id', $user->id)
+            ->where('enrollments.user_id', Auth::id())
             ->select('programs.*', 'mentors.name as mentor_name', 'enrollments.status_pembayaran', 'enrollments.created_at as registration_date')
             ->get();
 
@@ -363,10 +408,9 @@ class PageController extends Controller
     }
 
     public function siswaSchedule() {
-        $user = Auth::user();
         $schedules = DB::table('enrollments')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->where('enrollments.user_id', $user->id)
+            ->where('enrollments.user_id', Auth::id())
             ->where('enrollments.status_pembayaran', 'verified')
             ->select('programs.name as program_name', 'programs.hari', 'programs.jam_mulai', 'programs.jam_selesai')
             ->get();
@@ -375,10 +419,9 @@ class PageController extends Controller
     }
 
     public function siswaBilling() {
-        $user = Auth::user();
         $payments = DB::table('enrollments')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->where('enrollments.user_id', $user->id)
+            ->where('enrollments.user_id', Auth::id())
             ->select('enrollments.*', 'programs.name as program_name')
             ->orderBy('enrollments.created_at', 'desc')
             ->get();
@@ -388,15 +431,16 @@ class PageController extends Controller
 
     public function enrollProgram(Request $request) {
         $request->validate([
-            'program_id' => 'required',
-            'total_harga' => 'required|numeric',
+            'program_id' => 'required|exists:programs,id',
             'bukti_pembayaran' => 'required|image|max:2048',
         ]);
 
+        $program = DB::table('programs')->where('id', $request->program_id)->first();
         $user = Auth::user();
+        
         $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp ?? '000');
         $uniqueCode = (int) substr($cleanPhone, -3); 
-        $finalAmount = $request->total_harga + $uniqueCode;
+        $finalAmount = $program->price + $uniqueCode;
 
         $namaFile = time() . '_user_' . $user->id . '.' . $request->file('bukti_pembayaran')->getClientOriginalExtension();
         $request->file('bukti_pembayaran')->move(public_path('uploads/bukti'), $namaFile);
@@ -497,7 +541,6 @@ class PageController extends Controller
         $today = date('Y-m-d');
 
         $classes = DB::table('programs')->where('mentor_id', $user->id)->get()->map(function($class) use ($today) {
-            // 1. Ambil data siswa + Status Absensi Hari Ini
             $class->students = DB::table('enrollments')
                 ->join('users', 'enrollments.user_id', '=', 'users.id')
                 ->leftJoin('attendances', function($join) use ($today) {
@@ -510,31 +553,21 @@ class PageController extends Controller
                 ->get();
             
             $class->student_count = $class->students->count();
-
-            // 2. Ambil data materi
             $class->materials = Schema::hasTable('program_materials') 
                 ? DB::table('program_materials')->where('program_id', $class->id)->get() 
                 : collect([]);
-            
-            $class->total_sessions = $class->total_sessions ?? 12; 
             
             return $class;
         });
         return view('mentor.classes', compact('classes'));
     }
 
-    // FUNGSI BARU UNTUK TOGGLE ABSEN VIA AJAX
     public function toggleAbsen(Request $request) {
-        $request->validate([
-            'class_id' => 'required',
-            'is_active' => 'required|boolean'
-        ]);
-
+        $request->validate(['class_id' => 'required', 'is_active' => 'required|boolean']);
         DB::table('programs')->where('id', $request->class_id)->update([
             'is_absen_active' => $request->is_active,
             'updated_at' => now()
         ]);
-
         return response()->json(['success' => true, 'message' => 'Status absensi diperbarui']);
     }
 
@@ -547,10 +580,7 @@ class PageController extends Controller
             'file'           => 'nullable|file|mimes:pdf,ppt,pptx,doc,docx|max:10240',
         ]);
 
-        $filePath = null;
-        if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('materials', 'public');
-        }
+        $filePath = $request->hasFile('file') ? $request->file('file')->store('materials', 'public') : null;
 
         DB::table('program_materials')->insert([
             'program_id'     => $request->program_id,
@@ -562,12 +592,9 @@ class PageController extends Controller
             'updated_at'     => now(),
         ]);
 
-        return back()->with('success', 'Materi dan file berhasil diunggah!');
+        return back()->with('success', 'Materi berhasil diunggah!');
     }
 
-    /**
-     * FUNGSI UPDATE MATERIAL (PERBAIKAN ERROR 500)
-     */
     public function updateMaterial(Request $request, $id) {
         $request->validate([
             'session_number' => 'required|integer',
@@ -587,15 +614,11 @@ class PageController extends Controller
         ];
 
         if ($request->hasFile('file')) {
-            // Hapus file lama jika ada
-            if ($material->file_path) {
-                Storage::disk('public')->delete($material->file_path);
-            }
+            if ($material->file_path) Storage::disk('public')->delete($material->file_path);
             $data['file_path'] = $request->file('file')->store('materials', 'public');
         }
 
         DB::table('program_materials')->where('id', $id)->update($data);
-
         return back()->with('success', 'Materi berhasil diperbarui!');
     }
 
@@ -642,31 +665,20 @@ class PageController extends Controller
     }
 
     public function mentorSchedule() {
-    $schedule = DB::table('enrollments')
-        ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-        ->join('users', 'enrollments.user_id', '=', 'users.id')
-        ->where('programs.mentor_id', Auth::id())
-        ->where('enrollments.status_pembayaran', 'verified')
-        ->select(
-            'enrollments.id', 
-            'programs.name as program_name', 
-            'programs.jenjang', 
-            'programs.hari', 
-            'programs.jam_mulai', 
-            'programs.jam_selesai', // Tambahkan ini jika ada di database
-            'users.name as student_name',
-            'users.id as student_id',
-            'enrollments.created_at'
-        )
-        ->get()
-        ->map(function($item) {
-            // Pastikan format jam rapi (H:i)
-            $item->jam_mulai = $item->jam_mulai ? \Carbon\Carbon::parse($item->jam_mulai)->format('H:i') : '--:--';
-            return $item;
-        });
+        $schedule = DB::table('enrollments')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->where('programs.mentor_id', Auth::id())
+            ->where('enrollments.status_pembayaran', 'verified')
+            ->select('enrollments.id', 'programs.name as program_name', 'programs.jenjang', 'programs.hari', 'programs.jam_mulai', 'programs.jam_selesai', 'users.name as student_name', 'users.id as student_id', 'enrollments.created_at')
+            ->get()
+            ->map(function($item) {
+                $item->jam_mulai = $item->jam_mulai ? Carbon::parse($item->jam_mulai)->format('H:i') : '--:--';
+                return $item;
+            });
 
-    return view('mentor.schedule', compact('schedule'));
-}
+        return view('mentor.schedule', compact('schedule'));
+    }
 
     public function storeMessage(Request $request) {
         $request->validate(['name' => 'required', 'whatsapp' => 'required', 'message' => 'required']);

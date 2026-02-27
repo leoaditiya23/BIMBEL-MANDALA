@@ -59,10 +59,9 @@
                         <label class="block text-[10px] font-bold text-slate-700 mb-1 ml-3">Gender</label>
                         <div class="flex gap-2 mt-2 ml-1">
                             <label class="flex items-center text-[10px] text-slate-600 cursor-pointer">
-                                <input type="radio" name="gender" value="Laki-laki" {{ old('gender') == 'Laki-laki' ? 'checked' : '' }} class="mr-1 accent-orange-500" required> L/K
-                            </label>
+                                <input type="radio" name="gender" value="Laki-laki" {{ old('gender') == 'Laki-laki' ? 'checked' : '' }} class="mr-1 accent-orange-500" required> Laki-Laki                            </label>
                             <label class="flex items-center text-[10px] text-slate-600 cursor-pointer">
-                                <input type="radio" name="gender" value="Perempuan" {{ old('gender') == 'Perempuan' ? 'checked' : '' }} class="mr-1 accent-orange-500"> PR
+                                <input type="radio" name="gender" value="Perempuan" {{ old('gender') == 'Perempuan' ? 'checked' : '' }} class="mr-1 accent-orange-500"> Perempuan
                             </label>
                         </div>
                     </div>

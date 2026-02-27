@@ -30,13 +30,32 @@
                     <label class="block text-xs font-bold text-slate-700 mb-1.5">Email</label>
                     <input type="email" name="email" value="{{ old('email') }}" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-600 transition text-sm" placeholder="email@anda.com" required>
                 </div>
-                <div>
-                    <div class="flex justify-between items-center mb-1.5">
-                        <label class="block text-xs font-bold text-slate-700">Password</label>
-                        <a href="{{ route('password.request') }}" class="text-[10px] font-black text-blue-600 hover:text-orange-500 uppercase tracking-tight transition">Lupa Password?</a>
-                    </div>
-                    <input type="password" name="password" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-600 transition text-sm" placeholder="••••••••" required>
-                </div>
+                
+            <div x-data="{ show: false }">
+    <div class="flex justify-between items-center mb-1.5">
+        <label class="block text-xs font-bold text-slate-700">Password</label>
+        <a href="{{ route('password.request') }}" class="text-[10px] font-black text-blue-600 hover:text-orange-500 uppercase tracking-tight transition">Lupa Password?</a>
+    </div>
+    
+    {{-- Pembungkus utama harus RELATIVE murni --}}
+    <div class="relative w-full" style="position: relative;">
+        <input :type="show ? 'text' : 'password'" 
+               name="password" 
+               class="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-blue-600 transition text-sm pr-12" 
+               placeholder="••••••••" 
+               required
+               style="display: block; width: 100%;">
+        
+        {{-- Tombol Mata dipaksa ABSOLUTE ke kanan dalam --}}
+        <button type="button" 
+                @click="show = !show" 
+                class="absolute"
+                style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); border: none; background: none; cursor: pointer; color: #94a3b8; z-index: 10;">
+            <i class="fas" :class="show ? 'fa-eye-slash' : 'fa-eye'" style="font-size: 14px;"></i>
+        </button>
+    </div>
+</div>
+
                 <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-xl font-black shadow-lg hover:bg-orange-500 transition active:scale-95 duration-200 text-xs">
                     MASUK SEKARANG
                 </button>
@@ -56,7 +75,8 @@
     </div>
 </div>
 
-{{-- Script SweetAlert tetap sama --}}
+{{-- Tambahkan script Alpine.js jika di layouts.app belum ada --}}
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 @if(session('success'))

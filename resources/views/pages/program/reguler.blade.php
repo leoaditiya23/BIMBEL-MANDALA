@@ -34,10 +34,22 @@
         this.saveToSession();
     },
 
-    prices: {
-        'TK': 125000, 'SD': 150000, 'SMP': 175000, 'SMA': 200000,
-        'diskon_borongan': 0.25, 'add_mengaji': 50000 
-    },
+    pprices: {
+    @php
+        // Mengambil data langsung dari database berdasarkan jenjang
+        $priceTK = DB::table('programs')->where('jenjang', 'TK')->where('type', 'reguler')->value('price') ?? 125000;
+        $priceSD = DB::table('programs')->where('jenjang', 'SD')->where('type', 'reguler')->value('price') ?? 150000;
+        $priceSMP = DB::table('programs')->where('jenjang', 'SMP')->where('type', 'reguler')->value('price') ?? 175000;
+        $priceSMA = DB::table('programs')->where('jenjang', 'SMA')->where('type', 'reguler')->value('price') ?? 200000;
+        $hargaMengaji = DB::table('programs')->where('type', 'reguler')->value('quran_price') ?? 50000;
+    @endphp
+    'TK': {{ $priceTK }}, 
+    'SD': {{ $priceSD }}, 
+    'SMP': {{ $priceSMP }}, 
+    'SMA': {{ $priceSMA }},
+    'diskon_borongan': 0.25, 
+    'add_mengaji': {{ $hargaMengaji }} 
+},
 
     listMapel: {
         'TK': ['Calistung (Baca Tulis Hitung)', 'Mewarnai & Kreativitas', 'Bahasa Inggris Dasar'],
@@ -332,7 +344,7 @@ class="relative">
                 <span class="text-sm font-bold text-emerald-600 uppercase text-[11px] tracking-tight">Ekstra Pendampingan</span>
                 <span class="text-[10px] text-slate-400 font-medium">Program Mengaji Privat</span>
             </div>
-            <span class="text-sm font-black text-slate-900">+ Rp 50.000</span>
+            <span class="text-sm font-black text-slate-900" x-text="'Rp ' + prices.add_mengaji.toLocaleString('id-ID')"></span>
         </div>
 
         <div x-show="metode === 'offline'" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed" x-transition>

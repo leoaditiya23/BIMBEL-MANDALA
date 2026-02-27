@@ -138,98 +138,46 @@
     </div>
 </section>
 
-{{-- 5. MENTOR KAMI --}}
-<section class="py-20 bg-slate-50 px-10">
-    <div class="container mx-auto text-center mb-16">
+{{-- 5. MENTOR KAMI (Dynamic Version) --}}
+{{-- REVISI: py-20 dikurangi menjadi py-8 agar jarak atas-bawah rapat --}}
+<section class="py-8 bg-slate-50 px-10">
+    {{-- REVISI: mb-16 dikurangi menjadi mb-6 agar judul tidak jauh dari kartu --}}
+    <div class="container mx-auto text-center mb-6">
         <h2 class="text-4xl font-black text-blue-600 mb-4">Mentor <span class="text-orange-500">Kami.</span></h2>
         <p class="text-slate-600 leading-relaxed text-lg font-medium">Belajar langsung dari ahli yang berpengalaman di bidangnya.</p>
     </div>
 
-    <div class="container mx-auto flex overflow-x-auto gap-8 pb-10 max-w-7xl snap-x snap-mandatory scrollbar-hide">
+    {{-- REVISI: Tambahkan overflow-visible agar saat zoom kartu tidak terpotong tepi container --}}
+    <div class="container mx-auto flex overflow-x-auto overflow-y-visible gap-4 pb-12 pt-4 max-w-7xl snap-x snap-mandatory scrollbar-hide">
         
-        <div class="min-w-[220px] group relative snap-center">
-            <div class="relative bg-white rounded-[1.5rem] p-3 shadow-lg transition-all duration-300 group-hover:-translate-y-3 border-b-4 border-blue-600">
-                <div class="aspect-square overflow-hidden rounded-xl bg-blue-50 mb-4">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Ahmad&mood=happy" alt="Mentor" class="w-full h-full object-cover">
-                </div>
-                <div class="text-center pb-2">
-                    <h3 class="text-lg font-black text-slate-800 leading-tight">Kak Ahmad S.</h3>
-                    <p class="text-blue-600 font-bold text-[10px] uppercase tracking-wider mt-1">Pakar Matematika</p>
-                </div>
-            </div>
-        </div>
+        @forelse($mentors as $index => $mentor)
+            {{-- REVISI: Ukuran kartu tetap min-w-[190px] --}}
+            <div class="min-w-[190px] group relative snap-center">
+                {{-- REVISI: scale diturunkan ke 105 agar tidak terlalu besar & tidak terpotong, z-50 saat hover --}}
+                <div class="relative bg-white rounded-[1.5rem] p-3 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:z-50 border-b-4 {{ $index % 2 == 0 ? 'border-blue-600' : 'border-orange-500' }}">
+                    
+                    {{-- REVISI: Foto dikembalikan ke w-25 h-25 (lebih kecil sedikit dari sebelumnya) --}}
+                    <div class="w-25 h-25 mx-auto overflow-hidden rounded-xl {{ $index % 2 == 0 ? 'bg-blue-50' : 'bg-orange-50' }} mb-4">
+                        @if($mentor->photo)
+                            <img src="{{ asset('storage/' . $mentor->photo) }}" alt="{{ $mentor->name }}" class="w-full h-full object-cover">
+                        @else
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ urlencode($mentor->name) }}" alt="Mentor" class="w-full h-full object-cover">
+                        @endif
+                    </div>
 
-        <div class="min-w-[220px] group relative snap-center">
-            <div class="relative bg-white rounded-[1.5rem] p-3 shadow-lg transition-all duration-300 group-hover:-translate-y-3 border-b-4 border-orange-500">
-                <div class="aspect-square overflow-hidden rounded-xl bg-orange-50 mb-4">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah&accessories=eyepatch" alt="Mentor" class="w-full h-full object-cover">
-                </div>
-                <div class="text-center pb-2">
-                    <h3 class="text-lg font-black text-slate-800 leading-tight">Kak Sarah M.</h3>
-                    <p class="text-orange-500 font-bold text-[10px] uppercase tracking-wider mt-1">Tutor Bahasa Inggris</p>
+                    <div class="text-center pb-2">
+                        <h3 class="text-lg font-black text-slate-800 leading-tight">{{ $mentor->name }}</h3>
+                        <p class="{{ $index % 2 == 0 ? 'text-blue-600' : 'text-orange-500' }} font-bold text-[10px] uppercase tracking-wider mt-1">
+                            {{ $mentor->specialist }}
+                        </p>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <div class="min-w-[220px] group relative snap-center">
-            <div class="relative bg-white rounded-[1.5rem] p-3 shadow-lg transition-all duration-300 group-hover:-translate-y-3 border-b-4 border-blue-600">
-                <div class="aspect-square overflow-hidden rounded-xl bg-blue-50 mb-4">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Budi&mood=happy" alt="Mentor" class="w-full h-full object-cover">
-                </div>
-                <div class="text-center pb-2">
-                    <h3 class="text-lg font-black text-slate-800 leading-tight">Kak Budi H.</h3>
-                    <p class="text-blue-600 font-bold text-[10px] uppercase tracking-wider mt-1">Mentor Fisika</p>
-                </div>
+        @empty
+            <div class="w-full text-center py-10">
+                <p class="text-slate-400 italic">Belum ada data mentor yang ditambahkan.</p>
             </div>
-        </div>
-
-        <div class="min-w-[220px] group relative snap-center">
-            <div class="relative bg-white rounded-[1.5rem] p-3 shadow-lg transition-all duration-300 group-hover:-translate-y-3 border-b-4 border-orange-500">
-                <div class="aspect-square overflow-hidden rounded-xl bg-orange-50 mb-4">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Linda&clothing=graphicShirt" alt="Mentor" class="w-full h-full object-cover">
-                </div>
-                <div class="text-center pb-2">
-                    <h3 class="text-lg font-black text-slate-800 leading-tight">Kak Linda P.</h3>
-                    <p class="text-orange-500 font-bold text-[10px] uppercase tracking-wider mt-1">Tutor Biologi</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="min-w-[220px] group relative snap-center">
-            <div class="relative bg-white rounded-[1.5rem] p-3 shadow-lg transition-all duration-300 group-hover:-translate-y-3 border-b-4 border-blue-600">
-                <div class="aspect-square overflow-hidden rounded-xl bg-blue-50 mb-4">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dewi&mouth=smile" alt="Mentor" class="w-full h-full object-cover">
-                </div>
-                <div class="text-center pb-2">
-                    <h3 class="text-lg font-black text-slate-800 leading-tight">Kak Dewi A.</h3>
-                    <p class="text-blue-600 font-bold text-[10px] uppercase tracking-wider mt-1">Guru Kimia</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="min-w-[220px] group relative snap-center">
-            <div class="relative bg-white rounded-[1.5rem] p-3 shadow-lg transition-all duration-300 group-hover:-translate-y-3 border-b-4 border-orange-500">
-                <div class="aspect-square overflow-hidden rounded-xl bg-orange-50 mb-4">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Rizky&mood=happy" alt="Mentor" class="w-full h-full object-cover">
-                </div>
-                <div class="text-center pb-2">
-                    <h3 class="text-lg font-black text-slate-800 leading-tight">Kak Rizky F.</h3>
-                    <p class="text-orange-500 font-bold text-[10px] uppercase tracking-wider mt-1">Pakar Sejarah</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="min-w-[220px] group relative snap-center">
-            <div class="relative bg-white rounded-[1.5rem] p-3 shadow-lg transition-all duration-300 group-hover:-translate-y-3 border-b-4 border-blue-600">
-                <div class="aspect-square overflow-hidden rounded-xl bg-blue-50 mb-4">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Nina&glassesType=round" alt="Mentor" class="w-full h-full object-cover">
-                </div>
-                <div class="text-center pb-2">
-                    <h3 class="text-lg font-black text-slate-800 leading-tight">Kak Nina W.</h3>
-                    <p class="text-blue-600 font-bold text-[10px] uppercase tracking-wider mt-1">Tutor Geografi</p>
-                </div>
-            </div>
-        </div>
+        @endforelse
 
     </div>
 </section>

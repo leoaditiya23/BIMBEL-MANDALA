@@ -2,7 +2,10 @@
 @section('title', 'Admin Panel - Mandala')
 
 @section('content')
-<div x-data="{ sidebarOpen: true }" class="h-screen w-full bg-slate-50 flex overflow-hidden font-jakarta">
+{{-- Scale disetel ke 0.85 (Turun 15%), lebar/tinggi dikompensasi agar penuh --}}
+<div x-data="{ sidebarOpen: true }" 
+     class="bg-slate-50 flex overflow-hidden font-jakarta" 
+     style="transform: scale(0.85); transform-origin: top left; width: 117.647%; height: 117.647%; position: fixed; top: 0; left: 0;">
     
     <aside 
         :class="sidebarOpen ? 'w-72' : 'w-20'" 
@@ -23,7 +26,6 @@
             </span>
         </div>
 
-        {{-- Navigasi Utama --}}
         <nav class="flex-grow px-4 space-y-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
             <p x-show="sidebarOpen" class="px-3 text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-4 opacity-40">Navigasi Utama</p>
             
@@ -35,12 +37,31 @@
                 <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Dashboard</span>
             </a>
 
+            {{-- SINKRONISASI RUTE DINAMIS: Paket Bimbel (Semua) --}}
             <a href="{{ route('admin.programs') }}" 
-               class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.programs') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+               class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.programs') && !request()->route('type') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
                 <div class="w-8 flex justify-center items-center">
                     <i class="fas fa-layer-group text-lg"></i>
                 </div>
                 <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Paket Bimbel</span>
+            </a>
+
+            {{-- SINKRONISASI RUTE DINAMIS: Harga Reguler --}}
+            <a href="{{ route('admin.programs', ['type' => 'reguler']) }}" 
+               class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->fullUrlIs(route('admin.programs', ['type' => 'reguler'])) ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+                <div class="w-8 flex justify-center items-center">
+                    <i class="fas fa-tags text-lg"></i>
+                </div>
+                <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Harga Reguler</span>
+            </a>
+
+            {{-- SINKRONISASI RUTE DINAMIS: Harga Intensif --}}
+            <a href="{{ route('admin.programs', ['type' => 'intensif']) }}" 
+               class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->fullUrlIs(route('admin.programs', ['type' => 'intensif'])) ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+                <div class="w-8 flex justify-center items-center">
+                    <i class="fas fa-bolt text-lg"></i>
+                </div>
+                <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Harga Intensif</span>
             </a>
 
             <a href="{{ route('admin.mentors') }}" 
@@ -71,7 +92,6 @@
             </a>
         </nav>
 
-        {{-- Footer Sidebar (Logout) --}}
         <div class="p-4 border-t border-blue-600/50 flex-shrink-0">
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
@@ -85,14 +105,16 @@
         </div>
     </aside>
 
-    <div class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto custom-main-scroll">
+    <div class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto custom-main-scroll bg-slate-50">
         
         <header class="sticky top-0 h-20 bg-white border-b border-slate-200 flex justify-between items-center px-8 flex-shrink-0 z-40 shadow-sm">
             <div class="flex flex-col text-left">
                 <h2 class="text-[10px] font-black text-blue-700 uppercase tracking-[0.2em] mb-1">Mandala Portal</h2>
                 <h1 class="text-slate-900 font-extrabold text-xl tracking-tight">
                     @if(request()->routeIs('admin.overview')) Dashboard Overview
-                    @elseif(request()->routeIs('admin.programs')) Programs Management
+                    @elseif(request()->routeIs('admin.programs') && !request()->route('type')) Programs Management
+                    @elseif(request()->route('type') == 'reguler') Harga Program Reguler
+                    @elseif(request()->route('type') == 'intensif') Harga Program Intensif
                     @elseif(request()->routeIs('admin.mentors')) Mentor Directory
                     @elseif(request()->routeIs('admin.messages')) Pesan Masuk
                     @else Payment Verification @endif
@@ -112,9 +134,8 @@
             </div>
         </header>
 
-        {{-- REVISI: Menggunakan w-full dan menghapus max-w-7xl/mx-auto agar sejajar dengan Header px-8 --}}
-        <main class="flex-1 px-8 py-8 md:py-10" style="display: block !important;">
-            <div style="width: 100% !important; max-width: none !important; margin: 0 !important; text-align: left !important;">
+        <main class="flex-1 px-8 py-8 md:py-10">
+            <div class="w-full">
                 @yield('admin_content')
             </div>
         </main>
@@ -123,7 +144,7 @@
 
 <style>
     body > nav, body > footer { display: none !important; }
-    body { overflow: hidden !important; height: 100vh; }
+    body { overflow: hidden !important; height: 100vh; background-color: #f8fafc; margin: 0; }
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
     .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
     .custom-main-scroll::-webkit-scrollbar { width: 8px; }

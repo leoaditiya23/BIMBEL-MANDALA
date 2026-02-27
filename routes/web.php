@@ -39,10 +39,9 @@ Route::middleware(['guest'])->group(function () {
     Route::get('/daftar', [PageController::class, 'register'])->name('register');
     Route::post('/daftar', [PageController::class, 'registerStore'])->name('register.store');
     
-    // --- FITUR LUPA PASSWORD (LENGKAP) ---
+    // --- FITUR LUPA PASSWORD ---
     Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
     Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
-    
     Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
     Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
 });
@@ -57,12 +56,16 @@ Route::middleware(['auth'])->group(function () {
     // Proses Pendaftaran & Upload Bukti (Siswa)
     Route::post('/enroll-program', [PageController::class, 'enrollProgram'])->name('enroll.program');
 
-    /**
+   /**
      * --- FITUR ADMIN ---
      */
     Route::prefix('admin')->group(function () {
         Route::get('/overview', [PageController::class, 'adminOverview'])->name('admin.overview');
-        Route::get('/programs', [PageController::class, 'adminPrograms'])->name('admin.programs');
+        
+        // --- MANAJEMEN PROGRAM DINAMIS ---
+        // Menangani rute: /admin/programs, /admin/programs/reguler, dan /admin/programs/intensif
+        Route::get('/programs/{type?}', [PageController::class, 'adminPrograms'])->name('admin.programs'); 
+        
         Route::get('/mentors', [PageController::class, 'adminMentors'])->name('admin.mentors');
         Route::get('/payments', [PageController::class, 'adminPayments'])->name('admin.payments');
         Route::get('/settings', [PageController::class, 'adminSettings'])->name('admin.settings');
@@ -73,40 +76,37 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/verify-payment/{id}', [PageController::class, 'verifyEnrollment'])->name('admin.payments.verify');
         Route::delete('/reject-payment/{id}', [PageController::class, 'rejectPayment'])->name('admin.payments.reject');
 
-        Route::post('/programs/store', [PageController::class, 'storeProgram'])->name('admin.programs.store');
-        Route::put('/programs/update/{id}', [PageController::class, 'updateProgram'])->name('admin.programs.update');
-        Route::delete('/programs/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.programs.delete');
+        // CRUD Program
+        Route::post('/programs-action/store', [PageController::class, 'storeProgram'])->name('admin.programs.store');
+        Route::put('/programs-action/update/{id}', [PageController::class, 'updateProgram'])->name('admin.programs.update');
+        Route::post('/programs-action/update-price', [PageController::class, 'updateProgramPrice'])->name('admin.programs.updatePrice');
+        Route::delete('/programs-action/delete/{id}', [PageController::class, 'deleteProgram'])->name('admin.programs.delete');
 
+        // CRUD Mentor
         Route::post('/mentors/store', [PageController::class, 'storeMentor'])->name('admin.mentors.store');
         Route::put('/mentors/update/{id}', [PageController::class, 'updateMentor'])->name('admin.mentors.update');
         Route::delete('/mentors/delete/{id}', [PageController::class, 'deleteMentor'])->name('admin.mentors.delete');
     });
 
    /**
- * --- FITUR MENTOR ---
- */
-Route::prefix('mentor')->group(function () {
-    Route::get('/overview', [PageController::class, 'mentorOverview'])->name('mentor.overview');
-    Route::get('/classes', [PageController::class, 'mentorClasses'])->name('mentor.classes');
-    Route::get('/schedule', [PageController::class, 'mentorSchedule'])->name('mentor.schedule');
-    
-    // CREATE / STORE ACTIONS
-    Route::post('/assignments/store', [PageController::class, 'storeAssignment'])->name('mentor.assignments.store');
-    Route::post('/materials/store', [PageController::class, 'storeMaterial'])->name('mentor.storeMaterial');
-    Route::post('/grades/store', [PageController::class, 'storeGrade'])->name('mentor.storeGrade');
-    Route::post('/attendance/store', [PageController::class, 'storeAttendance'])->name('mentor.storeAttendance');
+     * --- FITUR MENTOR ---
+     */
+    Route::prefix('mentor')->group(function () {
+        Route::get('/overview', [PageController::class, 'mentorOverview'])->name('mentor.overview');
+        Route::get('/classes', [PageController::class, 'mentorClasses'])->name('mentor.classes');
+        Route::get('/schedule', [PageController::class, 'mentorSchedule'])->name('mentor.schedule');
+        
+        Route::post('/assignments/store', [PageController::class, 'storeAssignment'])->name('mentor.assignments.store');
+        Route::post('/materials/store', [PageController::class, 'storeMaterial'])->name('mentor.storeMaterial');
+        Route::post('/grades/store', [PageController::class, 'storeGrade'])->name('mentor.storeGrade');
+        Route::post('/attendance/store', [PageController::class, 'storeAttendance'])->name('mentor.storeAttendance');
 
-    // UPDATE ACTIONS
-    Route::put('/materials/update/{id}', [PageController::class, 'updateMaterial'])->name('mentor.updateMaterial');
+        Route::put('/materials/update/{id}', [PageController::class, 'updateMaterial'])->name('mentor.updateMaterial');
+        Route::post('/toggle-absen', [PageController::class, 'toggleAbsen'])->name('mentor.toggleAbsen');
 
-    // TOGGLE ABSENSI
-    Route::post('/toggle-absen', [PageController::class, 'toggleAbsen'])->name('mentor.toggleAbsen');
-
-    // DELETE ACTIONS 
-    // REVISI: Ubah Route::get menjadi Route::delete agar sinkron dengan @method('DELETE') di Blade
-    Route::delete('/materials/delete/{id}', [PageController::class, 'deleteMaterial'])->name('mentor.materials.delete');
-    Route::delete('/assignments/delete/{id}', [PageController::class, 'deleteAssignment'])->name('mentor.assignments.delete');
-});
+        Route::delete('/materials/delete/{id}', [PageController::class, 'deleteMaterial'])->name('mentor.materials.delete');
+        Route::delete('/assignments/delete/{id}', [PageController::class, 'deleteAssignment'])->name('mentor.assignments.delete');
+    });
 
     /**
      * --- FITUR SISWA ---

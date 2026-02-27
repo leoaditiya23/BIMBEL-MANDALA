@@ -15,15 +15,26 @@ return new class extends Migration
             $table->id();
             $table->string('name'); // Contoh: Reguler UTBK, Intensif Kedokteran
             $table->string('type'); // reguler, intensif, privat
-            $table->integer('price');
-            $table->text('description')->nullable(); // Ditambah nullable agar opsional
+            $table->string('jenjang')->nullable(); // SD, SMP, SMA, Umum
             
-            // TAMBAHAN: Kolom Mentor (Relasi ke tabel users)
-            // Menggunakan foreignId agar bisa di-join di PageController
+            // --- HARGA UTAMA ---
+            $table->integer('price')->default(0); 
+
+            // --- FITUR DINAMIS BARU (ADMIN BISA UBAH LEWAT DB) ---
+            // Biaya per satu kali pertemuan tambahan (misal: 50000)
+            $table->integer('extra_meeting_price')->default(0); 
+            
+            // Biaya tambahan jika siswa mengambil paket mengaji (misal: 30000)
+            $table->integer('quran_price')->default(0); 
+            // -----------------------------------------------------
+
+            $table->text('description')->nullable();
+            
+            // Relasi ke tabel users (Mentor)
             $table->foreignId('mentor_id')
                   ->nullable() 
                   ->constrained('users')
-                  ->onDelete('set null'); // Jika mentor dihapus, program tetap ada tapi mentor kosong
+                  ->onDelete('set null'); 
             
             $table->timestamps();
         });
