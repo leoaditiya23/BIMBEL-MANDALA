@@ -63,15 +63,23 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/overview', [PageController::class, 'adminOverview'])->name('admin.overview');
         
         // --- MANAJEMEN PROGRAM DINAMIS ---
-        // Menangani rute: /admin/programs, /admin/programs/reguler, dan /admin/programs/intensif
         Route::get('/programs/{type?}', [PageController::class, 'adminPrograms'])->name('admin.programs'); 
         
         Route::get('/mentors', [PageController::class, 'adminMentors'])->name('admin.mentors');
         Route::get('/payments', [PageController::class, 'adminPayments'])->name('admin.payments');
         Route::get('/settings', [PageController::class, 'adminSettings'])->name('admin.settings');
         
+        // --- MANAJEMEN PESAN ---
         Route::get('/messages', [PageController::class, 'adminMessages'])->name('admin.messages');
         Route::delete('/messages/{id}', [PageController::class, 'deleteMessage'])->name('admin.messages.delete');
+        
+        Route::post('/messages/{id}/to-faq', [PageController::class, 'messageToFaq'])->name('admin.messages.to_faq');
+
+        // --- MANAJEMEN FAQ ---
+        Route::get('/faqs', [PageController::class, 'adminFaqs'])->name('admin.faqs');
+        Route::post('/faqs/store', [PageController::class, 'storeFaq'])->name('admin.faq.store');
+        Route::put('/faqs/update/{id}', [PageController::class, 'updateFaq'])->name('admin.faq.update');
+        Route::delete('/faqs/{id}', [PageController::class, 'deleteFaq'])->name('admin.faq.delete');
 
         Route::post('/verify-payment/{id}', [PageController::class, 'verifyEnrollment'])->name('admin.payments.verify');
         Route::delete('/reject-payment/{id}', [PageController::class, 'rejectPayment'])->name('admin.payments.reject');

@@ -24,7 +24,12 @@ class PageController extends Controller
         return view('pages.home', compact('mentors')); 
     }
 
-    public function faq() { return view('pages.faq'); }
+    // REVISI: Mengambil data FAQ dari database agar tidak hardcoded
+    public function faq() { 
+        $faqs = DB::table('faqs')->orderBy('created_at', 'asc')->get();
+        return view('pages.faq', compact('faqs')); 
+    }
+
     public function about() { return view('pages.about'); }
     public function contact() { return view('pages.contact'); }
 
@@ -263,7 +268,7 @@ class PageController extends Controller
     $request->validate([
         'name' => 'required|string|max:255',
         'specialist' => 'required|string|max:255',
-        'whatsapp' => 'required|string|max:20', // Tambahkan validasi wa
+        'whatsapp' => 'required|string|max:20', 
         'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
     ]);
 
@@ -272,7 +277,7 @@ class PageController extends Controller
     Mentor::create([
         'name' => $request->name,
         'specialist' => $request->specialist,
-        'whatsapp' => $request->whatsapp, // Simpan ke database
+        'whatsapp' => $request->whatsapp, 
         'photo' => $path,
     ]);
 
@@ -284,11 +289,10 @@ class PageController extends Controller
     $request->validate([
         'name' => 'required|string|max:255',
         'specialist' => 'required|string|max:255',
-        'whatsapp' => 'required|string|max:20', // Tambahkan validasi wa
+        'whatsapp' => 'required|string|max:20', 
         'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
     ]);
 
-    // Ambil data name, specialist, DAN whatsapp
     $data = $request->only(['name', 'specialist', 'whatsapp']); 
     
     if ($request->hasFile('photo')) {
@@ -296,7 +300,7 @@ class PageController extends Controller
         $data['photo'] = $request->file('photo')->store('mentors', 'public');
     }
 
-    $mentor->update($data); // Data whatsapp akan ter-update di sini
+    $mentor->update($data); 
     return redirect()->back()->with('success', 'Profil mentor berhasil diperbarui!');
 }
 
@@ -351,6 +355,68 @@ class PageController extends Controller
     public function deleteMessage($id) {
         DB::table('messages')->where('id', $id)->delete();
         return back()->with('success', 'Pesan berhasil dihapus.');
+    }
+
+    // --- FITUR FAQ (REVISED: MENDUKUNG PRE-FILL & AUTO-DELETE PESAN) ---
+    public function adminFaqs(Request $request) {
+        $faqs = DB::table('faqs')->orderBy('created_at', 'desc')->get();
+        
+        // Cek apakah ada data pesan yang dikirim lewat URL (opsional jika modal tidak dipakai)
+        $from_message = null;
+        if ($request->has('from_msg_id')) {
+            $from_message = DB::table('messages')->where('id', $request->from_msg_id)->first();
+        }
+
+        return view('admin.faqs', compact('faqs', 'from_message'));
+    }
+
+    public function storeFaq(Request $request) {
+        $request->validate([
+            'question' => 'required',
+            'answer' => 'required'
+        ]);
+
+        // 1. Simpan ke tabel FAQ
+        DB::table('faqs')->insert([
+            'question' => $request->question,
+            'answer' => $request->answer,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // 2. Jika input message_id ada (dikirim dari modal di Inbox), hapus pesan tersebut
+        if ($request->filled('message_id')) {
+            DB::table('messages')->where('id', $request->message_id)->delete();
+            return redirect()->route('admin.messages')->with('success', 'Pesan berhasil dijawab dan dipublish ke FAQ!');
+        }
+
+        return redirect()->route('admin.faqs')->with('success', 'FAQ berhasil diterbitkan!');
+    }
+
+    // --- REVISI: FUNGSI UPDATE FAQ (BARU) ---
+    public function updateFaq(Request $request, $id) {
+        $request->validate([
+            'question' => 'required',
+            'answer' => 'required'
+        ]);
+
+        DB::table('faqs')->where('id', $id)->update([
+            'question' => $request->question,
+            'answer' => $request->answer,
+            'updated_at' => now()
+        ]);
+
+        return back()->with('success', 'FAQ berhasil diperbarui!');
+    }
+
+    public function deleteFaq($id) {
+        DB::table('faqs')->where('id', $id)->delete();
+        return back()->with('success', 'FAQ berhasil dihapus!');
+    }
+
+    public function messageToFaq($id) {
+        // Hanya mengalihkan ke halaman FAQ dengan membawa ID pesan
+        return redirect()->route('admin.faqs', ['from_msg_id' => $id]);
     }
 
     public function adminSettings() { return view('admin.settings'); }

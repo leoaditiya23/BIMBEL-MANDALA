@@ -13,21 +13,22 @@
     <section class="max-w-3xl mx-auto px-10 pt-20 pb-16">
         <h2 class="text-3xl font-black text-center mb-12 text-blue-600">FAQ</h2>
         <div class="space-y-4">
-            <details class="group bg-white p-6 rounded-2xl border-l-8 border-orange-500 shadow-sm" open>
-                <summary class="font-bold text-lg cursor-pointer list-none flex justify-between items-center text-slate-800">
-                    Apakah bisa bayar cicilan?
-                    <i class="fas fa-chevron-down group-open:rotate-180 transition"></i>
-                </summary>
-                <p class="mt-4 text-slate-600">Tentu! Khusus untuk Program Intensif, kami menyediakan layanan cicilan 2x.</p>
-            </details>
-            
-            <details class="group bg-white p-6 rounded-2xl border-l-8 border-blue-500 shadow-sm">
-                <summary class="font-bold text-lg cursor-pointer list-none flex justify-between items-center text-slate-800">
-                    Bagaimana cara memilih mentor?
-                    <i class="fas fa-chevron-down group-open:rotate-180 transition"></i>
-                </summary>
-                <p class="mt-4 text-slate-600">Setelah mendaftar Program Reguler, Anda akan diberikan daftar mentor yang tersedia sesuai jadwal Anda.</p>
-            </details>
+            {{-- Loop data FAQ dari database --}}
+            @forelse($faqs as $key => $faq)
+                <details class="group bg-white p-6 rounded-2xl border-l-8 {{ $loop->iteration % 2 == 0 ? 'border-blue-500' : 'border-orange-500' }} shadow-sm" {{ $loop->first ? 'open' : '' }}>
+                    <summary class="font-bold text-lg cursor-pointer list-none flex justify-between items-center text-slate-800">
+                        {{ $faq->question }}
+                        <i class="fas fa-chevron-down group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="mt-4 text-slate-600 prose prose-slate max-w-none">
+                        {!! $faq->answer !!}
+                    </div>
+                </details>
+            @empty
+                <div class="text-center py-10">
+                    <p class="text-slate-400 font-medium">Belum ada tanya jawab tersedia.</p>
+                </div>
+            @endforelse
         </div>
     </section>
 </div>
