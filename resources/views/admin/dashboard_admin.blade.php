@@ -125,25 +125,25 @@
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto custom-main-scroll px-8 py-10 flex flex-col">
-                <div class="w-full pb-40 flex-grow">
+            <main class="flex-1 overflow-y-auto custom-main-scroll px-8 py-10">
+                <div class="w-full pb-20">
                     @yield('admin_content')
                 </div>
-
-                {{-- FOOTER - Konsisten dengan siswa dan mentor --}}
-                <footer class="mt-auto py-6 px-0 border-t border-slate-200 bg-slate-50 text-slate-500 text-[11px] font-medium flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div class="flex items-center space-x-2">
-                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        <p>Sistem Aktif &copy; 2026 <span class="font-bold text-blue-600 uppercase">Mandala Bimbel</span></p>
-                    </div>
-                    
-                    <div class="flex items-center space-x-6 uppercase tracking-widest">
-                        <a href="{{ route('about') }}" class="hover:text-blue-600 transition-colors">Tentang Kami</a>
-                        <a href="{{ route('contact') }}" class="hover:text-orange-500 transition-colors">Hubungi Kontak</a>
-                        <span class="text-slate-300">v1.0.2</span>
-                    </div>
-                </footer>
             </main>
+
+            {{-- FOOTER - Sejajar dengan sidebar --}}
+            <footer class="py-6 px-8 border-t border-slate-200 bg-slate-50 text-slate-500 text-[11px] font-medium flex flex-col md:flex-row justify-between items-center gap-4 flex-shrink-0">
+                <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    <p>Sistem Aktif &copy; 2026 <span class="font-bold text-blue-600 uppercase">Mandala Bimbel</span></p>
+                </div>
+                
+                <div class="flex items-center space-x-6 uppercase tracking-widest">
+                    <a href="{{ route('about') }}" class="hover:text-blue-600 transition-colors">Tentang Kami</a>
+                    <a href="{{ route('contact') }}" class="hover:text-orange-500 transition-colors">Hubungi Kontak</a>
+                    <span class="text-slate-300">v1.0.2</span>
+                </div>
+            </footer>
         </div>
     </div>
 </div>
