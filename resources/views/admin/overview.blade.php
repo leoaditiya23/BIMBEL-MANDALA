@@ -1,10 +1,14 @@
 @extends('admin.dashboard_admin')
 
 @section('admin_content')
-    {{-- Menambahkan pb-20 agar ada ruang di bawah --}}
-    <div class="w-full pb-20" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-data="{ statusFilter: 'semua' }">
+    {{-- Revisi: Penambahan relative dan z-index agar konten tidak menimpa sidebar saat scale 0.85 --}}
+    <div class="w-full pb-20 relative z-10" 
+         x-transition:enter="transition ease-out duration-300" 
+         x-transition:enter-start="opacity-0 translate-y-4" 
+         x-data="{ statusFilter: 'semua' }">
         
-        <h2 class="text-3xl font-black text-slate-800 mb-8 tracking-tighter">Ringkasan <span class="text-slate-800">Dashboard</span></h2>
+        <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Ringkasan <span class="text-slate-800">Dashboard</span></h2>
+        <p class="text-sm text-slate-500 mt-1 font-medium mb-8">Lihat ringkasan data dan statistik penting aplikasi Mandala.</p>
         
         {{-- Stat Cards Section --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
@@ -73,8 +77,8 @@
             </div>
         </div>
 
-        {{-- Menambahkan min-h agar tabel memanjang ke bawah dan menutup area abu-abu --}}
-        <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col mb-0 min-h-[600px]">
+        {{-- Section Tabel --}}
+        <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col mb-0 min-h-[600px] relative">
             <div class="p-8 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 flex-shrink-0">
                 <div>
                     <h3 class="text-lg font-bold text-slate-800 tracking-tight">Pendaftaran Terbaru</h3>
@@ -94,7 +98,7 @@
             </div>
             
             <div class="flex-1 overflow-x-auto">
-                <table class="w-full text-left">
+                <table class="w-full text-left border-collapse">
                     <thead class="sticky top-0 z-10 bg-white">
                         <tr class="bg-slate-50/50">
                             <th class="py-4 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Siswa</th>
@@ -106,47 +110,45 @@
                     </thead>
                     <tbody class="divide-y divide-slate-50">
                         @foreach($recent_enrollments as $enrollment)
-    <tr x-show="statusFilter === 'semua' || statusFilter === '{{ $enrollment->status_pembayaran }}'" class="hover:bg-slate-50/80 transition-colors group">
-        <td class="py-4 px-8">
-            <div class="flex items-center">
-                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mr-3 border border-slate-200">
-                    <i class="fas fa-user text-[10px]"></i>
-                </div>
-                <div>
-                    <p class="text-xs font-bold text-slate-700 leading-tight">{{ $enrollment->user_name }}</p>
-                    <p class="text-[9px] text-slate-400">#UID-{{ $enrollment->user_id }}</p>
-                </div>
-            </div>
-        </td>
-        <td class="py-4 px-6">
-            <div class="flex items-center gap-2">
-                {{-- Badge Jenjang: Background Hitam, Teks Putih --}}
-                <span class="px-2 py-0.5 rounded-md bg-slate-900 text-[8px] font-black text-white uppercase tracking-tighter shadow-sm flex-shrink-0">
-                    {{ $enrollment->program_jenjang }}
-                </span>
-                {{-- Teks Program: Slate 800 (Gelap) agar kontras dengan putih --}}
-                <p class="text-xs font-bold text-slate-800 tracking-tight leading-none">
-                    {{ $enrollment->program_name }}
-                </p>
-            </div>
-        </td>
-        <td class="py-4 px-6 text-center text-xs font-bold text-slate-700">
-            Rp {{ number_format($enrollment->total_harga, 0, ',', '.') }}
-        </td>
-        <td class="py-4 px-6 text-center">
-            @if($enrollment->status_pembayaran === 'verified')
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-emerald-50 text-emerald-600 border border-emerald-100">Verified</span>
-            @elseif($enrollment->status_pembayaran === 'rejected')
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-rose-50 text-rose-600 border border-rose-100">Ditolak</span>
-            @else
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-amber-50 text-amber-600 border border-amber-100">Pending</span>
-            @endif
-        </td>
-        <td class="py-4 px-8 text-right">
-            <p class="text-xs font-medium text-slate-500">{{ \Carbon\Carbon::parse($enrollment->created_at)->format('d/m/Y') }}</p>
-        </td>
-    </tr>
-@endforeach
+                            <tr x-show="statusFilter === 'semua' || statusFilter === '{{ $enrollment->status_pembayaran }}'" class="hover:bg-slate-50/80 transition-colors group">
+                                <td class="py-4 px-8">
+                                    <div class="flex items-center">
+                                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mr-3 border border-slate-200">
+                                            <i class="fas fa-user text-[10px]"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-700 leading-tight">{{ $enrollment->user_name }}</p>
+                                            <p class="text-[9px] text-slate-400">#UID-{{ $enrollment->user_id }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6">
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-0.5 rounded-md bg-slate-900 text-[8px] font-black text-white uppercase tracking-tighter shadow-sm flex-shrink-0">
+                                            {{ $enrollment->program_jenjang }}
+                                        </span>
+                                        <p class="text-xs font-bold text-slate-800 tracking-tight leading-none">
+                                            {{ $enrollment->program_name }}
+                                        </p>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6 text-center text-xs font-bold text-slate-700">
+                                    Rp {{ number_format($enrollment->total_harga, 0, ',', '.') }}
+                                </td>
+                                <td class="py-4 px-6 text-center">
+                                    @if($enrollment->status_pembayaran === 'verified')
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-emerald-50 text-emerald-600 border border-emerald-100">Verified</span>
+                                    @elseif($enrollment->status_pembayaran === 'rejected')
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-rose-50 text-rose-600 border border-rose-100">Ditolak</span>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-amber-50 text-amber-600 border border-amber-100">Pending</span>
+                                    @endif
+                                </td>
+                                <td class="py-4 px-8 text-right">
+                                    <p class="text-xs font-medium text-slate-500">{{ \Carbon\Carbon::parse($enrollment->created_at)->format('d/m/Y') }}</p>
+                                </td>
+                            </tr>
+                        @endforeach
                     </tbody>
                 </table>
             </div>

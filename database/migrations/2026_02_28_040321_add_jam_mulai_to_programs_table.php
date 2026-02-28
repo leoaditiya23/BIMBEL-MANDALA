@@ -12,18 +12,20 @@ return new class extends Migration
     public function up(): void
 {
     Schema::table('programs', function (Blueprint $table) {
-        // Harga per pertemuan tambahan (misal: 50.000)
-        $table->decimal('extra_price', 15, 2)->default(0)->after('price'); 
+        // Kita hapus ->after('hari') agar tidak error jika kolom hari tidak ada
+        $table->time('jam_mulai')->nullable();
         
-        // Harga khusus untuk paket mengaji (jika dipilih)
-        $table->decimal('quran_price', 15, 2)->default(0)->after('extra_price');
+        // Sekalian saja tambahkan kolom hari jika memang hilang dari database
+        if (!Schema::hasColumn('programs', 'hari')) {
+            $table->string('hari')->nullable();
+        }
     });
 }
 
 public function down(): void
 {
     Schema::table('programs', function (Blueprint $table) {
-        $table->dropColumn(['extra_price', 'quran_price']);
+        $table->dropColumn(['jam_mulai', 'hari']);
     });
 }
 };

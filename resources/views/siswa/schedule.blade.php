@@ -3,8 +3,8 @@
 @section('siswa_content')
 <div x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
     <div class="mb-8">
-        <h2 class="text-3xl font-black text-slate-800">Jadwal Les</h2>
-        <p class="text-sm text-slate-500">Daftar lengkap jadwal pembelajaran Anda</p>
+        <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Jadwal Les</h2>
+        <p class="text-sm text-slate-500 mt-1 font-medium">Daftar lengkap jadwal pembelajaran Anda</p>
     </div>
 
     <div class="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">

@@ -5,8 +5,8 @@
     
     <div class="mb-8 flex justify-between items-end">
         <div>
-            <h2 class="text-3xl font-black text-slate-800">Halo, {{ explode(' ', Auth::user()->name)[0] }}! 👋</h2>
-            <p class="text-sm text-slate-500">Aktivitas mengajar Anda terpantau secara real-time</p>
+            <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Halo, {{ explode(' ', Auth::user()->name)[0] }}! 👋</h2>
+            <p class="text-sm text-slate-500 mt-1 font-medium">Aktivitas mengajar Anda terpantau secara real-time</p>
         </div>
         <div class="hidden md:block">
             <a href="{{ route('mentor.schedule') }}" class="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black transition">

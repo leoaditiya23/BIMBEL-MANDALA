@@ -2,13 +2,21 @@
 @section('title', 'Student Hub - Mandala Bimbel')
 
 @section('content')
-{{-- Kontainer Utama --}}
-<div x-data="{ sidebarOpen: true }" class="fixed inset-0 w-full bg-slate-50 flex overflow-hidden">
+{{-- REVISI: Menerapkan scale 0.90 sama seperti admin dan memperbaiki sidebar --}}
+<div x-data="{ sidebarOpen: true }" 
+     class="bg-slate-50 font-jakarta overflow-hidden" 
+     style="transform: scale(0.90); transform-origin: top left; width: 111.111%; height: 111.111%; position: fixed; top: 0; left: 0;">
     
-    @include('siswa.sidebar')
+    {{-- 1. BACKGROUND BIRU STATIS (Mencegah tembok putih menutupi area kiri) --}}
+    <div :class="sidebarOpen ? 'w-72' : 'w-20'" 
+         class="absolute top-0 left-0 bottom-0 bg-blue-700 transition-all duration-300 z-0"></div>
 
-    {{-- Area Kanan --}}
-    <div class="flex-1 flex flex-col min-w-0 h-full relative">
+    <div class="flex h-full relative z-10">
+        {{-- 2. ASIDE (SIDEBAR) --}}
+        @include('siswa.sidebar')
+
+        {{-- Area Kanan --}}
+        <div class="flex-1 flex flex-col min-w-0 h-full relative">
         
         {{-- Header --}}
         <div class="flex-none z-40">
@@ -37,6 +45,7 @@
                 </div>
             </footer>
         </div>
+        </div>
     </div>
 </div>
 
@@ -48,7 +57,11 @@
         overflow: hidden !important;
         height: 100vh;
         width: 100vw;
+        background-color: #f8fafc;
+        margin: 0;
     }
+
+    .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
 
     /* 2. Scrollbar */
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
@@ -60,9 +73,9 @@
 
     [x-cloak] { display: none !important; }
 
-    /* 3. PERBAIKAN: Hapus min-height calc yang bikin berantakan */
+    /* 3. Main flex */
     main {
-        flex: 1 0 auto; /* Memastikan main bisa tumbuh tapi tidak memaksa tinggi statis */
+        flex: 1 0 auto;
     }
 </style>
 @endsection

@@ -3,8 +3,8 @@
 @section('siswa_content')
 <div x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
     <div class="mb-8">
-        <h2 class="text-3xl font-black text-slate-800">Gas Terus, {{ explode(' ', Auth::user()->name)[0] }}! 🔥</h2>
-        <p class="text-sm text-slate-500">Pantau progres belajarmu di sini</p>
+        <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Gas Terus, {{ explode(' ', Auth::user()->name)[0] }}! 🔥</h2>
+        <p class="text-sm text-slate-500 mt-1 font-medium">Pantau progres belajarmu di sini</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">

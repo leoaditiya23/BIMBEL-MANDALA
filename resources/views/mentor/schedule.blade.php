@@ -5,8 +5,8 @@
     
   <div class="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-slate-100 pb-8">
     <div>
-        <h2 class="text-2xl font-black text-slate-800 tracking-tight">Timeline Mengajar</h2>
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Sesi Belajar Terjadwal</p>
+        <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Timeline Mengajar</h2>
+        <p class="text-sm text-slate-500 mt-1 font-medium">Sesi Belajar Terjadwal</p>
     </div>
     
     <div class="flex items-center gap-3 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-200/60">

@@ -4,7 +4,7 @@
 <div x-data="{ openModal: false, imgSrc: '' }" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
     <div class="mb-8">
         <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Pembayaran</h2>
-        <p class="text-sm text-slate-500">Kelola semua transaksi dan pantau status verifikasi Anda</p>
+        <p class="text-sm text-slate-500 mt-1 font-medium">Kelola semua transaksi dan pantau status verifikasi Anda</p>
     </div>
 
     {{-- Stats Cards --}}

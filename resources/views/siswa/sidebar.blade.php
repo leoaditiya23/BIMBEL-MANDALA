@@ -1,14 +1,14 @@
 <div :class="sidebarOpen ? 'w-72' : 'w-20'" 
-     class="bg-blue-700 h-screen p-6 text-white flex flex-col shadow-2xl transition-all duration-300 relative z-50 flex-shrink-0 overflow-visible">
+     class="bg-blue-700 h-full text-white flex flex-col shadow-2xl transition-all duration-300 relative z-50 flex-shrink-0 overflow-visible">
     
     <button 
     @click="sidebarOpen = !sidebarOpen" 
-    class="absolute -right-4 top-10 bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg z-[60] border-2 border-white focus:outline-none cursor-pointer">
+    class="absolute -right-4 top-10 bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg z-[60] border-2 border-white focus:outline-none cursor-pointer hover:bg-orange-600 transition-colors">
     <i class="fas text-xs transition-transform duration-300" 
        :class="sidebarOpen ? 'fa-angle-left' : 'fa-angle-right'"></i>
 </button>
 
-    <div class="flex items-center space-x-3 mb-10 flex-shrink-0 overflow-hidden h-10">
+    <div class="p-6 flex items-center space-x-3 mb-10 flex-shrink-0 overflow-hidden h-20">
         <div class="w-10 h-10 bg-white rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg">
             <i class="fas fa-graduation-cap text-blue-700 text-lg"></i>
         </div>
@@ -17,7 +17,7 @@
         </span>
     </div>
 
-    <nav class="space-y-2 flex-grow overflow-y-auto overflow-x-hidden custom-scrollbar">
+    <nav class="space-y-2 flex-grow px-4 overflow-y-auto overflow-x-hidden custom-scrollbar relative z-10">
         <p x-show="sidebarOpen" class="px-3 text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-4 opacity-40">Main Menu</p>
         
         <a href="{{ route('siswa.overview') }}" 
@@ -65,7 +65,7 @@
         </a>
     </nav>
 
-    <div class="pt-4 border-t border-blue-600/50 flex-shrink-0">
+    <div class="p-4 px-6 border-t border-blue-600/50 flex-shrink-0 relative z-10">
         <form action="{{ route('logout') }}" method="POST">
             @csrf
             <button type="submit" class="w-full flex items-center p-3.5 rounded-2xl text-blue-100 hover:bg-orange-500 hover:text-white transition-all group">

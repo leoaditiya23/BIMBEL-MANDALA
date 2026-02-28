@@ -34,8 +34,8 @@
     
     <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h2 class="text-3xl font-black text-slate-800">Manajemen Kelas</h2>
-            <p class="text-sm text-slate-500">Pantau progres kurikulum dan penilaian siswa secara mendalam</p>
+            <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Manajemen Kelas</h2>
+            <p class="text-sm text-slate-500 mt-1 font-medium">Pantau progres kurikulum dan penilaian siswa secara mendalam</p>
         </div>
         <div class="flex bg-slate-100 p-1 rounded-[20px]">
             <button @click="activeTab = 'semua'" :class="activeTab === 'semua' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'" class="px-6 py-2 rounded-[15px] text-xs font-bold transition-all duration-200">Semua Kelas</button>

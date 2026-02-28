@@ -2,11 +2,20 @@
 @section('title', 'Mentor Panel - Mandala')
 
 @section('content')
-<div x-data="{ sidebarOpen: true }" class="h-screen w-full bg-slate-50 flex overflow-hidden font-jakarta">
+{{-- REVISI: Menerapkan scale 0.90 sama seperti admin dan siswa, memperbaiki sidebar --}}
+<div x-data="{ sidebarOpen: true }" 
+     class="bg-slate-50 font-jakarta overflow-hidden" 
+     style="transform: scale(0.90); transform-origin: top left; width: 111.111%; height: 111.111%; position: fixed; top: 0; left: 0;">
     
-    @include('mentor.sidebar')
+    {{-- 1. BACKGROUND BIRU STATIS (Mencegah tembok putih menutupi area kiri) --}}
+    <div :class="sidebarOpen ? 'w-72' : 'w-20'" 
+         class="absolute top-0 left-0 bottom-0 bg-blue-700 transition-all duration-300 z-0"></div>
 
-    <div class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto custom-main-scroll">
+    <div class="flex h-full relative z-10">
+        {{-- 2. ASIDE (SIDEBAR) --}}
+        @include('mentor.sidebar')
+
+        <div class="flex-1 flex flex-col min-w-0 h-full relative">
         
         <div class="sticky top-0 z-40">
             @include('mentor.header')
@@ -30,18 +39,29 @@
                 <span class="text-slate-300">v1.0.2</span>
             </div>
         </footer>
+        </div>
     </div>
 </div>
 
 <style>
-    body > nav, body > footer { display: none !important; }
-    body { overflow: hidden !important; height: 100vh; }
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+    /* 1. Sembunyikan elemen luar */
+    body > nav, body > footer { display: none !important; } 
+
+    body {
+        overflow: hidden !important;
+        height: 100vh;
+        width: 100vw;
+        background-color: #f8fafc;
+        margin: 0;
+    }
+
     .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
 
+    /* 2. Scrollbar */
     .custom-main-scroll::-webkit-scrollbar { width: 8px; }
     .custom-main-scroll::-webkit-scrollbar-track { background: #f8fafc; }
     .custom-main-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
     [x-cloak] { display: none !important; }
 </style>
 @endsection

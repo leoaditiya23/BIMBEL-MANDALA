@@ -2,7 +2,7 @@
 
 @section('admin_content')
 {{-- Container Utama --}}
-<div class="w-full" x-data="{ openModal: false, imgSrc: '', paymentId: '', paymentName: '' }">
+<div class="w-full pb-20 relative z-10" x-data="{ openModal: false, imgSrc: '', paymentId: '', paymentName: '' }">
     <div class="mb-8 flex justify-between items-end">
         <div>
             <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Verifikasi Pembayaran</h2>

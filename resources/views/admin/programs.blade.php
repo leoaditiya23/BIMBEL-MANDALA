@@ -1,35 +1,32 @@
 @extends('admin.dashboard_admin')
 
 @section('admin_content')
-<div style="transform: scale(0.85); transform-origin: top left; width: 117.6%;">
-    <div class="w-full" x-data="{ 
-        showProgramModal: false, 
-        showEditModal: false,
-        editData: { id: '', name: '', jenjang: '', price: 0, extra_meeting_price: 0, quran_price: 0, mentor_id: '', type: '' }
-    }" :class="(showEditModal || showProgramModal) ? 'overflow-hidden' : ''">
-        
-        {{-- Header --}}
-        <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
-            <div>
-                <div class="flex items-center gap-3 mb-2">
-                    {{-- JUDUL DINAMIS BERDASARKAN PARAMETER URL --}}
-                    <h2 class="text-3xl font-black text-slate-800 tracking-tighter">
-                        Katalog 
-                        <span class="text-slate-800">
-                            {{ request()->route('type') ? ucfirst(request()->route('type')) : 'Program' }}
-                        </span>
-                    </h2>
-                </div>
-                <p class="text-sm text-slate-400 font-medium">Atur paket bimbingan belajar dan penetapan mentor pendamping.</p>
-            </div>
-            <button @click="showProgramModal = true" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg flex items-center gap-2 group">
-                <i class="fas fa-plus group-hover:rotate-90 transition-transform"></i>
-                Tambah Program Baru
-            </button>
+<div class="w-full pb-20 relative z-10" x-data="{ 
+    showProgramModal: false, 
+    showEditModal: false,
+    editData: { id: '', name: '', jenjang: '', price: 0, extra_meeting_price: 0, quran_price: 0, mentor_id: '', type: '' }
+}">
+    
+    {{-- Header --}}
+    <div class="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
+        <div>
+            {{-- JUDUL DINAMIS BERDASARKAN PARAMETER URL --}}
+            <h2 class="text-3xl font-black text-slate-800 tracking-tighter">
+                Katalog 
+                <span class="text-slate-800">
+                    {{ request()->route('type') ? ucfirst(request()->route('type')) : 'Program' }}
+                </span>
+            </h2>
+            <p class="text-sm text-slate-500 mt-1 font-medium">Atur paket bimbingan belajar dan penetapan mentor pendamping.</p>
         </div>
+        <button @click="showProgramModal = true" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg flex items-center gap-2 group">
+            <i class="fas fa-plus group-hover:rotate-90 transition-transform"></i>
+            Tambah Program Baru
+        </button>
+    </div>
 
-        {{-- Programs Grid --}}
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    {{-- Programs Grid --}}
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             @foreach($programs as $program)
                 <div class="bg-slate-900 rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden group">
                     <div class="relative z-10 text-white">
@@ -183,7 +180,6 @@
         </div>
     </div>
 </template>
-    </div>
 </div>
 
 <style>

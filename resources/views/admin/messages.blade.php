@@ -2,11 +2,11 @@
 
 @section('admin_content')
 {{-- REVISI: Ganti p-8 menjadi w-full agar alignment konsisten dengan navbar --}}
-<div class="w-full">
-    <div class="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
+<div class="w-full pb-20 relative z-10">
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-            <h2 class="text-3xl font-black text-slate-800 tracking-tight">Pesan Masuk</h2>
-            <p class="text-slate-500 font-medium mt-1">Kelola pesan dan pertanyaan dari calon siswa.</p>
+            <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Pesan Masuk</h2>
+            <p class="text-sm text-slate-500 mt-1 font-medium">Kelola pesan dan pertanyaan dari calon siswa.</p>
         </div>
         <div class="flex items-center space-x-3 bg-white px-6 py-3 rounded-2xl shadow-sm border border-slate-100">
             <i class="fas fa-inbox text-orange-500"></i>

@@ -34,28 +34,55 @@
         this.saveToSession();
     },
 
-    pprices: {
+   prices: {
     @php
-        // Mengambil data langsung dari database berdasarkan jenjang
-        $priceTK = DB::table('programs')->where('jenjang', 'TK')->where('type', 'reguler')->value('price') ?? 125000;
-        $priceSD = DB::table('programs')->where('jenjang', 'SD')->where('type', 'reguler')->value('price') ?? 150000;
-        $priceSMP = DB::table('programs')->where('jenjang', 'SMP')->where('type', 'reguler')->value('price') ?? 175000;
-        $priceSMA = DB::table('programs')->where('jenjang', 'SMA')->where('type', 'reguler')->value('price') ?? 200000;
-        $hargaMengaji = DB::table('programs')->where('type', 'reguler')->value('quran_price') ?? 50000;
+        // Ambil semua data program reguler sekaligus agar hemat query
+        $programs = DB::table('programs')->where('type', 'reguler')->get();
+        
+        $priceTK = $programs->where('jenjang', 'TK')->first()->price ?? 0;
+        $priceSD = $programs->where('jenjang', 'SD')->first()->price ?? 0;
+        $priceSMP = $programs->where('jenjang', 'SMP')->first()->price ?? 0;
+        $priceSMA = $programs->where('jenjang', 'SMA')->first()->price ?? 0;
+
+        // Ambil harga mengaji spesifik per jenjang
+        $quranTK = $programs->where('jenjang', 'TK')->first()->quran_price ?? 0;
+        $quranSD = $programs->where('jenjang', 'SD')->first()->quran_price ?? 0;
+        $quranSMP = $programs->where('jenjang', 'SMP')->first()->quran_price ?? 0;
+        $quranSMA = $programs->where('jenjang', 'SMA')->first()->quran_price ?? 0;
     @endphp
+    
     'TK': {{ $priceTK }}, 
     'SD': {{ $priceSD }}, 
     'SMP': {{ $priceSMP }}, 
     'SMA': {{ $priceSMA }},
-    'diskon_borongan': 0.25, 
-    'add_mengaji': {{ $hargaMengaji }} 
+    
+    // Simpan harga mengaji dalam object agar bisa dipanggil sesuai jenjang yang dipilih
+    'quran_prices': {
+        'TK': {{ $quranTK }},
+        'SD': {{ $quranSD }},
+        'SMP': {{ $quranSMP }},
+        'SMA': {{ $quranSMA }}
+    },
+    
+    'diskon_borongan': 0.25
 },
 
     listMapel: {
-        'TK': ['Calistung (Baca Tulis Hitung)', 'Mewarnai & Kreativitas', 'Bahasa Inggris Dasar'],
-        'SD': ['Matematika SD', 'IPA SD', 'Bahasa Indonesia SD', 'Bahasa Inggris SD', 'Tematik'],
-        'SMP': ['Matematika SMP', 'IPA Terpadu', 'Bahasa Inggris SMP', 'Bahasa Indonesia SMP', 'Fisika SMP', 'Biologi SMP', 'IPS SMP'],
-        'SMA': ['Matematika Wajib', 'Matematika Peminatan', 'Fisika', 'Kimia', 'Biologi', 'Ekonomi', 'Geografi', 'Sejarah', 'Sosiologi', 'Bahasa Inggris', 'Bahasa Indonesia']
+    @php
+        // Kita ambil semua mapel dari database, dikelompokkan berdasarkan jenjang
+        // Asumsi: Kamu punya tabel 'subjects' yang punya kolom 'jenjang' dan 'name'
+        $mapelDinamis = DB::table('subjects')->get()->groupBy('jenjang');
+    @endphp
+
+    @foreach(['TK', 'SD', 'SMP', 'SMA'] as $j)
+        '{{ $j }}': [
+            @if(isset($mapelDinamis[$j]))
+                @foreach($mapelDinamis[$j] as $m)
+                    '{{ $m->name }}',
+                @endforeach
+            @endif
+        ],
+    @endforeach
     },
 
     listLokasi: [
@@ -83,17 +110,20 @@
     let total = 0;
     let pricePerMapel = this.prices[this.jenjang] || 0;
     
-    // Jika pilih Borongan, harga dihitung dari total semua mapel di jenjang itu dikurangi diskon
     if (this.tipePaket === 'borongan' && this.jenjang && this.listMapel[this.jenjang]) {
+        // Menghitung harga borongan: (Jumlah Mapel x Harga Satuan DB) - Diskon 25%
         let totalNormal = this.listMapel[this.jenjang].length * pricePerMapel;
         total = totalNormal - (totalNormal * this.prices.diskon_borongan);
     } else {
-        // Jika Eceran, hanya hitung yang diklik saja
+        // Eceran: Jumlah yang diklik x Harga Satuan DB
         total = this.selectedMapel.length * pricePerMapel;
     }
 
-    // Tambahan biaya lain
-    if (this.mauMengaji) total += this.prices.add_mengaji;
+    // REVISI: Mengambil harga mengaji sesuai jenjang dari object quran_prices
+    if (this.mauMengaji) {
+        total += (this.prices.quran_prices[this.jenjang] || 0);
+    }
+
     if (this.metode === 'offline') total += 100000;
     
     return total;
@@ -136,10 +166,10 @@
 x-init="$watch('metode', () => saveToSession()); $watch('jenjang', () => saveToSession()); $watch('mauMengaji', () => saveToSession()); $watch('lokasi', () => saveToSession());"
 class="relative">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    {{-- Header Section --}}
+   {{-- Header Section --}}
     <div class="bg-slate-900 pt-20 pb-32 px-6 relative overflow-hidden text-center">
         <div class="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-        <div class="relative z-10 container mx-auto">
+        <div class="relative z-10 container mx-auto transform scale-[0.85] origin-top transition-all duration-500">
             <span class="text-blue-400 font-bold tracking-widest text-xs uppercase">Bimbingan Belajar Mandala</span>
             <h1 class="text-5xl md:text-6xl font-black text-white uppercase tracking-tighter mt-2">
                 Program <span class="text-blue-500">Reguler</span>
@@ -367,29 +397,30 @@ class="relative">
                                 </div>
                             </section>
 
-                            {{-- 4. MENGAJI --}}
-                            <section x-show="jenjang" x-transition class="mb-12">
-                                <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
-                                    <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">4</span>
-                                    EKSTRA PENDAMPINGAN
-                                </h3>
-                                <div @click="mauMengaji = !mauMengaji; saveToSession()" 
-                                     :class="mauMengaji ? 'border-emerald-500 bg-emerald-50 shadow-md' : 'border-slate-100 bg-slate-50'"
-                                     class="p-6 border-2 rounded-3xl cursor-pointer flex items-center justify-between transition-all group">
-                                    <div class="flex items-center gap-5">
-                                        <div :class="mauMengaji ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'" class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-colors">
-                                            <i class="fas fa-book-quran"></i>
-                                        </div>
-                                        <div>
-                                            <span class="block font-bold text-slate-800 uppercase text-sm">TAMBAHAN MENGAJI</span>
-                                            <span class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest">+ Rp 50.000 / BULAN</span>
-                                        </div>
-                                    </div>
-                                    <div :class="mauMengaji ? 'bg-emerald-500' : 'bg-slate-300'" class="w-7 h-7 rounded-full border-4 border-white shadow-md transition-all"></div>
-                                </div>
-                            </section>
-                        </div>
-
+                           {{-- 4. MENGAJI --}}
+<section x-show="jenjang" x-transition class="mb-12">
+    <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
+        <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">4</span>
+        EKSTRA PENDAMPINGAN
+    </h3>
+    <div @click="mauMengaji = !mauMengaji; saveToSession()" 
+         :class="mauMengaji ? 'border-emerald-500 bg-emerald-50 shadow-md' : 'border-slate-100 bg-slate-50'"
+         class="p-6 border-2 rounded-3xl cursor-pointer flex items-center justify-between transition-all group">
+        <div class="flex items-center gap-5">
+            <div :class="mauMengaji ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'" class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-colors">
+                <i class="fas fa-book-quran"></i>
+            </div>
+            <div>
+                <span class="block font-bold text-slate-800 uppercase text-sm">TAMBAHAN MENGAJI</span>
+                {{-- REVISI: Mengambil harga dari variabel prices.add_mengaji yang ditarik dari DB --}}
+                <span class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest" 
+      x-text="'+ Rp ' + (prices.quran_prices[jenjang] || 0).toLocaleString('id-ID') + ' / BULAN'">
+</span>
+            </div>
+        </div>
+        <div :class="mauMengaji ? 'bg-emerald-500' : 'bg-slate-300'" class="w-7 h-7 rounded-full border-4 border-white shadow-md transition-all"></div>
+    </div>
+</section>
                         {{-- SUMMARY BAR --}}
                         <div class="mt-10 p-8 bg-slate-900 text-white rounded-[2rem] shadow-xl border border-white/5">
                             <div class="flex flex-col md:flex-row justify-between items-center gap-6">

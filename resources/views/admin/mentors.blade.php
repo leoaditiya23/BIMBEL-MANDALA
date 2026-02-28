@@ -1,92 +1,88 @@
 @extends('admin.dashboard_admin')
 
 @section('admin_content')
-{{-- Penambahan Scale 0.85 untuk konsistensi dengan halaman lain --}}
-<div style="transform: scale(0.85); transform-origin: top left; width: 117.6%;">
-    <div class="w-full" x-data="{ 
-        showMentorModal: false, 
-        showEditModal: false,
-        editData: { id: '', name: '', specialist: '', whatsapp: '', photo: '' },
-        openEdit(mentor) {
-            this.editData = { ...mentor };
-            this.showEditModal = true;
-        }
-    }" :class="(showEditModal || showMentorModal) ? 'overflow-hidden' : ''">
-        
-        {{-- Header & Stats --}}
-        <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
-            <div>
-                <div class="flex items-center gap-3 mb-2">
-                    <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Manajemen <span class="text-slate-800">Mentor</span></h2>
-                </div>
-                <p class="text-sm text-slate-400 font-medium">Tambah atau atur mentor yang tampil di halaman depan aplikasi.</p>
-            </div>
-            <button @click="showMentorModal = true" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg flex items-center gap-2 group">
-                <i class="fas fa-plus group-hover:rotate-90 transition-transform"></i>
-                Tambah Mentor Baru
-            </button>
+<div class="w-full pb-20 relative z-10" x-data="{ 
+    showMentorModal: false, 
+    showEditModal: false,
+    editData: { id: '', name: '', specialist: '', whatsapp: '', photo: '' },
+    openEdit(mentor) {
+        this.editData = { ...mentor };
+        this.showEditModal = true;
+    }
+}">
+    
+    {{-- Header & Stats --}}
+    <div class="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
+        <div>
+            <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Manajemen <span class="text-slate-800">Mentor</span></h2>
+            <p class="text-sm text-slate-500 mt-1 font-medium">Tambah atau atur mentor yang tampil di halaman depan aplikasi.</p>
         </div>
+        <button @click="showMentorModal = true" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg flex items-center gap-2 group">
+            <i class="fas fa-plus group-hover:rotate-90 transition-transform"></i>
+            Tambah Mentor Baru
+        </button>
+    </div>
 
-        @if(session('success'))
-        <div class="mb-6 p-4 bg-green-500 text-white font-bold rounded-2xl shadow-lg shadow-green-100 flex items-center gap-3">
-            <i class="fas fa-check-circle"></i>
-            {{ session('success') }}
-        </div>
-        @endif
+    @if(session('success'))
+    <div class="mb-6 p-4 bg-green-500 text-white font-bold rounded-2xl shadow-lg shadow-green-100 flex items-center gap-3">
+        <i class="fas fa-check-circle"></i>
+        {{ session('success') }}
+    </div>
+    @endif
 
-        {{-- Mentors Grid --}}
-{{-- Grid diubah kembali ke lg:grid-cols-3 agar kartu sedikit lebih besar --}}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    @foreach($mentors as $mentor)
-        <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all group relative">
-            <div class="flex flex-col items-center text-center">
-                
-                {{-- Avatar: Ukuran dinaikkan sedikit ke w-20 --}}
-                <div class="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-4 border-2 border-slate-50 group-hover:border-blue-100 transition-all shadow-inner">
-                    @if($mentor->photo)
-                        <img src="{{ asset('storage/' . $mentor->photo) }}" class="w-full h-full object-cover">
-                    @else
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ urlencode($mentor->name) }}" class="w-full h-full object-cover">
-                    @endif
+    {{-- Mentors Grid --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @foreach($mentors as $mentor)
+                {{-- REVISI: Menghapus mx-auto dan memaksa margin-left: 0 agar sejajar dengan judul di atas --}}
+                <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all group relative" style="max-width: 280px; width: 100%; margin-left: 0;">
+                    <div class="flex flex-col items-center text-center">
+                        
+                        {{-- Avatar --}}
+                        <div class="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-4 border-2 border-slate-50 group-hover:border-blue-100 transition-all shadow-inner">
+                            @if($mentor->photo)
+                                <img src="{{ asset('storage/' . $mentor->photo) }}" class="w-full h-full object-cover">
+                            @else
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ urlencode($mentor->name) }}" class="w-full h-full object-cover">
+                            @endif
+                        </div>
+
+                        {{-- Text Information --}}
+                        <h3 class="text-base font-black text-slate-800 leading-tight mb-1">{{ $mentor->name }}</h3>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                            {{ $mentor->specialist }}
+                        </p>
+
+                        {{-- WhatsApp Link --}}
+                        @if($mentor->whatsapp)
+                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $mentor->whatsapp) }}" 
+                               target="_blank"
+                               class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-600 border border-green-100 text-[10px] font-black uppercase hover:bg-green-600 hover:text-white transition-all">
+                                <i class="fab fa-whatsapp text-xs"></i>
+                                {{ $mentor->whatsapp }}
+                            </a>
+                        @else
+                            <span class="text-[10px] font-bold text-slate-300 uppercase italic">No WhatsApp -</span>
+                        @endif
+
+                        {{-- Action Buttons --}}
+                        <div class="flex gap-2 mt-6 w-full">
+                            <button @click="openEdit({{ json_encode($mentor) }})" 
+                                    class="flex-1 py-2.5 bg-slate-50 text-slate-600 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all">
+                                Edit
+                            </button>
+
+                            <form action="{{ route('admin.mentors.delete', $mentor->id) }}" method="POST" class="flex-1" onsubmit="return confirm('Hapus mentor ini?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" 
+                                        class="w-full py-2.5 bg-slate-50 text-red-400 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-red-500 hover:text-white transition-all">
+                                    Hapus
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-
-                {{-- Text Information --}}
-                <h3 class="text-base font-black text-slate-800 leading-tight mb-1">{{ $mentor->name }}</h3>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-                    {{ $mentor->specialist }}
-                </p>
-
-                {{-- WhatsApp Link: Mengarah langsung ke chat --}}
-                @if($mentor->whatsapp)
-                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $mentor->whatsapp) }}" 
-                       target="_blank"
-                       class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-600 border border-green-100 text-[10px] font-black uppercase hover:bg-green-600 hover:text-white transition-all">
-                        <i class="fab fa-whatsapp text-xs"></i>
-                        {{ $mentor->whatsapp }}
-                    </a>
-                @else
-                    <span class="text-[10px] font-bold text-slate-300 uppercase italic">No WhatsApp -</span>
-                @endif
-
-                {{-- Action Buttons --}}
-                <div class="flex gap-2 mt-6 w-full">
-                    <button @click="openEdit({{ json_encode($mentor) }})" 
-                            class="flex-1 py-2.5 bg-slate-50 text-slate-600 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all">
-                        Edit
-                    </button>
-
-                    <form action="{{ route('admin.mentors.delete', $mentor->id) }}" method="POST" class="flex-1" onsubmit="return confirm('Hapus mentor ini?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" 
-                                class="w-full py-2.5 bg-slate-50 text-red-400 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-red-500 hover:text-white transition-all">
-                            Hapus
-                        </button>
-                    </form>
-                </div>
-            </div>
+            @endforeach
         </div>
-    @endforeach
-</div>
 
         {{-- MODAL TAMBAH MENTOR --}}
         <template x-teleport="body">
@@ -175,7 +171,6 @@
                 </div>
             </div>
         </template>
-    </div>
 </div>
 
 <style>
