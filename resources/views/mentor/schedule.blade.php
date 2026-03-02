@@ -25,21 +25,19 @@
     </div>
 </div>
 
-    <div class="mb-10 overflow-x-auto no-scrollbar">
-    <div class="inline-flex bg-slate-100/80 p-2 rounded-[3.5rem] min-w-full md:min-w-0 border border-slate-200/50 shadow-inner">
-        @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as $hari)
-            <button @click="activeTab = '{{ $hari }}'" 
-                {{-- Logika warna oren saat aktif --}}
-                :class="activeTab === '{{ $hari }}' 
-                    ? 'bg-orange-500 shadow-[0_10px_20px_-5px_rgba(249,115,22,0.4)] text-white scale-105' 
-                    : 'text-slate-500 hover:text-orange-500 hover:bg-white/60'"
-                {{-- Radius tombol dibuat sangat melengkung (rounded-full) --}}
-                class="px-10 py-4 rounded-[3rem] text-[11px] font-black transition-all duration-300 whitespace-nowrap uppercase tracking-[0.1em]">
-                {{ $hari }}
-            </button>
-        @endforeach
+    <div class="mb-10 w-full flex justify-center overflow-x-auto no-scrollbar">
+        <div class="inline-flex bg-slate-100/80 p-2 rounded-[3.5rem] border border-slate-200/50 shadow-inner">
+            @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as $hari)
+                <button @click="activeTab = '{{ $hari }}'" 
+                    :class="activeTab === '{{ $hari }}' 
+                        ? 'bg-orange-500 shadow-[0_10px_20px_-5px_rgba(249,115,22,0.4)] text-white scale-105' 
+                        : 'text-slate-500 hover:text-orange-500 hover:bg-white/60'"
+                    class="px-10 py-4 rounded-[3rem] text-[11px] font-black transition-all duration-300 whitespace-nowrap uppercase tracking-[0.1em]">
+                    {{ $hari }}
+                </button>
+            @endforeach
+        </div>
     </div>
-</div>
 
     <div class="grid grid-cols-1 gap-6">
         @php

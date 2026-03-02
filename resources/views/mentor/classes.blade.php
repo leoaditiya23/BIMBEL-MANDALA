@@ -5,7 +5,7 @@
     activeTab: 'semua', 
     modalMateri: false, 
     modalAbsen: false,
-    modalTugas: false, {{-- Sekarang menjadi Modal Tugas & Nilai --}}
+    modalTugas: false,
     selectedSubmissions: [],
     isAbsenOpen: false, 
     selectedClass: {id: '', name: '', students: [], materials: []},
@@ -32,6 +32,62 @@
     }
 }" x-transition:enter="transition ease-out duration-300">
     
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div class="bg-white p-6 rounded-[25px] border border-slate-100 shadow-sm hover:shadow-md transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                    <i class="fas fa-chalkboard-teacher text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Kelas</p>
+                    <h4 class="text-xl font-black text-slate-800">{{ count($classes) }} <span class="text-xs font-bold text-slate-400">Grup</span></h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-[25px] border border-slate-100 shadow-sm hover:shadow-md transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
+                    <i class="fas fa-book text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Materi</p>
+                    <h4 class="text-xl font-black text-slate-800">
+                        {{ $classes->sum(function($c) { return count($c->materials); }) }}
+                        <span class="text-xs font-bold text-slate-400">Sesi</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-[25px] border border-slate-100 shadow-sm hover:shadow-md transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
+                    <i class="fas fa-users text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Siswa</p>
+                    <h4 class="text-xl font-black text-slate-800">{{ $classes->sum('student_count') }} <span class="text-xs font-bold text-slate-400">Orang</span></h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-[25px] border border-slate-100 shadow-sm hover:shadow-md transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600">
+                    <i class="fas fa-tower-broadcast text-lg"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sesi Aktif</p>
+                    <h4 class="text-xl font-black text-slate-800">
+                        {{ $classes->where('is_active', true)->count() }}
+                        <span class="text-xs font-bold text-slate-400">Kelas</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Manajemen Kelas</h2>
@@ -45,7 +101,8 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @forelse($classes as $class)
-            <div class="bg-white rounded-[20px] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group overflow-hidden">
+            <div x-show="activeTab === 'semua' || (activeTab === 'aktif' && '{{ $class->is_active ?? false }}')"
+                 class="bg-white rounded-[20px] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group overflow-hidden">
                 <div class="p-6">
                     <div class="flex items-start justify-between mb-4">
                         <div class="p-3 bg-indigo-50 rounded-[15px] transition-colors duration-300">
@@ -86,7 +143,6 @@
                                 class="py-3 bg-slate-100 text-slate-700 rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:bg-slate-800 hover:text-white transition-all duration-200">
                             <i class="fas fa-list-ol mr-1"></i> Absensi
                         </button>
-                        {{-- Tombol Nilai & Tugas Disatukan --}}
                         <button @click="selectedClass = {id: '{{ $class->id }}', name: '{{ $class->name }}', students: {{ json_encode($class->students) }} }; selectedSubmissions = {{ json_encode($class->submissions ?? []) }}; modalTugas = true" 
                                 class="py-3 bg-indigo-50 text-indigo-600 rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all duration-200">
                             <i class="fas fa-tasks mr-1"></i> Tugas & Nilai
@@ -104,7 +160,7 @@
             </div>
         @empty
             <div class="col-span-full bg-white p-12 rounded-[30px] border-2 border-dashed border-slate-200 text-center shadow-inner">
-                <img src="https://illustrations.popsy.co/slate/empty-folder.svg" class="w-40 mx-auto mb-4 opacity-50" alt="empty">
+                <i class="fas fa-folder-open text-6xl text-slate-200 mb-4 block"></i>
                 <p class="text-slate-400 font-bold">Belum ada kelas yang ditugaskan kepada Anda.</p>
             </div>
         @endforelse
@@ -157,7 +213,7 @@
         </div>
     </div>
 
-    {{-- MODAL MATERI (TETAP) --}}
+    {{-- MODAL MATERI --}}
     <div x-show="modalMateri" class="fixed inset-0 z-[70] flex items-start justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto" x-cloak>
         <div @click.away="modalMateri = false; editingMaterial = null" 
              class="bg-white rounded-[35px] shadow-2xl w-full max-w-5xl overflow-hidden border border-white/20 flex flex-col md:flex-row min-h-[500px] my-10 relative">
@@ -236,7 +292,6 @@
         <div @click.away="modalTugas = false" class="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl overflow-hidden my-auto border border-white/20">
             <div class="flex flex-col md:flex-row h-full min-h-[550px]">
                 
-                {{-- Sisi Kiri: List Submisi --}}
                 <div class="w-full md:w-3/5 p-8 border-r border-slate-100">
                     <div class="flex justify-between items-center mb-8">
                         <div>
@@ -275,7 +330,6 @@
                     </div>
                 </div>
 
-                {{-- Sisi Kanan: Form Input Nilai --}}
                 <div class="w-full md:w-2/5 p-8 bg-slate-50/50">
                     <div class="mb-8">
                         <h4 class="text-sm font-black text-slate-800 uppercase tracking-widest">Panel Penilaian</h4>
@@ -323,7 +377,7 @@
         </div>
     </div>
 </div>
-3<style>
+<style>
     body { background-color: #fcfcfd; }
     [x-cloak] { display: none !important; }
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }

@@ -10,10 +10,7 @@
     showPayment: false,
     buktiBayar: null,
 
-    // Ambil data harga dari database
-    programsData: {!! json_encode($programsByName ?? []) !!},
-
-    // REVISI: Tambahkan getter listHarga agar looping di baris 83 tidak error
+    // Ambil data harga dari database dengan fallback yang aman
     listHarga: {
         'UTBK-SAINTEK': {{ DB::table('programs')->where('type', 'intensif')->where('name', 'UTBK-SAINTEK')->value('price') ?? 1500000 }},
         'UTBK-SOSHUM': {{ DB::table('programs')->where('type', 'intensif')->where('name', 'UTBK-SOSHUM')->value('price') ?? 1500000 }},
@@ -138,7 +135,6 @@
                                                 <span class="text-[9px] font-black bg-green-100 text-green-600 px-2 py-1 rounded">HARGA SAMA</span>
                                             </div>
 
-                                            {{-- Detail Lokasi Tamansari Hills --}}
                                             <div x-show="metode === 'offline'" x-transition class="mt-4 p-4 bg-white rounded-xl border border-blue-100 shadow-sm">
                                                 <div class="flex items-start gap-3 text-blue-900">
                                                     <i class="fas fa-map-marker-alt mt-1"></i>
@@ -204,7 +200,7 @@
                             </button>
                             
                             @auth
-                                <button @click="step = 3" class="flex-[2] bg-orange-600 text-white py-6 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-900 transition shadow-xl shadow-orange-200 flex items-center justify-center">
+                                <button @click="step = 3; window.scrollTo({top: 0, behavior: 'smooth'})" class="flex-[2] bg-orange-600 text-white py-6 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-900 transition shadow-xl shadow-orange-200 flex items-center justify-center">
                                     Cek Ringkasan Bayar <i class="fas fa-receipt ml-2"></i>
                                 </button>
                             @else
