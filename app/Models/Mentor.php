@@ -9,5 +9,16 @@ class Mentor extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'specialist', 'whatsapp', 'photo'];
+    // Tambahkan ini untuk memastikan model merujuk ke tabel yang benar
+    protected $table = 'mentors';
+
+    protected $fillable = ['name', 'specialist', 'whatsapp', 'photo', 'user_id'];
+
+    /**
+     * Relasi ke model User
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

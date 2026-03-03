@@ -131,25 +131,26 @@
     </main>
 
     <footer class="bg-slate-900 text-white py-16 px-10 mt-12 relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div class="container mx-auto grid md:grid-cols-3 gap-10">
-            <div class="text-left">
-                <div class="text-2xl font-black mb-4">Mandala<span class="text-orange-500">Bimbel</span></div>
-                <p class="text-slate-400 text-sm max-w-sm leading-relaxed">Mencetak generasi cerdas dan kompetitif melalui sistem pembelajaran digital yang menyenangkan.</p>
-            </div>
-            
-            <div class="flex flex-col space-y-3">
-                <h4 class="font-bold text-white mb-2 underline decoration-orange-500 underline-offset-4">Tautan Cepat</h4>
-                <a href="{{ route('about') }}" class="text-slate-400 hover:text-white transition text-sm">Tentang Kami</a>
-                <a href="{{ route('contact') }}" class="text-slate-400 hover:text-white transition text-sm">Hubungi Kontak</a>
-                <a href="{{ route('faq.index') }}" class="text-slate-400 hover:text-white transition text-sm">Bantuan FAQ</a>
-            </div>
-
-            <div class="md:text-right text-slate-500 text-xs flex flex-col justify-end">
-                <p class="mb-2">Terdaftar di Kementerian Pendidikan Indonesia</p>
-                <p>&copy; 2026 BimbelApp. All Rights Reserved.</p>
-            </div>
+    <div class="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+    
+    <div class="grid md:grid-cols-3 gap-10">
+        <div class="text-left">
+            <div class="text-2xl font-black mb-4">Mandala<span class="text-orange-500">Bimbel</span></div>
+            <p class="text-slate-400 text-sm max-w-sm leading-relaxed">Mencetak generasi cerdas dan kompetitif melalui sistem pembelajaran digital yang menyenangkan.</p>
         </div>
-    </footer>
+        
+        <div class="flex flex-col items-start space-y-3">
+            <h4 class="font-bold text-white mb-2 underline decoration-orange-500 underline-offset-4">Tautan Cepat</h4>
+            <a href="{{ route('about') }}" class="text-slate-400 hover:text-white transition text-sm">Tentang Kami</a>
+            <a href="{{ route('contact') }}" class="text-slate-400 hover:text-white transition text-sm">Hubungi Kontak</a>
+            <a href="{{ route('faq.index') }}" class="text-slate-400 hover:text-white transition text-sm">Bantuan FAQ</a>
+        </div>
+
+        <div class="md:text-right text-slate-500 text-xs flex flex-col justify-end items-end">
+            <p class="mb-2">Terdaftar di Kementerian Pendidikan Indonesia</p>
+            <p>&copy; 2026 BimbelApp. All Rights Reserved.</p>
+        </div>
+    </div>
+</footer>
 </body>
 </html>

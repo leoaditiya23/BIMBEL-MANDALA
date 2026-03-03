@@ -5,33 +5,38 @@
 <div class="min-h-screen bg-[#FDFDFD] pb-24" x-data="{ 
     step: {{ request()->get('step') ?? 1 }}, 
     metode: 'online', 
-    kategori: 'UTBK-SAINTEK',
+    kategori: '{{ $programs->where('type', 'intensif')->first()->name ?? 'UTBK-SAINTEK' }}',
     batch: 'Batch 1 (Februari - Mei)',
     showPayment: false,
     buktiBayar: null,
 
-    // Ambil data harga dari database dengan fallback yang aman
+    // Mengambil data harga secara dinamis dari database
     listHarga: {
-        'UTBK-SAINTEK': {{ DB::table('programs')->where('type', 'intensif')->where('name', 'UTBK-SAINTEK')->value('price') ?? 1500000 }},
-        'UTBK-SOSHUM': {{ DB::table('programs')->where('type', 'intensif')->where('name', 'UTBK-SOSHUM')->value('price') ?? 1500000 }},
-        'TKA-SD': {{ DB::table('programs')->where('type', 'intensif')->where('name', 'TKA-SD')->value('price') ?? 1500000 }},
-        'TKA-SMP': {{ DB::table('programs')->where('type', 'intensif')->where('name', 'TKA-SMP')->value('price') ?? 1500000 }}
+        @foreach($programs->where('type', 'intensif') as $prog)
+            '{{ $prog->name }}': {{ $prog->price ?? 0 }},
+        @endforeach
     },
 
-    // Dapatkan harga berdasarkan kategori yang dipilih
+    // Mapping ID Program untuk input hidden
+    listId: {
+        @foreach($programs->where('type', 'intensif') as $prog)
+            '{{ $prog->name }}': {{ $prog->id }},
+        @endforeach
+    },
+
     getHarga(kategori) {
-        return this.listHarga[kategori] ?? 1500000;
+        return this.listHarga[kategori] ?? 0;
     },
 
     getTotalPrice() {
         return this.getHarga(this.kategori);
     },
 
+    // REVISI DISINI: Menambahkan fallback jika deskripsi kosong atau properti tidak ada
     paketMateri: {
-        'UTBK-SAINTEK': 'TPS, Literasi, Penalaran Matematika + Fisika, Kimia, Biologi, Matematika IPA',
-        'UTBK-SOSHUM': 'TPS, Literasi, Penalaran Matematika + Ekonomi, Geografi, Sosiologi, Sejarah',
-        'TKA-SD': 'Pendalaman Materi Tematik, Matematika, dan Persiapan Ujian Sekolah SD',
-        'TKA-SMP': 'Fokus Materi Matematika, IPA, IPS, dan Bahasa Inggris Level SMP'
+        @foreach($programs->where('type', 'intensif') as $prog)
+            '{{ $prog->name }}': `{!! addslashes($prog->description ?? 'Detail materi akan diupdate segera.') !!}`,
+        @endforeach
     },
 
     sendWA() {
@@ -97,17 +102,17 @@
                                     <span class="w-8 h-[2px] bg-orange-600 mr-3"></span> Pilih Fokus Program
                                 </h3>
                                 <div class="space-y-4">
-                                    <template x-for="t in ['UTBK-SAINTEK', 'UTBK-SOSHUM', 'TKA-SD', 'TKA-SMP']">
+                                    <template x-for="(harga, nama) in listHarga" :key="nama">
                                         <label class="block cursor-pointer">
-                                            <input type="radio" :value="t" x-model="kategori" class="hidden peer">
+                                            <input type="radio" :value="nama" x-model="kategori" class="hidden peer">
                                             <div class="p-6 border-2 border-slate-50 rounded-2xl peer-checked:border-orange-500 peer-checked:bg-orange-50 transition-all hover:bg-slate-50">
                                                 <div class="flex justify-between items-center">
                                                     <div>
-                                                        <h4 class="font-black text-slate-800 uppercase text-sm" x-text="t.replace('-', ' ')"></h4>
-                                                        <p class="text-[10px] font-black text-orange-600 mt-1 uppercase" x-text="'Biaya: Rp ' + listHarga[t].toLocaleString('id-ID')"></p>
+                                                        <h4 class="font-black text-slate-800 uppercase text-sm" x-text="nama.replace('-', ' ')"></h4>
+                                                        <p class="text-[10px] font-black text-orange-600 mt-1 uppercase" x-text="'Biaya: Rp ' + (harga ? harga.toLocaleString('id-ID') : '0')"></p>
                                                     </div>
                                                     <div class="w-6 h-6 rounded-full border-2 border-slate-200 flex items-center justify-center peer-checked:bg-orange-500">
-                                                        <div class="w-2 h-2 bg-white rounded-full" x-show="kategori === t"></div>
+                                                        <div class="w-2 h-2 bg-white rounded-full" x-show="kategori === nama"></div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -218,11 +223,7 @@
                         <form action="{{ route('enroll.program') }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             
-                            <input type="hidden" name="program_id" :value="
-                                kategori === 'UTBK-SAINTEK' ? 1 : 
-                                (kategori === 'UTBK-SOSHUM' ? 2 : 
-                                (kategori === 'TKA-SD' ? 3 : 4))
-                            ">
+                            <input type="hidden" name="program_id" :value="listId[kategori]">
                             <input type="hidden" name="total_harga" :value="getTotalPrice()">
 
                             <div class="grid lg:grid-cols-5 gap-8 items-start">

@@ -204,6 +204,7 @@ class PageController extends Controller
             'extra_meeting_price' => 'required|numeric|min:0',
             'quran_price' => 'required|numeric|min:0',
             'mentor_id' => 'nullable|exists:users,id',
+            'description' => 'nullable|string',
         ]);
 
         DB::table('programs')->insert([
@@ -214,6 +215,7 @@ class PageController extends Controller
             'extra_meeting_price' => $request->extra_meeting_price,
             'quran_price' => $request->quran_price,
             'mentor_id' => $request->mentor_id,
+            'description' => $request->description,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -227,6 +229,7 @@ class PageController extends Controller
             'price' => 'required|numeric|min:0',
             'extra_meeting_price' => 'nullable|numeric|min:0',
             'quran_price' => 'nullable|numeric|min:0',
+            'description' => 'nullable|string',
         ]);
 
         DB::table('programs')->where('id', $id)->update([
@@ -234,6 +237,7 @@ class PageController extends Controller
             'price' => (int) $request->price,
             'extra_meeting_price' => (int) ($request->extra_meeting_price ?? 0),
             'quran_price' => (int) ($request->quran_price ?? 0),
+            'description' => $request->description,
             'updated_at' => now(),
         ]);
 
@@ -250,6 +254,23 @@ class PageController extends Controller
     }
 
     public function adminMentors() {
+        $users = User::where('role', 'mentor')->get();
+
+        foreach ($users as $user) {
+            // Sinkronisasi: Pastikan profil mentor ada jika user mentor ada
+            $exists = Mentor::where('user_id', $user->id)->exists();
+
+            if (!$exists) {
+                Mentor::create([
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'specialist' => $user->specialization ?? 'Umum',
+                    'whatsapp' => $user->whatsapp ?? '08123456789',
+                    'photo' => null,
+                ]);
+            }
+        }
+
         $mentors = Mentor::orderBy('created_at', 'desc')->get();
         return view('admin.mentors', compact('mentors'));
     }
@@ -257,19 +278,38 @@ class PageController extends Controller
     public function storeMentor(Request $request) {
         $request->validate([
             'name' => 'required|string|max:255',
-            'specialist' => 'required|string|max:255',
-            'whatsapp' => 'required|string|max:20', 
+            'username' => 'required|string|unique:users,username',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:6',
+            'specialist' => 'required',
+            'whatsapp' => 'required',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $path = $request->hasFile('photo') ? $request->file('photo')->store('mentors', 'public') : null;
+        DB::transaction(function () use ($request) {
+            $user = User::create([
+                'name' => $request->name,
+                'username' => $request->username,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'mentor',
+                'whatsapp' => $request->whatsapp,
+                'specialization' => $request->specialist
+            ]);
 
-        Mentor::create([
-            'name' => $request->name,
-            'specialist' => $request->specialist,
-            'whatsapp' => $request->whatsapp, 
-            'photo' => $path,
-        ]);
+            $photoPath = null;
+            if ($request->hasFile('photo')) {
+                $photoPath = $request->file('photo')->store('mentors', 'public');
+            }
+
+            Mentor::create([
+                'user_id' => $user->id,
+                'name' => $request->name,
+                'specialist' => $request->specialist,
+                'whatsapp' => $request->whatsapp,
+                'photo' => $photoPath,
+            ]);
+        });
 
         return redirect()->back()->with('success', 'Mentor berhasil ditambahkan!');
     }
@@ -279,38 +319,45 @@ class PageController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'specialist' => 'required|string|max:255',
-            'whatsapp' => 'required|string|max:20', 
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'whatsapp' => 'required|string|max:20',
+            'photo' => 'nullable|image|max:2048',
         ]);
 
-        $data = $request->only(['name', 'specialist', 'whatsapp']); 
-        
-        if ($request->hasFile('photo')) {
-            if ($mentor->photo) Storage::disk('public')->delete($mentor->photo);
-            $data['photo'] = $request->file('photo')->store('mentors', 'public');
-        }
+        DB::transaction(function () use ($request, $mentor) {
+            User::where('id', $mentor->user_id)->update([
+                'name' => $request->name,
+                'whatsapp' => $request->whatsapp,
+                'specialization' => $request->specialist
+            ]);
 
-        $mentor->update($data); 
-        return redirect()->back()->with('success', 'Profil mentor berhasil diperbarui!');
+            $data = $request->only(['name', 'specialist', 'whatsapp']);
+            if ($request->hasFile('photo')) {
+                if ($mentor->photo) Storage::disk('public')->delete($mentor->photo);
+                $data['photo'] = $request->file('photo')->store('mentors', 'public');
+            }
+
+            $mentor->update($data);
+        });
+
+        return redirect()->back()->with('success', 'Profil dan Akun Mentor berhasil diperbarui!');
     }
 
     public function deleteMentor($id) {
         $mentor = Mentor::findOrFail($id);
-        if ($mentor->photo) Storage::disk('public')->delete($mentor->photo);
-        $mentor->delete();
-        return redirect()->back()->with('success', 'Mentor berhasil dihapus!');
-    }
+        $userId = $mentor->user_id;
 
-    public function adminPayments() {
-        $payments = DB::table('enrollments')
-            ->join('users', 'enrollments.user_id', '=', 'users.id')
-            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->select('enrollments.*', 'users.name as user_name', 'users.whatsapp as user_wa', 'programs.name as program_name')
-            ->where('enrollments.status_pembayaran', 'pending')
-            ->orderBy('enrollments.created_at', 'desc')
-            ->get();
+        DB::transaction(function () use ($mentor, $userId) {
+            if ($mentor->photo) {
+                Storage::disk('public')->delete($mentor->photo);
+            }
+            $mentor->delete();
+            
+            if ($userId) {
+                User::where('id', $userId)->delete();
+            }
+        });
 
-        return view('admin.payments', compact('payments'));
+        return redirect()->back()->with('success', 'Mentor dan Akun Login berhasil dihapus!');
     }
 
     public function verifyEnrollment($id) {
@@ -318,7 +365,7 @@ class PageController extends Controller
             'status_pembayaran' => 'verified',
             'updated_at' => now()
         ]);
-        return redirect()->route('admin.payments')->with('success', 'Pembayaran berhasil diverifikasi!');
+        return back()->with('success', 'Pembayaran berhasil diverifikasi!');
     }
 
     public function rejectPayment($id) {
@@ -472,6 +519,7 @@ class PageController extends Controller
         $program = DB::table('programs')->where('id', $request->program_id)->first();
         $user = Auth::user();
         
+        // Logic Kode Unik berdasarkan 3 digit terakhir nomor WA
         $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp ?? '000');
         $uniqueCode = (int) substr($cleanPhone, -3); 
         $finalAmount = $program->price + $uniqueCode;

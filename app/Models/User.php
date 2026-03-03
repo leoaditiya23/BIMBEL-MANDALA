@@ -18,6 +18,7 @@ class User extends Authenticatable
         'password',
         'role',             
         'whatsapp',         
+        'specialist',       // Ditambahkan agar sinkron dengan input Mentor
         'specialization',   
         'jenjang',          
         'is_trial_claimed', 
@@ -46,17 +47,14 @@ class User extends Authenticatable
         ];
     }
 
-    // ... sisa kode relasi dan helper (enrollments, programs, isAdmin, dll) tetap sama
-    // Tidak ada perubahan pada fungsi-fungsi di bawahnya sesuai permintaan Anda.
-
     public function enrollments(): HasMany
     {
-        return $this->hasMany(Enrollment::class);
+        return $this->hasMany(\App\Models\Enrollment::class);
     }
 
     public function programs(): HasMany
     {
-        return $this->hasMany(Program::class, 'mentor_id');
+        return $this->hasMany(\App\Models\Program::class, 'mentor_id');
     }
 
     public function isAdmin(): bool
