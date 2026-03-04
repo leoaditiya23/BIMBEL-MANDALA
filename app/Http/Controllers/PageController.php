@@ -21,7 +21,9 @@ class PageController extends Controller
      */
     public function index() { 
         $mentors = Mentor::all(); 
-        return view('pages.home', compact('mentors')); 
+        // Tambahkan pengambilan data FAQ agar variabel $faqs terdefinisi di home
+        $faqs = DB::table('faqs')->orderBy('created_at', 'asc')->get();
+        return view('pages.home', compact('mentors', 'faqs')); 
     }
 
     public function faq() { 
@@ -155,7 +157,19 @@ class PageController extends Controller
         return view('admin.overview', compact('stats', 'recent_enrollments'));
     }
 
+    public function adminPayments() {
+        $payments = DB::table('enrollments')
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
+            ->orderBy('enrollments.created_at', 'desc')
+            ->get();
+
+        return view('admin.payments', compact('payments'));
+    }
+
     public function adminPrograms(Request $request, $type = null) {
+        // REVISI: Menggunakan Left Join agar mentor_name langsung tersedia di objek program
         $query = DB::table('programs')
             ->leftJoin('users', 'programs.mentor_id', '=', 'users.id')
             ->select('programs.*', 'users.name as mentor_name');
@@ -172,6 +186,11 @@ class PageController extends Controller
                 ->where('program_id', $program->id)
                 ->where('status_pembayaran', 'verified')
                 ->count();
+            
+            // REVISI: Pastikan properti mentor->name bisa dibaca di Blade
+            // Kita buatkan objek dummy agar template $program->mentor->name tidak error
+            $program->mentor = (object) ['name' => $program->mentor_name ?? 'Mentor Belum Ditunjuk'];
+            
             return $program;
         });
 
@@ -179,20 +198,28 @@ class PageController extends Controller
         return view('admin.programs', compact('programs', 'mentors', 'title', 'type'));
     }
 
-    public function updateProgramPrice(Request $request) {
+    public function updateProgram(Request $request, $id) {
         $request->validate([
-            'id' => 'required|exists:programs,id',
+            'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
-            'quran_price' => 'nullable|numeric|min:0'
+            'extra_meeting_price' => 'nullable|numeric|min:0',
+            'quran_price' => 'nullable|numeric|min:0',
+            'description' => 'nullable|string',
+            'mentor_id' => 'nullable|exists:users,id',
         ]);
 
-        DB::table('programs')->where('id', $request->id)->update([
+        // REVISI: Pastikan mentor_id ikut terupdate di DB
+        DB::table('programs')->where('id', $id)->update([
+            'name' => $request->name,
             'price' => (int) $request->price,
+            'extra_meeting_price' => (int) ($request->extra_meeting_price ?? 0),
             'quran_price' => (int) ($request->quran_price ?? 0),
+            'description' => $request->description,
+            'mentor_id' => $request->mentor_id, // Mengupdate ID mentor
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'Harga berhasil diperbarui.');
+        return back()->with('success', 'Data program berhasil diperbarui!');
     }
 
     public function storeProgram(Request $request) {
@@ -221,27 +248,6 @@ class PageController extends Controller
         ]);
 
         return back()->with('success', 'Program berhasil ditambahkan!');
-    }
-
-    public function updateProgram(Request $request, $id) {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'extra_meeting_price' => 'nullable|numeric|min:0',
-            'quran_price' => 'nullable|numeric|min:0',
-            'description' => 'nullable|string',
-        ]);
-
-        DB::table('programs')->where('id', $id)->update([
-            'name' => $request->name,
-            'price' => (int) $request->price,
-            'extra_meeting_price' => (int) ($request->extra_meeting_price ?? 0),
-            'quran_price' => (int) ($request->quran_price ?? 0),
-            'description' => $request->description,
-            'updated_at' => now(),
-        ]);
-
-        return back()->with('success', 'Data program berhasil diperbarui!');
     }
 
     public function deleteProgram($id) {
@@ -468,11 +474,12 @@ class PageController extends Controller
             ->orderBy('enrollments.created_at', 'desc')
             ->limit(5)->get();
 
-        $stats = [
-            'completed_tasks' => DB::table('task_submissions')->where('user_id', $user->id)->count(),
-            'total_tasks' => DB::table('assignments')->where('student_id', $user->id)->count(),
-            'average_score' => DB::table('grades')->where('student_id', $user->id)->avg('score') ?? 0,
-        ];
+$stats = [
+    'completed_tasks' => DB::table('task_submissions')->where('user_id', $user->id)->count(),
+    'total_tasks'     => DB::table('assignments')->where('student_id', $user->id)->count(),
+    'average_score'   => 0, // PAKSA TULIS 0 DISINI UNTUK TES
+    'attendance'      => 0, // PAKSA TULIS 0 DISINI UNTUK TES
+];
 
         return view('siswa.overview', compact('recent_programs', 'my_assignments', 'activities', 'stats'));
     }
@@ -621,6 +628,7 @@ class PageController extends Controller
         $user = Auth::user();
         $today = date('Y-m-d');
 
+        // Tambahkan 'total_sessions' (atau kolom serupa) di query ini
         $classes = DB::table('programs')->where('mentor_id', $user->id)->get()->map(function($class) use ($today) {
             $class->students = DB::table('enrollments')
                 ->join('users', 'enrollments.user_id', '=', 'users.id')
@@ -637,6 +645,12 @@ class PageController extends Controller
             $class->materials = Schema::hasTable('program_materials') 
                 ? DB::table('program_materials')->where('program_id', $class->id)->get() 
                 : collect([]);
+
+            // SOLUSI: Jika kolom 'total_sessions' tidak ada di DB, kita beri nilai default 
+            // agar progess bar di Blade tidak error. Misal default 12 sesi.
+            if (!isset($class->total_sessions)) {
+                $class->total_sessions = 12; 
+            }
             
             return $class;
         });

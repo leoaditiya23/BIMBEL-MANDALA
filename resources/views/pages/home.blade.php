@@ -38,7 +38,6 @@
     </div>
 
    <div class="md:w-1/2 relative flex items-end justify-center min-h-[450px] lg:min-h-[600px]">
-        {{-- REVISI: h-[85%] untuk menurunkan posisi kepala, h-[85%] di desktop agar tetap proporsional --}}
         <img src="{{ asset('images/talent.png') }}" 
              alt="Talent Mandala Bimbel" 
              class="absolute bottom-0 h-[85%] md:h-[90%] w-auto max-w-none z-10 drop-shadow-2xl object-contain object-bottom scale-110 origin-bottom">
@@ -94,26 +93,26 @@
     </div>
 </section>
 
-{{-- 3. FAQ --}}
+{{-- 3. FAQ - DARI DATABASE --}}
 <section class="bg-slate-50 py-16 px-10">
     <div class="max-w-4xl mx-auto">
         <h2 class="text-4xl font-black text-center mb-12 text-blue-600">FAQ</h2>
         <div class="space-y-4">
-            <details class="group bg-white p-6 rounded-2xl border-l-8 border-orange-500 shadow-sm" open>
-                <summary class="font-bold text-lg cursor-pointer list-none flex justify-between items-center">
-                    Apakah bisa bayar cicilan?
-                    <i class="fas fa-chevron-down group-open:rotate-180 transition"></i>
-                </summary>
-                <p class="mt-4 text-slate-600">Tentu! Khusus untuk Program Intensif, kami menyediakan layanan cicilan 2x.</p>
-            </details>
-            
-            <details class="group bg-white p-6 rounded-2xl border-l-8 border-blue-500 shadow-sm">
-                <summary class="font-bold text-lg cursor-pointer list-none flex justify-between items-center">
-                    Bagaimana cara memilih mentor?
-                    <i class="fas fa-chevron-down group-open:rotate-180 transition"></i>
-                </summary>
-                <p class="mt-4 text-slate-600">Setelah mendaftar Program Reguler, Anda akan diberikan daftar mentor yang tersedia sesuai jadwal Anda.</p>
-            </details>
+            @forelse($faqs as $key => $faq)
+                <details class="group bg-white p-6 rounded-2xl border-l-8 {{ $loop->iteration % 2 == 0 ? 'border-blue-500' : 'border-orange-500' }} shadow-sm" {{ $loop->first ? 'open' : '' }}>
+                    <summary class="font-bold text-lg cursor-pointer list-none flex justify-between items-center text-slate-800">
+                        {{ $faq->question }}
+                        <i class="fas fa-chevron-down group-open:rotate-180 transition"></i>
+                    </summary>
+                    <div class="mt-4 text-slate-600 prose prose-slate max-w-none">
+                        {!! $faq->answer !!}
+                    </div>
+                </details>
+            @empty
+                <div class="text-center py-10 bg-white rounded-2xl">
+                    <p class="text-slate-400 font-medium">Belum ada tanya jawab tersedia.</p>
+                </div>
+            @endforelse
         </div>
     </div>
 </section>
@@ -138,25 +137,17 @@
     </div>
 </section>
 
-{{-- 5. MENTOR KAMI (Dynamic Version) --}}
-{{-- REVISI: py-20 dikurangi menjadi py-8 agar jarak atas-bawah rapat --}}
+{{-- 5. MENTOR KAMI --}}
 <section class="py-8 bg-slate-50 px-10">
-    {{-- REVISI: mb-16 dikurangi menjadi mb-6 agar judul tidak jauh dari kartu --}}
     <div class="container mx-auto text-center mb-6">
         <h2 class="text-4xl font-black text-blue-600 mb-4">Mentor <span class="text-orange-500">Kami.</span></h2>
         <p class="text-slate-600 leading-relaxed text-lg font-medium">Belajar langsung dari ahli yang berpengalaman di bidangnya.</p>
     </div>
 
-    {{-- REVISI: Tambahkan overflow-visible agar saat zoom kartu tidak terpotong tepi container --}}
     <div class="container mx-auto flex overflow-x-auto overflow-y-visible gap-4 pb-12 pt-4 max-w-7xl snap-x snap-mandatory scrollbar-hide">
-        
         @forelse($mentors as $index => $mentor)
-            {{-- REVISI: Ukuran kartu tetap min-w-[190px] --}}
             <div class="min-w-[190px] group relative snap-center">
-                {{-- REVISI: scale diturunkan ke 105 agar tidak terlalu besar & tidak terpotong, z-50 saat hover --}}
                 <div class="relative bg-white rounded-[1.5rem] p-3 shadow-lg transition-all duration-300 group-hover:scale-105 group-hover:z-50 border-b-4 {{ $index % 2 == 0 ? 'border-blue-600' : 'border-orange-500' }}">
-                    
-                    {{-- REVISI: Foto dikembalikan ke w-25 h-25 (lebih kecil sedikit dari sebelumnya) --}}
                     <div class="w-25 h-25 mx-auto overflow-hidden rounded-xl {{ $index % 2 == 0 ? 'bg-blue-50' : 'bg-orange-50' }} mb-4">
                         @if($mentor->photo)
                             <img src="{{ asset('storage/' . $mentor->photo) }}" alt="{{ $mentor->name }}" class="w-full h-full object-cover">
@@ -164,7 +155,6 @@
                             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ urlencode($mentor->name) }}" alt="Mentor" class="w-full h-full object-cover">
                         @endif
                     </div>
-
                     <div class="text-center pb-2">
                         <h3 class="text-lg font-black text-slate-800 leading-tight">{{ $mentor->name }}</h3>
                         <p class="{{ $index % 2 == 0 ? 'text-blue-600' : 'text-orange-500' }} font-bold text-[10px] uppercase tracking-wider mt-1">
@@ -175,15 +165,14 @@
             </div>
         @empty
             <div class="w-full text-center py-10">
-                <p class="text-slate-400 italic">Belum ada data mentor yang ditambahkan.</p>
+                <p class="text-slate-400 italic">Belum ada data mentor.</p>
             </div>
         @endforelse
-
     </div>
 </section>
 
 {{-- 6. HUBUNGI KAMI --}}
-<section class="pt-16 pb-8 bg-white px-10"> {{-- Padding bawah dikurangi drastis --}}
+<section class="pt-16 pb-8 bg-white px-10">
     <div class="container mx-auto max-w-4xl text-center">
         <h2 class="text-4xl font-black text-blue-600 mb-4">Hubungi <span class="text-orange-500">Kami.</span></h2>
         <p class="text-slate-600 leading-relaxed text-lg font-medium max-w-2xl mx-auto mb-10">
@@ -193,11 +182,9 @@
         <div class="flex justify-center mb-16 px-4">
             <a href="https://wa.me/6285540000900" target="_blank" 
                class="flex items-center space-x-3 px-8 py-4 bg-[#A7FFA7] text-[#1E5F1E] rounded-2xl font-black text-lg md:text-xl shadow-xl hover:scale-105 transition-all duration-300 group border-b-4 border-[#7ae37a]">
-                
                 <div class="bg-white p-1.5 rounded-full shadow-sm group-hover:rotate-12 transition-transform">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-6 h-6" alt="WA">
                 </div>
-                
                 <span>Hubungi Kami Via WhatsApp</span>
             </a>
         </div>

@@ -76,21 +76,19 @@
                         </div>
 
                         <button @click="
-                            editData = { 
-                                id: '{{ $program->id }}', 
-                                name: '{{ $program->name }}', 
-                                jenjang: '{{ $program->jenjang }}',
-                                price: '{{ $program->price }}',
-                                extra_meeting_price: '{{ $program->extra_meeting_price ?? 0 }}',
-                                quran_price: '{{ $program->quran_price ?? 0 }}',
-                                mentor_id: '{{ $program->mentor_id }}',
-                                type: '{{ $program->type }}',
-                                description: `{!! addslashes($program->description ?? '') !!}`
-                            };
-                            showEditModal = true;
-                        " class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white hover:text-slate-900 transition-all">
-                            <i class="fas fa-edit text-xs"></i>
-                        </button>
+    editData.id = '{{ $program->id }}';
+    editData.name = '{{ addslashes($program->name) }}';
+    editData.jenjang = '{{ $program->jenjang }}';
+    editData.price = '{{ $program->price }}';
+    editData.extra_meeting_price = '{{ $program->extra_meeting_price ?? 0 }}';
+    editData.quran_price = '{{ $program->quran_price ?? 0 }}';
+    editData.mentor_id = '{{ $program->mentor_id }}';
+    editData.type = '{{ $program->type }}';
+    editData.description = `{{ addslashes($program->description ?? '') }}`;
+    showEditModal = true;
+" class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white hover:text-slate-900 transition-all">
+    <i class="fas fa-edit text-xs"></i>
+</button>
                     </div>
                 </div>
             </div>
