@@ -56,6 +56,13 @@
                     <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Paket Bimbel</span>
                 </a>
 
+                {{-- REVISI: Tambahan Master Mapel --}}
+                <a href="{{ route('admin.subjects') }}" 
+                   class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.subjects') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+                    <div class="w-8 flex justify-center items-center"><i class="fas fa-book-open text-lg"></i></div>
+                    <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Master Mapel</span>
+                </a>
+
                 {{-- Link Reguler --}}
                 <a href="{{ route('admin.programs', ['type' => 'reguler']) }}" 
                    class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->fullUrlIs(route('admin.programs', ['type' => 'reguler'])) ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
@@ -131,7 +138,7 @@
                 </div>
             </main>
 
-            {{-- FOOTER - Sejajar dengan sidebar --}}
+            {{-- FOOTER --}}
             <footer class="py-6 px-8 border-t border-slate-200 bg-slate-50 text-slate-500 text-[11px] font-medium flex flex-col md:flex-row justify-between items-center gap-4 flex-shrink-0">
                 <div class="flex items-center space-x-2">
                     <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>

@@ -331,96 +331,115 @@ class="relative">
             </div>
         </section>
 
-        {{-- 3. MAPEL --}}
-        <section x-show="jenjang" x-transition>
-            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
-                <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">3</span>
-                PILIH MATA PELAJARAN
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <template x-for="m in listMapel[jenjang]">
-                    <div @click="toggleMapel(m)" 
-                         :class="selectedMapel.includes(m) ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'"
-                         class="p-5 border-2 rounded-2xl cursor-pointer flex items-center justify-between transition-all duration-200">
-                        <span class="text-sm font-bold uppercase tracking-tight" x-text="m"></span>
-                        <i class="fas" :class="selectedMapel.includes(m) ? 'fa-check-circle text-blue-400' : 'fa-plus text-slate-200'"></i>
-                    </div>
-                </template>
+       {{-- 3. MAPEL --}}
+<section x-show="jenjang" x-transition>
+    <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
+        <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">3</span>
+        PILIH MATA PELAJARAN
+    </h3>
+
+    {{-- Script untuk memproses data dari database ke format yang dimengerti Alpine --}}
+    @php
+        $mapelByJenjang = [];
+        foreach($subjects as $s) {
+            $mapelByJenjang[$s->jenjang][] = $s->name;
+        }
+    @endphp
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" 
+         x-init="listMapel = @js($mapelByJenjang)">
+        
+        {{-- Loop menggunakan data dari database yang sudah difilter berdasarkan jenjang --}}
+        <template x-for="m in (listMapel[jenjang] || [])" :key="m">
+            <div @click="toggleMapel(m)" 
+                 :class="selectedMapel.includes(m) ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'"
+                 class="p-5 border-2 rounded-2xl cursor-pointer flex items-center justify-between transition-all duration-200">
+                <span class="text-sm font-bold uppercase tracking-tight" x-text="m"></span>
+                <i class="fas" :class="selectedMapel.includes(m) ? 'fa-check-circle text-blue-400' : 'fa-plus text-slate-200'"></i>
+            </div>
+        </template>
+    </div>
+
+    {{-- Tampilan jika mapel belum tersedia di database untuk jenjang tersebut --}}
+    <template x-if="!listMapel[jenjang] || listMapel[jenjang].length === 0">
+        <div class="p-8 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+            <p class="text-slate-500 font-medium">Mata pelajaran untuk jenjang <span class="font-bold" x-text="jenjang"></span> belum tersedia.</p>
+        </div>
+    </template>
+
+    <div x-show="selectedMapel.length > 0" x-transition 
+         class="mt-8 p-8 bg-slate-50 border-2 border-slate-100 rounded-[2rem]">
+        
+        <div class="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">
+            <span>Itemized Receipt</span>
+            <span>Subtotal</span>
+        </div>
+
+        <div class="space-y-4">
+            <div class="flex justify-between items-start">
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold text-slate-700" x-text="tipePaket === 'borongan' ? 'Paket Seluruh Mata Pelajaran' : 'Pilihan Mata Pelajaran Satuan'"></span>
+                    <span class="text-[10px] text-slate-400 font-medium" 
+                          x-text="tipePaket === 'borongan' 
+                            ? (listMapel[jenjang] ? listMapel[jenjang].length : 0) + ' Mapel x Rp ' + (prices[jenjang] || 0).toLocaleString('id-ID')
+                            : selectedMapel.length + ' Mapel x Rp ' + (prices[jenjang] || 0).toLocaleString('id-ID')">
+                    </span>
+                </div>
+                <span class="text-sm font-black text-slate-900" 
+                      x-text="'Rp ' + (tipePaket === 'borongan' ? normalPriceBorongan : selectedMapel.length * prices[jenjang]).toLocaleString('id-ID')">
+                </span>
             </div>
 
-            <div x-show="selectedMapel.length > 0" x-transition 
-                 class="mt-8 p-8 bg-slate-50 border-2 border-slate-100 rounded-[2rem]">
-                
-                <div class="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">
-                    <span>Itemized Receipt</span>
-                    <span>Subtotal</span>
+            <div x-show="tipePaket === 'borongan'" class="flex justify-between items-center p-4 bg-orange-50 rounded-2xl border border-orange-100" x-transition>
+                <div class="flex flex-col">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-black text-orange-600 uppercase tracking-tight">Potongan Hemat</span>
+                        <span class="bg-orange-500 text-white text-[8px] px-1.5 py-0.5 rounded font-black">25% OFF</span>
+                    </div>
+                    <span class="text-[10px] text-orange-400 font-medium italic">Khusus pengambilan paket borongan</span>
                 </div>
+                <span class="text-sm font-black text-orange-600" 
+                      x-text="'- Rp ' + (normalPriceBorongan * prices.diskon_borongan).toLocaleString('id-ID')">
+                </span>
+            </div>
 
-                <div class="space-y-4">
-                    <div class="flex justify-between items-start">
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-slate-700" x-text="tipePaket === 'borongan' ? 'Paket Seluruh Mata Pelajaran' : 'Pilihan Mata Pelajaran Satuan'"></span>
-                            <span class="text-[10px] text-slate-400 font-medium" 
-                                  x-text="tipePaket === 'borongan' 
-                                    ? listMapel[jenjang].length + ' Mapel x Rp ' + (prices[jenjang] || 0).toLocaleString('id-ID')
-                                    : selectedMapel.length + ' Mapel x Rp ' + (prices[jenjang] || 0).toLocaleString('id-ID')">
-                            </span>
-                        </div>
-                        <span class="text-sm font-black text-slate-900" 
-                              x-text="'Rp ' + (tipePaket === 'borongan' ? normalPriceBorongan : selectedMapel.length * prices[jenjang]).toLocaleString('id-ID')">
-                        </span>
-                    </div>
+            <div x-show="mauMengaji" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed" x-transition>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold text-emerald-600 uppercase text-[11px] tracking-tight">Ekstra Pendampingan</span>
+                    <span class="text-[10px] text-slate-400 font-medium">Program Mengaji Privat</span>
+                </div>
+                <span class="text-sm font-black text-slate-900" x-text="'Rp ' + (prices.quran_prices[jenjang] || 0).toLocaleString('id-ID')"></span>
+            </div>
 
-                    <div x-show="tipePaket === 'borongan'" class="flex justify-between items-center p-4 bg-orange-50 rounded-2xl border border-orange-100" x-transition>
-                        <div class="flex flex-col">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-black text-orange-600 uppercase tracking-tight">Potongan Hemat</span>
-                                <span class="bg-orange-500 text-white text-[8px] px-1.5 py-0.5 rounded font-black">25% OFF</span>
-                            </div>
-                            <span class="text-[10px] text-orange-400 font-medium italic">Khusus pengambilan paket borongan</span>
-                        </div>
-                        <span class="text-sm font-black text-orange-600" 
-                              x-text="'- Rp ' + (normalPriceBorongan * prices.diskon_borongan).toLocaleString('id-ID')">
-                        </span>
-                    </div>
+            {{-- REVISI: RINCIAN TAMBAHAN JAM DI RECEIPT --}}
+            <div x-show="extraHours > 0" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed" x-transition>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold text-blue-600 uppercase text-[11px] tracking-tight">Tambahan Durasi</span>
+                    <span class="text-[10px] text-slate-400 font-medium" x-text="extraHours + ' Jam x Rp ' + (prices.extra_prices[jenjang] || 0).toLocaleString('id-ID')"></span>
+                </div>
+                <span class="text-sm font-black text-slate-900" x-text="'Rp ' + (extraHours * (prices.extra_prices[jenjang] || 0)).toLocaleString('id-ID')"></span>
+            </div>
 
-                    <div x-show="mauMengaji" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed" x-transition>
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-emerald-600 uppercase text-[11px] tracking-tight">Ekstra Pendampingan</span>
-                            <span class="text-[10px] text-slate-400 font-medium">Program Mengaji Privat</span>
-                        </div>
-                        <span class="text-sm font-black text-slate-900" x-text="'Rp ' + (prices.quran_prices[jenjang] || 0).toLocaleString('id-ID')"></span>
-                    </div>
+            <div x-show="metode === 'offline'" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed" x-transition>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold text-blue-600 uppercase text-[11px] tracking-tight">Biaya Operasional</span>
+                    <span class="text-[10px] text-slate-400 font-medium">Kunjungan Mentor ke Lokasi</span>
+                </div>
+                <span class="text-sm font-black text-slate-900">+ Rp 100.000</span>
+            </div>
 
-                    {{-- REVISI: RINCIAN TAMBAHAN JAM DI RECEIPT --}}
-                    <div x-show="extraHours > 0" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed" x-transition>
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-blue-600 uppercase text-[11px] tracking-tight">Tambahan Durasi</span>
-                            <span class="text-[10px] text-slate-400 font-medium" x-text="extraHours + ' Jam x Rp ' + (prices.extra_prices[jenjang] || 0).toLocaleString('id-ID')"></span>
-                        </div>
-                        <span class="text-sm font-black text-slate-900" x-text="'Rp ' + (extraHours * (prices.extra_prices[jenjang] || 0)).toLocaleString('id-ID')"></span>
-                    </div>
-
-                    <div x-show="metode === 'offline'" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed" x-transition>
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-blue-600 uppercase text-[11px] tracking-tight">Biaya Operasional</span>
-                            <span class="text-[10px] text-slate-400 font-medium">Kunjungan Mentor ke Lokasi</span>
-                        </div>
-                        <span class="text-sm font-black text-slate-900">+ Rp 100.000</span>
-                    </div>
-
-                    <div class="mt-6 pt-6 border-t-4 border-double border-slate-200 flex justify-between items-end">
-                        <div>
-                            <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Bayar</span>
-                            <span class="text-[9px] text-blue-500 font-bold italic">*Sudah termasuk PPN & Admin</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-2xl font-black text-slate-900 tracking-tighter" x-text="'Rp ' + totalPrice.toLocaleString('id-ID')"></span>
-                        </div>
-                    </div>
+            <div class="mt-6 pt-6 border-t-4 border-double border-slate-200 flex justify-between items-end">
+                <div>
+                    <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Bayar</span>
+                    <span class="text-[9px] text-blue-500 font-bold italic">*Sudah termasuk PPN & Admin</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-2xl font-black text-slate-900 tracking-tighter" x-text="'Rp ' + totalPrice.toLocaleString('id-ID')"></span>
                 </div>
             </div>
-        </section>
+        </div>
+    </div>
+</section>
 
         {{-- 4. MENGAJI --}}
         <section x-show="jenjang" x-transition>

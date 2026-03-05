@@ -81,6 +81,12 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/faqs/update/{id}', [PageController::class, 'updateFaq'])->name('admin.faq.update');
         Route::delete('/faqs/{id}', [PageController::class, 'deleteFaq'])->name('admin.faq.delete');
 
+        // --- MANAJEMEN MATA PELAJARAN (SUBJECTS) ---
+        Route::get('/subjects', [PageController::class, 'adminSubjects'])->name('admin.subjects');
+        Route::post('/subjects/store', [PageController::class, 'storeSubject'])->name('admin.subjects.store');
+        Route::put('/subjects/update/{id}', [PageController::class, 'updateSubject'])->name('admin.subjects.update');
+        Route::delete('/subjects/delete/{id}', [PageController::class, 'deleteSubject'])->name('admin.subjects.delete');
+
         Route::post('/verify-payment/{id}', [PageController::class, 'verifyEnrollment'])->name('admin.payments.verify');
         Route::delete('/reject-payment/{id}', [PageController::class, 'rejectPayment'])->name('admin.payments.reject');
 
@@ -103,6 +109,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/overview', [PageController::class, 'mentorOverview'])->name('mentor.overview');
         Route::get('/classes', [PageController::class, 'mentorClasses'])->name('mentor.classes');
         Route::get('/schedule', [PageController::class, 'mentorSchedule'])->name('mentor.schedule');
+        Route::get('/submissions', [PageController::class, 'mentorSubmissions'])->name('mentor.submissions');
         
         Route::post('/assignments/store', [PageController::class, 'storeAssignment'])->name('mentor.assignments.store');
         Route::post('/materials/store', [PageController::class, 'storeMaterial'])->name('mentor.storeMaterial');
@@ -124,6 +131,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/programs', [PageController::class, 'siswaPrograms'])->name('siswa.programs');
         Route::get('/schedule', [PageController::class, 'siswaSchedule'])->name('siswa.schedule');
         Route::get('/billing', [PageController::class, 'siswaBilling'])->name('siswa.billing');
+        
+        // REVISI: Tambahan Rute Aksi Siswa (Absen & Tugas)
+        Route::post('/submit-task', [PageController::class, 'submitTask'])->name('siswa.submitTask');
+        Route::post('/attendance', [PageController::class, 'siswaAbsen'])->name('siswa.absen');
     });
 
     Route::post('/logout', [PageController::class, 'logout'])->name('logout');

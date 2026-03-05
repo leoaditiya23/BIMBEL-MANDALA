@@ -47,6 +47,18 @@
             @endif
         </a>
 
+        {{-- REVISI: Master Mata Pelajaran --}}
+        <a href="{{ route('admin.subjects') }}" 
+            class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.subjects') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+            <div class="w-8 flex justify-center items-center">
+                <i class="fas fa-book-open text-lg"></i>
+            </div>
+            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Master Mapel</span>
+            @if(request()->routeIs('admin.subjects'))
+                <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
+            @endif
+        </a>
+
         {{-- Harga Reguler (Filtered) --}}
         <a href="{{ route('admin.programs', ['type' => 'reguler']) }}" 
             class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->fullUrlIs(route('admin.programs', ['type' => 'reguler'])) ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
