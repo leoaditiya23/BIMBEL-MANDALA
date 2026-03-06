@@ -14,8 +14,11 @@
     mauMengaji: sessionStorage.getItem('reg_mauMengaji') === 'true',
     lokasi: sessionStorage.getItem('reg_lokasi') || '',
     
-    // REVISI: Tambahan Jam (Data Dinamis)
+    // REVISI: Tambahan Jam, Frekuensi, dan Detail Jadwal
     extraHours: parseInt(sessionStorage.getItem('reg_extraHours')) || 0,
+    perMinggu: parseInt(sessionStorage.getItem('reg_perMinggu')) || 1,
+    jadwalDetail: sessionStorage.getItem('reg_jadwalDetail') || '',
+    scheduleNote: sessionStorage.getItem('reg_scheduleNote') || '',
     
     buktiTransfer: null,
     
@@ -26,7 +29,11 @@
         sessionStorage.setItem('reg_selectedMapel', JSON.stringify(this.selectedMapel));
         sessionStorage.setItem('reg_mauMengaji', this.mauMengaji);
         sessionStorage.setItem('reg_lokasi', this.lokasi);
-        sessionStorage.setItem('reg_extraHours', this.extraHours); // Simpan extra hours
+        sessionStorage.setItem('reg_extraHours', this.extraHours);
+        // Simpan data jadwal baru
+        sessionStorage.setItem('reg_perMinggu', this.perMinggu);
+        sessionStorage.setItem('reg_jadwalDetail', this.jadwalDetail);
+        sessionStorage.setItem('reg_scheduleNote', this.scheduleNote);
     },
 
     pilihPaket(tipe) {
@@ -54,11 +61,11 @@
         $quranSMP = $programs->where('jenjang', 'SMP')->first()->quran_price ?? 0;
         $quranSMA = $programs->where('jenjang', 'SMA')->first()->quran_price ?? 0;
 
-        // REVISI: Ambil harga extra jam dari DB (Asumsi kolom extra_hour_price ada di tabel programs)
-        $extraTK = $programs->where('jenjang', 'TK')->first()->extra_hour_price ?? 50000;
-        $extraSD = $programs->where('jenjang', 'SD')->first()->extra_hour_price ?? 50000;
-        $extraSMP = $programs->where('jenjang', 'SMP')->first()->extra_hour_price ?? 50000;
-        $extraSMA = $programs->where('jenjang', 'SMA')->first()->extra_hour_price ?? 50000;
+        // REVISI: Ambil harga extra jam dari DB (Asumsi kolom extra_meeting_price ada di tabel programs)
+        $extraTK = $programs->where('jenjang', 'TK')->first()->extra_meeting_price ?? 50000;
+        $extraSD = $programs->where('jenjang', 'SD')->first()->extra_meeting_price ?? 50000;
+        $extraSMP = $programs->where('jenjang', 'SMP')->first()->extra_meeting_price ?? 50000;
+        $extraSMA = $programs->where('jenjang', 'SMA')->first()->extra_meeting_price ?? 50000;
     @endphp
     
     'TK': {{ $priceTK }}, 
@@ -82,7 +89,7 @@
     },
     
     'diskon_borongan': 0.25
-},
+    },
 
     listMapel: {
     @php
@@ -122,25 +129,33 @@
     },
 
     get totalPrice() {
-        let total = 0;
+        let subtotal = 0;
         let pricePerMapel = this.prices[this.jenjang] || 0;
         
+        // 1. Hitung harga dasar berdasarkan paket
         if (this.tipePaket === 'borongan' && this.jenjang && this.listMapel[this.jenjang]) {
             let totalNormal = this.listMapel[this.jenjang].length * pricePerMapel;
-            total = totalNormal - (totalNormal * this.prices.diskon_borongan);
+            subtotal = totalNormal - (totalNormal * this.prices.diskon_borongan);
         } else {
-            total = this.selectedMapel.length * pricePerMapel;
+            subtotal = this.selectedMapel.length * pricePerMapel;
         }
 
+        // 2. REVISI: Kalikan dengan frekuensi pertemuan per minggu (perMinggu)
+        // Dan kalikan 4 untuk tagihan per bulan
+        let total = (subtotal * this.perMinggu) * 4;
+
+        // 3. Tambahan Biaya Mengaji (Flat per bulan)
         if (this.mauMengaji) {
             total += (this.prices.quran_prices[this.jenjang] || 0);
         }
 
-        // REVISI: Hitung tambahan jam otomatis (Harga per jam dari DB x Jumlah jam)
+        // 4. Tambahan Jam (Per jam dikali jumlah pertemuan per bulan)
         if (this.extraHours > 0) {
-            total += (this.extraHours * (this.prices.extra_prices[this.jenjang] || 0));
+            let extraPricePerSession = this.extraHours * (this.prices.extra_prices[this.jenjang] || 0);
+            total += (extraPricePerSession * this.perMinggu * 4);
         }
 
+        // 5. Biaya Transport/Metode Offline
         if (this.metode === 'offline') total += 100000;
         
         return total;
@@ -277,10 +292,10 @@ class="relative">
                         </div>
                     </div>
 
-                   {{-- STEP 2: KONFIGURASI --}}
+                {{-- STEP 2: KONFIGURASI --}}
 <div x-show="step === 2" x-transition x-cloak class="relative">
     <div class="space-y-12">
-        {{-- 1. JENJANG --}}
+        {{-- 1. JENJANG SEKOLAH --}}
         <section>
             <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
                 <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">1</span>
@@ -295,7 +310,7 @@ class="relative">
             </div>
         </section>
 
-        {{-- 2. PAKET --}}
+        {{-- 2. BANDINGKAN PAKET BELAJAR --}}
         <section x-show="jenjang" x-transition>
             <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
                 <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">2</span>
@@ -308,7 +323,7 @@ class="relative">
                     <span class="font-bold text-slate-800 uppercase block tracking-tight">SATUAN / ECERAN</span>
                     <div class="mt-2 text-2xl font-black">
                         <span x-text="'Rp ' + (prices[jenjang] || 0).toLocaleString('id-ID')"></span>
-                        <span class="text-[10px] text-slate-400 font-bold">/ MAPEL</span>
+                        <span class="text-[10px] text-slate-400 font-bold">/ PERTEMUAN</span>
                     </div>
                 </button>
 
@@ -323,7 +338,7 @@ class="relative">
                         <span class="text-xs text-slate-400 line-through font-bold" x-text="'Rp ' + normalPriceBorongan.toLocaleString('id-ID')"></span>
                         <div class="text-2xl font-black text-slate-800">
                             <span x-text="'Rp ' + (normalPriceBorongan - (normalPriceBorongan * prices.diskon_borongan)).toLocaleString('id-ID')"></span>
-                            <span class="text-[10px] text-slate-400 font-bold">/ BULAN</span>
+                            <span class="text-[10px] text-slate-400 font-bold">/ PERTEMUAN</span>
                         </div>
                     </div>
                     <div class="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black px-6 py-1 rounded-bl-xl uppercase tracking-widest">BEST DEAL</div>
@@ -331,143 +346,74 @@ class="relative">
             </div>
         </section>
 
-       {{-- 3. MAPEL --}}
-<section x-show="jenjang" x-transition>
-    <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
-        <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">3</span>
-        PILIH MATA PELAJARAN
-    </h3>
-
-    {{-- Script untuk memproses data dari database ke format yang dimengerti Alpine --}}
-    @php
-        $mapelByJenjang = [];
-        foreach($subjects as $s) {
-            $mapelByJenjang[$s->jenjang][] = $s->name;
-        }
-    @endphp
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" 
-         x-init="listMapel = @js($mapelByJenjang)">
-        
-        {{-- Loop menggunakan data dari database yang sudah difilter berdasarkan jenjang --}}
-        <template x-for="m in (listMapel[jenjang] || [])" :key="m">
-            <div @click="toggleMapel(m)" 
-                 :class="selectedMapel.includes(m) ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'"
-                 class="p-5 border-2 rounded-2xl cursor-pointer flex items-center justify-between transition-all duration-200">
-                <span class="text-sm font-bold uppercase tracking-tight" x-text="m"></span>
-                <i class="fas" :class="selectedMapel.includes(m) ? 'fa-check-circle text-blue-400' : 'fa-plus text-slate-200'"></i>
-            </div>
-        </template>
-    </div>
-
-    {{-- Tampilan jika mapel belum tersedia di database untuk jenjang tersebut --}}
-    <template x-if="!listMapel[jenjang] || listMapel[jenjang].length === 0">
-        <div class="p-8 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-            <p class="text-slate-500 font-medium">Mata pelajaran untuk jenjang <span class="font-bold" x-text="jenjang"></span> belum tersedia.</p>
-        </div>
-    </template>
-
-    <div x-show="selectedMapel.length > 0" x-transition 
-         class="mt-8 p-8 bg-slate-50 border-2 border-slate-100 rounded-[2rem]">
-        
-        <div class="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">
-            <span>Itemized Receipt</span>
-            <span>Subtotal</span>
-        </div>
-
-        <div class="space-y-4">
-            <div class="flex justify-between items-start">
-                <div class="flex flex-col">
-                    <span class="text-sm font-bold text-slate-700" x-text="tipePaket === 'borongan' ? 'Paket Seluruh Mata Pelajaran' : 'Pilihan Mata Pelajaran Satuan'"></span>
-                    <span class="text-[10px] text-slate-400 font-medium" 
-                          x-text="tipePaket === 'borongan' 
-                            ? (listMapel[jenjang] ? listMapel[jenjang].length : 0) + ' Mapel x Rp ' + (prices[jenjang] || 0).toLocaleString('id-ID')
-                            : selectedMapel.length + ' Mapel x Rp ' + (prices[jenjang] || 0).toLocaleString('id-ID')">
-                    </span>
-                </div>
-                <span class="text-sm font-black text-slate-900" 
-                      x-text="'Rp ' + (tipePaket === 'borongan' ? normalPriceBorongan : selectedMapel.length * prices[jenjang]).toLocaleString('id-ID')">
-                </span>
-            </div>
-
-            <div x-show="tipePaket === 'borongan'" class="flex justify-between items-center p-4 bg-orange-50 rounded-2xl border border-orange-100" x-transition>
-                <div class="flex flex-col">
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-black text-orange-600 uppercase tracking-tight">Potongan Hemat</span>
-                        <span class="bg-orange-500 text-white text-[8px] px-1.5 py-0.5 rounded font-black">25% OFF</span>
-                    </div>
-                    <span class="text-[10px] text-orange-400 font-medium italic">Khusus pengambilan paket borongan</span>
-                </div>
-                <span class="text-sm font-black text-orange-600" 
-                      x-text="'- Rp ' + (normalPriceBorongan * prices.diskon_borongan).toLocaleString('id-ID')">
-                </span>
-            </div>
-
-            <div x-show="mauMengaji" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed" x-transition>
-                <div class="flex flex-col">
-                    <span class="text-sm font-bold text-emerald-600 uppercase text-[11px] tracking-tight">Ekstra Pendampingan</span>
-                    <span class="text-[10px] text-slate-400 font-medium">Program Mengaji Privat</span>
-                </div>
-                <span class="text-sm font-black text-slate-900" x-text="'Rp ' + (prices.quran_prices[jenjang] || 0).toLocaleString('id-ID')"></span>
-            </div>
-
-            {{-- REVISI: RINCIAN TAMBAHAN JAM DI RECEIPT --}}
-            <div x-show="extraHours > 0" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed" x-transition>
-                <div class="flex flex-col">
-                    <span class="text-sm font-bold text-blue-600 uppercase text-[11px] tracking-tight">Tambahan Durasi</span>
-                    <span class="text-[10px] text-slate-400 font-medium" x-text="extraHours + ' Jam x Rp ' + (prices.extra_prices[jenjang] || 0).toLocaleString('id-ID')"></span>
-                </div>
-                <span class="text-sm font-black text-slate-900" x-text="'Rp ' + (extraHours * (prices.extra_prices[jenjang] || 0)).toLocaleString('id-ID')"></span>
-            </div>
-
-            <div x-show="metode === 'offline'" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed" x-transition>
-                <div class="flex flex-col">
-                    <span class="text-sm font-bold text-blue-600 uppercase text-[11px] tracking-tight">Biaya Operasional</span>
-                    <span class="text-[10px] text-slate-400 font-medium">Kunjungan Mentor ke Lokasi</span>
-                </div>
-                <span class="text-sm font-black text-slate-900">+ Rp 100.000</span>
-            </div>
-
-            <div class="mt-6 pt-6 border-t-4 border-double border-slate-200 flex justify-between items-end">
-                <div>
-                    <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Bayar</span>
-                    <span class="text-[9px] text-blue-500 font-bold italic">*Sudah termasuk PPN & Admin</span>
-                </div>
-                <div class="text-right">
-                    <span class="text-2xl font-black text-slate-900 tracking-tighter" x-text="'Rp ' + totalPrice.toLocaleString('id-ID')"></span>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-        {{-- 4. MENGAJI --}}
+        {{-- 3. PILIH MATA PELAJARAN --}}
         <section x-show="jenjang" x-transition>
             <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
-                <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">4</span>
-                EKSTRA PENDAMPINGAN
+                <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">3</span>
+                PILIH MATA PELAJARAN
             </h3>
-            <div @click="mauMengaji = !mauMengaji; saveToSession()" 
-                 :class="mauMengaji ? 'border-emerald-500 bg-emerald-50 shadow-md' : 'border-slate-100 bg-slate-50'"
-                 class="p-6 border-2 rounded-3xl cursor-pointer flex items-center justify-between transition-all group">
-                <div class="flex items-center gap-5">
-                    <div :class="mauMengaji ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'" class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-colors">
-                        <i class="fas fa-book-quran"></i>
+
+            @php
+                $mapelByJenjang = [];
+                foreach($subjects as $s) {
+                    $mapelByJenjang[$s->jenjang][] = $s->name;
+                }
+            @endphp
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" x-init="listMapel = @js($mapelByJenjang)">
+                <template x-for="m in (listMapel[jenjang] || [])" :key="m">
+                    <div @click="toggleMapel(m)" 
+                         :class="selectedMapel.includes(m) ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300'"
+                         class="p-5 border-2 rounded-2xl cursor-pointer flex items-center justify-between transition-all duration-200">
+                        <span class="text-sm font-bold uppercase tracking-tight" x-text="m"></span>
+                        <i class="fas" :class="selectedMapel.includes(m) ? 'fa-check-circle text-blue-400' : 'fa-plus text-slate-200'"></i>
                     </div>
-                    <div>
-                        <span class="block font-bold text-slate-800 uppercase text-sm">TAMBAHAN MENGAJI</span>
-                        <span class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest" 
-                              x-text="'+ Rp ' + (prices.quran_prices[jenjang] || 0).toLocaleString('id-ID') + ' / BULAN'"></span>
-                    </div>
-                </div>
-                <div :class="mauMengaji ? 'bg-emerald-500' : 'bg-slate-300'" class="w-7 h-7 rounded-full border-4 border-white shadow-md transition-all"></div>
+                </template>
             </div>
         </section>
 
-        {{-- REVISI: 5. TAMBAHAN JAM (EXTRA HOURS) --}}
+        {{-- 4. FREKUENSI PERTEMUAN --}}
         <section x-show="jenjang" x-transition>
             <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
+                <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">4</span>
+                FREKUENSI PERTEMUAN
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <template x-for="f in [1, 2, 3, 4, 5]">
+                    <button type="button" @click="perMinggu = f; saveToSession()" 
+                            :class="perMinggu === f ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-slate-500 border-slate-200'"
+                            class="py-4 border-2 rounded-2xl font-bold transition-all text-sm">
+                        <span x-text="f + 'x Seminggu'"></span>
+                    </button>
+                </template>
+            </div>
+            <p class="mt-3 text-[11px] text-slate-400 font-medium italic">*Tagihan akan dihitung otomatis untuk 4 minggu (1 bulan)</p>
+        </section>
+
+        {{-- 5. PENGATURAN JADWAL RUTIN --}}
+        <section x-show="jenjang" x-transition class="space-y-6">
+            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
                 <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">5</span>
+                PENGATURAN JADWAL RUTIN
+            </h3>
+
+            <div class="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-4">
+                <div class="flex items-center gap-3 ml-2">
+                    <i class="fas fa-pen-to-square text-blue-600 text-xs"></i>
+                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Detail Hari & Jam Belajar</label>
+                </div>
+                <div class="relative">
+                    <textarea x-model="jadwalDetail" @input="saveToSession()"
+                              placeholder="Contoh: Senin (16:00), Rabu (16:00), dan Jumat (19:00)..."
+                              class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-[1.5rem] p-5 text-sm transition-all min-h-[100px] outline-none placeholder:text-slate-300"></textarea>
+                </div>
+            </div>
+        </section>
+
+        {{-- 6. TAMBAHAN JAM BELAJAR (EXTRA HOURS) --}}
+        <section x-show="jenjang" x-transition>
+            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
+                <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">6</span>
                 TAMBAHAN JAM BELAJAR
             </h3>
             <div class="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
@@ -484,24 +430,90 @@ class="relative">
 
                 <div class="flex items-center gap-6 bg-slate-50 p-2 rounded-2xl border border-slate-100">
                     <button type="button" @click="if(extraHours > 0) { extraHours--; saveToSession() }" 
-                            class="w-12 h-12 bg-white text-slate-600 rounded-xl shadow-sm hover:bg-red-50 hover:text-red-500 transition-all font-bold text-xl flex items-center justify-center">-</button>
-                    
+                            class="w-12 h-12 bg-white text-slate-600 rounded-xl shadow-sm font-bold text-xl flex items-center justify-center">-</button>
                     <div class="text-center min-w-[60px]">
                         <span class="block text-2xl font-black text-slate-800" x-text="extraHours"></span>
                         <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">JAM</span>
                     </div>
-
                     <button type="button" @click="extraHours++; saveToSession()" 
-                            class="w-12 h-12 bg-white text-slate-600 rounded-xl shadow-sm hover:bg-blue-50 hover:text-blue-500 transition-all font-bold text-xl flex items-center justify-center">+</button>
+                            class="w-12 h-12 bg-white text-slate-600 rounded-xl shadow-sm font-bold text-xl flex items-center justify-center">+</button>
                 </div>
             </div>
-            <p class="mt-4 text-[10px] text-slate-400 text-center italic font-medium">
-                *Tambahan jam berlaku untuk durasi belajar tiap sesinya setiap minggu.
-            </p>
+        </section>
+
+        {{-- 7. EKSTRA PENDAMPINGAN (MENGAJI) --}}
+        <section x-show="jenjang" x-transition>
+            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
+                <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">7</span>
+                EKSTRA PENDAMPINGAN
+            </h3>
+            <div @click="mauMengaji = !mauMengaji; saveToSession()" 
+                 :class="mauMengaji ? 'border-emerald-500 bg-emerald-50 shadow-md' : 'border-slate-100 bg-slate-50'"
+                 class="p-6 border-2 rounded-3xl cursor-pointer flex items-center justify-between transition-all group">
+                <div class="flex items-center gap-5">
+                    <div :class="mauMengaji ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'" class="w-14 h-14 rounded-2xl flex items-center justify-center text-xl">
+                        <i class="fas fa-book-quran"></i>
+                    </div>
+                    <div>
+                        <span class="block font-bold text-slate-800 uppercase text-sm">TAMBAHAN MENGAJI</span>
+                        <span class="text-[11px] font-bold text-emerald-600 uppercase tracking-widest" 
+                              x-text="'+ Rp ' + (prices.quran_prices[jenjang] || 0).toLocaleString('id-ID') + ' / BULAN'"></span>
+                    </div>
+                </div>
+                <div :class="mauMengaji ? 'bg-emerald-500' : 'bg-slate-300'" class="w-7 h-7 rounded-full border-4 border-white shadow-md transition-all"></div>
+            </div>
+        </section>
+
+        {{-- RINCIAN PAKET BULANAN (BILLING DETAILS) --}}
+        <section x-show="selectedMapel.length > 0" x-transition class="mt-8 p-8 bg-slate-50 border-2 border-slate-100 rounded-[2rem]">
+            <div class="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">
+                <span>Rincian Paket Bulanan</span>
+                <span>Subtotal</span>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex justify-between items-start">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-slate-700" x-text="tipePaket === 'borongan' ? 'Paket Seluruh Mata Pelajaran' : 'Pilihan Mata Pelajaran Satuan'"></span>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[10px] text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded-full" x-text="perMinggu + 'x Seminggu'"></span>
+                            <span class="text-[10px] text-slate-400 font-medium" x-text="'(Total ' + (perMinggu * 4) + ' Sesi / Bulan)'"></span>
+                        </div>
+                    </div>
+                    <span class="text-sm font-black text-slate-900" 
+                          x-text="'Rp ' + ((tipePaket === 'borongan' ? normalPriceBorongan : selectedMapel.length * prices[jenjang]) * perMinggu * 4).toLocaleString('id-ID')"></span>
+                </div>
+
+                <div x-show="tipePaket === 'borongan'" class="flex justify-between items-center p-4 bg-orange-50 rounded-2xl border border-orange-100">
+                    <span class="text-xs font-black text-orange-600 uppercase">Potongan Hemat 25% OFF</span>
+                    <span class="text-sm font-black text-orange-600" 
+                          x-text="'- Rp ' + (normalPriceBorongan * prices.diskon_borongan * perMinggu * 4).toLocaleString('id-ID')"></span>
+                </div>
+
+                <div x-show="mauMengaji" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed">
+                    <span class="text-[11px] font-bold text-emerald-600 uppercase">Ekstra Mengaji Privat</span>
+                    <span class="text-sm font-black text-slate-900" x-text="'Rp ' + (prices.quran_prices[jenjang] || 0).toLocaleString('id-ID')"></span>
+                </div>
+
+                <div x-show="extraHours > 0" class="flex justify-between items-center py-2 border-t border-slate-200/60 border-dashed">
+                    <span class="text-[11px] font-bold text-blue-600 uppercase" x-text="extraHours + ' Jam Tambahan x ' + perMinggu + ' Sesi'"></span>
+                    <span class="text-sm font-black text-slate-900" x-text="'Rp ' + (extraHours * (prices.extra_prices[jenjang] || 0) * perMinggu * 4).toLocaleString('id-ID')"></span>
+                </div>
+
+                <div class="mt-6 pt-6 border-t-4 border-double border-slate-200 flex justify-between items-end">
+                    <div>
+                        <span class="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Bayar (1 Bulan)</span>
+                        <span class="text-[9px] text-blue-500 font-bold italic">*Sudah termasuk PPN & Admin</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-2xl font-black text-slate-900 tracking-tighter" x-text="'Rp ' + totalPrice.toLocaleString('id-ID')"></span>
+                    </div>
+                </div>
+            </div>
         </section>
 
         {{-- SUMMARY BAR --}}
-        <div class="mt-10 p-8 bg-slate-900 text-white rounded-[2rem] shadow-xl border border-white/5">
+        <div class="mt-10 p-8 bg-slate-900 text-white rounded-[2rem] shadow-xl">
             <div class="flex flex-col md:flex-row justify-between items-center gap-6">
                 <div class="text-center md:text-left">
                     <span class="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] block mb-1">TOTAL PEMBAYARAN:</span>
@@ -530,49 +542,45 @@ class="relative">
         </div>
     </div>
 </div>
-{{-- STEP 3: PEMBAYARAN (VERSI NOMINAL UNIK) --}}
+
+{{-- STEP 3: PEMBAYARAN --}}
 <div x-show="step === 3" x-transition x-cloak>
     <form action="{{ route('enroll.program') }}" method="POST" enctype="multipart/form-data">
         @csrf
-        {{-- Hidden Inputs --}}
-        <input type="hidden" name="program_id" value="1"> {{-- Sesuaikan ID Program --}}
+        {{-- Hidden Inputs agar data terkirim ke database --}}
+        <input type="hidden" name="program_id" value="1">
         <input type="hidden" name="total_harga" :value="totalPrice">
         <input type="hidden" name="jenjang" :value="jenjang">
+        <input type="hidden" name="tipe_paket" :value="tipePaket">
+        <input type="hidden" name="per_minggu" :value="perMinggu">
+        <input type="hidden" name="extra_hours" :value="extraHours">
+        <input type="hidden" name="is_mengaji" :value="mauMengaji ? 1 : 0">
+        <input type="hidden" name="jadwal_detail" :value="jadwalDetail">
+        <input type="hidden" name="selected_subjects" :value="JSON.stringify(selectedMapel)">
 
         <div class="grid md:grid-cols-2 gap-10">
-            {{-- KIRI: RINGKASAN & TOTAL --}}
             <div class="space-y-6">
                 <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">RINGKASAN PESANAN</h3>
                 <div class="bg-slate-900 rounded-[2rem] p-8 text-white shadow-xl relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                    
                     <div class="space-y-4 relative z-10">
                         <div class="flex justify-between border-b border-white/10 pb-3">
-                            <span class="text-[10px] text-white/50 font-bold uppercase tracking-widest">PROGRAM</span>
+                            <span class="text-[10px] text-white/50 font-bold uppercase tracking-widest">JENJANG</span>
                             <span class="font-bold text-sm uppercase" x-text="jenjang"></span>
                         </div>
                         
-                        {{-- TOTAL DENGAN KODE UNIK --}}
                         <div class="pt-4 bg-white/5 p-6 rounded-2xl border border-white/10">
-                            <p class="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-1">TOTAL TRANSFER (Hingga Digit Terakhir)</p>
+                            <p class="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-1">TOTAL TRANSFER (+ KODE UNIK)</p>
                             <h3 class="text-4xl font-black tracking-tighter text-orange-500" 
                                 x-text="'Rp ' + (totalPrice + parseInt('{{ substr(preg_replace('/[^0-9]/', '', Auth::user()->whatsapp ?? '000'), -3) }}')).toLocaleString('id-ID')">
                             </h3>
-                            <div class="mt-3 flex items-start gap-2">
-                                <i class="fas fa-info-circle text-orange-500 mt-0.5 text-xs"></i>
-                                <p class="text-[9px] text-white/60 leading-tight italic">
-                                    Sistem menggunakan 3 digit terakhir nomor WhatsApp Anda sebagai kode unik untuk verifikasi otomatis.
-                                </p>
-                            </div>
+                            <p class="text-[9px] text-white/60 mt-2 italic">*3 digit terakhir adalah kode unik verifikasi.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {{-- KANAN: INSTRUKSI BANK & UPLOAD --}}
             <div class="space-y-6">
                 <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">TRANSFER PEMBAYARAN</h3>
-                
                 <div class="bg-blue-50 border-2 border-blue-100 rounded-[2rem] p-6 text-center">
                     <span class="text-blue-600 font-black text-[10px] px-3 py-1 bg-white rounded-lg border border-blue-200 uppercase">BCA - Mandala Group</span>
                     <div class="text-3xl font-black text-slate-800 tracking-wider py-2">8901 2233 44</div>
@@ -581,7 +589,7 @@ class="relative">
 
                 <div class="space-y-3">
                     <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">UPLOAD BUKTI TRANSFER</span>
-                    <label class="block border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center cursor-pointer hover:bg-slate-50 transition relative h-40 flex items-center justify-center overflow-hidden">
+                    <label class="block border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center cursor-pointer hover:bg-slate-50 relative h-40 flex items-center justify-center overflow-hidden">
                         <input type="file" name="bukti_pembayaran" @change="handleFileUpload" class="hidden" accept="image/*" required>
                         <template x-if="!buktiTransfer">
                             <div class="text-slate-400">
@@ -598,10 +606,8 @@ class="relative">
         </div>
 
         <div class="mt-12 flex flex-col md:flex-row gap-4">
-            <button type="button" @click="step = 2" class="flex-1 bg-slate-100 text-slate-500 py-6 rounded-2xl font-bold uppercase hover:bg-slate-200 transition">KEMBALI</button>
-            <button type="submit" 
-                    :disabled="!buktiTransfer" 
-                    class="w-full bg-orange-500 text-white py-6 rounded-2xl font-bold uppercase shadow-xl tracking-[0.2em] disabled:opacity-50 hover:bg-orange-600 transition-all">
+            <button type="button" @click="step = 2" class="flex-1 bg-slate-100 text-slate-500 py-6 rounded-2xl font-bold uppercase">KEMBALI</button>
+            <button type="submit" :disabled="!buktiTransfer" class="w-full bg-orange-500 text-white py-6 rounded-2xl font-bold uppercase shadow-xl tracking-[0.2em] disabled:opacity-50">
                 KONFIRMASI SEKARANG
             </button>
         </div>

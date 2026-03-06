@@ -17,6 +17,8 @@ class Enrollment extends Model
     protected $fillable = [
         'user_id',
         'program_id',
+        'per_minggu',        // Tambahan revisi
+        'jadwal_detail',     // Tambahan revisi
         'metode',
         'jenjang',
         'mapel',

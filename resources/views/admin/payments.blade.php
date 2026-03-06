@@ -26,7 +26,7 @@
                 @foreach($payments as $payment)
                     <div class="p-6 hover:bg-slate-50/80 transition-all flex flex-wrap md:flex-nowrap justify-between items-center group">
                         <div class="flex items-center space-x-4 flex-1">
-                            {{-- Ikon profil statis (tidak kedip) --}}
+                            {{-- Ikon profil statis --}}
                             <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
                                 <i class="fas fa-user-edit text-xl"></i>
                             </div>
@@ -39,10 +39,20 @@
                                         <span class="px-2 py-0.5 bg-amber-100 text-amber-600 text-[9px] font-black rounded-md uppercase tracking-tighter">Belum Upload</span>
                                     @endif
                                 </div>
-                                <div class="flex items-center gap-2 mt-0.5">
-                                    <span class="text-[10px] font-black text-blue-500 uppercase">{{ $payment->program_name ?? 'Program' }}</span>
-                                    <span class="text-slate-300">•</span>
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">WA: {{ $payment->user_wa ?? '-' }}</span>
+                                <div class="flex flex-col gap-0.5 mt-0.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] font-black text-blue-500 uppercase">{{ $payment->program_name ?? 'Program' }}</span>
+                                        <span class="text-slate-300">•</span>
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">WA: {{ $payment->user_wa ?? '-' }}</span>
+                                    </div>
+                                    {{-- Info Jadwal & Extra --}}
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[9px] font-black text-blue-600/70 uppercase italic tracking-tighter">{{ $payment->per_minggu ?? 0 }}x Pertemuan</span>
+                                        @if(($payment->extra_hours ?? 0) > 0)
+                                            <span class="text-[9px] font-black text-orange-500 uppercase italic tracking-tighter">+{{ $payment->extra_hours }} Jam Extra</span>
+                                        @endif
+                                        <span class="text-[9px] font-bold text-slate-400 italic">{{ $payment->jadwal_detail ?? 'Jadwal belum diatur' }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -60,7 +70,8 @@
                         <div class="flex items-center gap-2 ml-auto mt-4 md:mt-0">
                             @if($payment->bukti_pembayaran)
                                 <button type="button" 
-                                    onclick="showImageModal('{{ asset('uploads/bukti/' . $payment->bukti_pembayaran) }}')"
+                                    {{-- Path disesuaikan dengan Storage::disk('public') sesuai Controller --}}
+                                    onclick="showImageModal('{{ asset('storage/bukti/' . $payment->bukti_pembayaran) }}')"
                                     class="h-11 w-11 flex items-center justify-center rounded-xl border-2 border-blue-50 bg-white text-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all">
                                     <i class="fas fa-image text-sm"></i>
                                 </button>
@@ -99,9 +110,8 @@
     </div>
 </div>
 
-{{-- MODAL IMAGE: Sekarang ukurannya diperkecil (max-w-md) --}}
+{{-- MODAL IMAGE --}}
 <div id="imageModal" class="fixed inset-0 z-[999] hidden bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-300" onclick="closeModal()">
-    {{-- REVISI: Ukuran diganti dari max-w-2xl ke max-w-md --}}
     <div class="relative max-w-md w-full bg-white rounded-[2rem] overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
         <div class="p-5 border-b flex justify-between items-center bg-white">
             <div>
@@ -112,8 +122,8 @@
                 <i class="fas fa-times text-xs"></i>
             </button>
         </div>
-        <div class="p-2 bg-slate-50">
-            <img id="modalImage" src="" alt="Bukti Transfer" class="w-full max-h-[60vh] object-contain rounded-xl">
+        <div class="p-2 bg-slate-50 flex justify-center">
+            <img id="modalImage" src="" alt="Bukti Transfer" class="w-full max-h-[60vh] object-contain rounded-xl shadow-inner">
         </div>
         <div class="p-4 bg-white text-center">
             <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest italic leading-tight">Pastikan Nominal Transfer Sesuai dengan Kode Unik Siswa</p>

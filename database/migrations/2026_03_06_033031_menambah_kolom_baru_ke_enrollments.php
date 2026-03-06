@@ -6,12 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-  public function up()
+    public function up()
 {
-    // Tambahkan baris IF ini di awal
+    // Tambahkan baris if ini:
     if (!Schema::hasTable('subjects')) {
         Schema::create('subjects', function (Blueprint $table) {
             $table->id();
@@ -22,11 +19,10 @@ return new class extends Migration
     }
 }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
-        Schema::dropIfExists('subjects');
+        Schema::table('enrollments', function (Blueprint $table) {
+            $table->dropColumn(['per_minggu', 'extra_hours', 'jadwal_detail', 'ambil_mengaji', 'bukti_pembayaran']);
+        });
     }
 };

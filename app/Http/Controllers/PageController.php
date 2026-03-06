@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 use App\Models\Mentor; 
 use Carbon\Carbon;
+use App\Models\Program;
 
 class PageController extends Controller
 {
@@ -21,9 +22,18 @@ class PageController extends Controller
      */
     // Contoh di LandingController.php
 public function index() {
-    // Ambil semua program dari database, bukan data manual di view
+    // 1. Ambil data Program
     $programs = Program::with('mentor')->get(); 
-    return view('welcome', compact('programs'));
+
+    // 2. Ambil data FAQ
+    $faqs = DB::table('faqs')->orderBy('created_at', 'asc')->get();
+
+    // 3. Ambil data Mentor (TAMBAHKAN BARIS INI)
+    // Kita ambil dari model Mentor yang sudah kamu use di atas
+    $mentors = Mentor::all();
+
+    // 4. Kirim SEMUA variabel ke view
+    return view('pages.home', compact('programs', 'faqs', 'mentors'));
 }
 
     public function faq() { 
@@ -166,15 +176,21 @@ public function index() {
     }
 
     public function adminPayments() {
-        $payments = DB::table('enrollments')
-            ->join('users', 'enrollments.user_id', '=', 'users.id')
-            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name')
-            ->orderBy('enrollments.created_at', 'desc')
-            ->get();
+    $payments = DB::table('enrollments')
+        ->join('users', 'enrollments.user_id', '=', 'users.id')
+        ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+        ->select(
+            'enrollments.*', 
+            'users.name as user_name', 
+            'users.whatsapp as user_wa', // Tambahkan ini agar nomor WA muncul
+            'programs.name as program_name'
+        )
+        ->where('enrollments.status_pembayaran', 'pending') // Biasanya admin hanya cek yang pending
+        ->orderBy('enrollments.created_at', 'desc')
+        ->get();
 
-        return view('admin.payments', compact('payments'));
-    }
+    return view('admin.payments', compact('payments'));
+}
 
     public function adminPrograms(Request $request, $type = null) {
         $query = DB::table('programs')
@@ -633,35 +649,47 @@ public function index() {
     }
 
     public function enrollProgram(Request $request) {
-        $request->validate([
-            'program_id' => 'required|exists:programs,id',
-            'bukti_pembayaran' => 'required|image|mimes:jpg,jpeg,png|max:2048',
-        ]);
+    // 1. Validasi
+    $request->validate([
+        'program_id' => 'required|exists:programs,id',
+        'per_minggu' => 'required',
+        'jadwal_detail' => 'required',
+        'extra_hours' => 'nullable|numeric', // TAMBAHKAN INI
+        'bukti_pembayaran' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+    ]);
 
-        $program = DB::table('programs')->where('id', $request->program_id)->first();
-        $user = Auth::user();
-        
-        // Logic Kode Unik berdasarkan 3 digit terakhir nomor WA (Sesuai Saved Info Admin)
-        $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp ?? '000');
-        $uniqueCode = (int) substr($cleanPhone, -3); 
-        $finalAmount = $program->price + $uniqueCode;
+    $program = DB::table('programs')->where('id', $request->program_id)->first();
+    $user = Auth::user();
+    
+    // Logic Kode Unik
+    $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp ?? '000');
+    $uniqueCode = (int) substr($cleanPhone, -3); 
+    
+    // Gunakan totalPrice dari request + kode unik
+    $finalAmount = $request->total_harga + $uniqueCode;
 
-        $path = $request->file('bukti_pembayaran')->store('bukti', 'public');
-        $namaFile = basename($path);
+    $path = $request->file('bukti_pembayaran')->store('bukti', 'public');
+    $namaFile = basename($path);
 
-        DB::table('enrollments')->insert([
-            'user_id' => $user->id,
-            'program_id' => $request->program_id,
-            'total_harga' => $finalAmount,
-            'payment_code' => $uniqueCode,
-            'status_pembayaran' => 'pending',
-            'bukti_pembayaran' => $namaFile,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+    // 2. SIMPAN KE DATABASE
+    DB::table('enrollments')->insert([
+        'user_id' => $user->id,
+        'program_id' => $request->program_id,
+        'per_minggu' => $request->per_minggu,
+        'extra_hours' => $request->extra_hours ?? 0,    // TAMBAHKAN INI
+        'ambil_mengaji' => $request->ambil_mengaji ?? 0, // TAMBAHKAN INI
+        'jadwal_detail' => $request->jadwal_detail,
+        'mapel' => $request->mapel,                     // TAMBAHKAN INI (untuk daftar mapel)
+        'total_harga' => $finalAmount,
+        'payment_code' => $uniqueCode,
+        'status_pembayaran' => 'pending',
+        'bukti_pembayaran' => $namaFile,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 
-        return redirect()->route('siswa.billing')->with('success', 'Berhasil! Menunggu verifikasi.');
-    }
+    return redirect()->route('siswa.billing')->with('success', 'Berhasil! Menunggu verifikasi.');
+}
     /**
      * ==========================================
      * 6. FITUR MENTOR

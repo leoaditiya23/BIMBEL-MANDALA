@@ -103,6 +103,7 @@
                         <tr class="bg-slate-50/50">
                             <th class="py-4 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Siswa</th>
                             <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Jenjang & Program</th>
+                            <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Detail Jadwal</th>
                             <th class="py-4 px-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">Nominal</th>
                             <th class="py-4 px-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                             <th class="py-4 px-8 text-right text-[11px] font-black text-slate-400 uppercase tracking-widest">Waktu</th>
@@ -130,6 +131,15 @@
                                         <p class="text-xs font-bold text-slate-800 tracking-tight leading-none">
                                             {{ $enrollment->program_name }}
                                         </p>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6 text-center">
+                                    <div class="flex flex-col items-center gap-1">
+                                        <span class="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ $enrollment->per_minggu }}x Pertemuan</span>
+                                        @if($enrollment->extra_hours > 0)
+                                            <span class="text-[9px] font-bold text-orange-600">+{{ $enrollment->extra_hours }} Jam Extra</span>
+                                        @endif
+                                        <p class="text-[9px] text-slate-400 italic leading-tight">{{ $enrollment->jadwal_detail }}</p>
                                     </div>
                                 </td>
                                 <td class="py-4 px-6 text-center text-xs font-bold text-slate-700">

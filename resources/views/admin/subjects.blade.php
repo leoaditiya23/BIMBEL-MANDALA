@@ -11,7 +11,7 @@
     <div class="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
         <div>
             <h2 class="text-3xl font-black text-slate-800 tracking-tighter">
-                Master <span class="text-blue-600">Mata Pelajaran</span>
+                Master Mata Pelajaran</span>
             </h2>
             <p class="text-sm text-slate-500 mt-1 font-medium">Kelola daftar bimbingan dasar sebelum dijadikan paket program.</p>
         </div>
@@ -80,6 +80,7 @@
                         <div class="bg-white">
                             <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1 px-1">Jenjang Pelajaran</label>
                             <select name="jenjang" required class="w-full px-3 py-3 rounded-xl bg-[#f8fafc] border-2 border-slate-100 outline-none font-bold text-slate-800 text-xs focus:border-blue-500 transition">
+                                <option value="TK">TK</option>
                                 <option value="SD">SD</option>
                                 <option value="SMP">SMP</option>
                                 <option value="SMA">SMA</option>
@@ -119,6 +120,7 @@
                         <div class="bg-white">
                             <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1 px-1">Jenjang Pelajaran</label>
                             <select name="jenjang" x-model="editData.jenjang" class="w-full px-3 py-3 rounded-xl bg-[#f8fafc] border-2 border-slate-100 outline-none font-bold text-slate-800 text-xs focus:border-blue-500 transition">
+                                <option value="TK">TK</option>
                                 <option value="SD">SD</option>
                                 <option value="SMP">SMP</option>
                                 <option value="SMA">SMA</option>
