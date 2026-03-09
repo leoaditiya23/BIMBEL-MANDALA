@@ -48,19 +48,40 @@
                         $jam_jadwal = $jadwal->jam_tampil ?? '--:--';
                         $is_now = (date('H:i') >= $jam_jadwal && date('H:i') <= \Carbon\Carbon::parse($jam_jadwal)->addHour()->format('H:i'));
                     @endphp
-                    <div class="group relative flex items-center p-4 {{ $is_now ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-transparent' }} border-2 rounded-2xl transition-all">
+                    <div class="group relative p-4 {{ $is_now ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-transparent' }} border-2 rounded-2xl transition-all">
                         @if($is_now)
                             <span class="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-8 bg-indigo-500 rounded-full"></span>
                         @endif
-                        <div class="flex-1">
-                            <p class="font-black text-slate-800">{{ $jadwal->program_name }}</p>
-                            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-tighter italic">Siswa: {{ $jadwal->student_name }}</p>
+                        
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex-1">
+                                <p class="font-black text-slate-800">{{ $jadwal->program_name }}</p>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-tighter italic">Siswa: {{ $jadwal->student_name }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-black {{ $is_now ? 'text-indigo-600' : 'text-slate-400' }}">{{ $jam_jadwal }}</p>
+                                <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-full {{ $is_now ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-200 text-slate-500' }}">
+                                    {{ $is_now ? 'Sesi Aktif' : 'Terjadwal' }}
+                                </span>
+                            </div>
                         </div>
-                        <div class="text-right">
-                            <p class="text-sm font-black {{ $is_now ? 'text-indigo-600' : 'text-slate-400' }}">{{ $jam_jadwal }}</p>
-                            <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-full {{ $is_now ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-200 text-slate-500' }}">
-                                {{ $is_now ? 'Sesi Aktif' : 'Terjadwal' }}
-                            </span>
+
+                        {{-- REVISI: Tambahan Detail Lokasi & Alamat Siswa --}}
+                        <div class="mt-2 pt-3 border-t border-slate-200/50 flex flex-col gap-1">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-map-marker-alt text-[10px] text-indigo-500"></i>
+                                    <span class="text-[9px] font-black text-slate-600 uppercase tracking-widest">{{ $jadwal->lokasi_cabang ?? 'Wilayah Belum Diatur' }}</span>
+                                </div>
+                                @if($jadwal->alamat_siswa)
+                                    <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($jadwal->alamat_siswa) }}" target="_blank" class="text-[8px] font-black bg-white text-indigo-600 px-2 py-1 rounded-md border border-indigo-100 hover:bg-indigo-500 hover:text-white transition shadow-sm">
+                                        BUKA MAPS
+                                    </a>
+                                @endif
+                            </div>
+                            <p class="text-[10px] text-slate-400 font-medium italic ml-4 leading-relaxed pr-10">
+                                {{ $jadwal->alamat_siswa ?? 'Alamat siswa tidak tersedia' }}
+                            </p>
                         </div>
                     </div>
                 @empty
@@ -110,7 +131,7 @@
         </div>
     </div>
 
-    {{-- MODAL TAMBAH TUGAS (REVISI PILIH SISWA) --}}
+    {{-- MODAL TAMBAH TUGAS --}}
     <div x-show="openModal" class="fixed inset-0 z-[999] overflow-y-auto" x-cloak>
         <div class="flex items-center justify-center min-h-screen px-4">
             <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="openModal = false"></div>
@@ -121,7 +142,6 @@
                 <form action="{{ route('mentor.assignments.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                     @csrf
                     
-                    {{-- DROPDOWN PILIH SISWA --}}
                     <div>
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-2 italic">Pilih Siswa Tujuan</label>
                         <select name="student_id" required 

@@ -103,6 +103,8 @@
                         <tr class="bg-slate-50/50">
                             <th class="py-4 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Siswa</th>
                             <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Jenjang & Program</th>
+                            {{-- REVISI: Tambahkan kolom lokasi --}}
+                            <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Lokasi & Alamat</th>
                             <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Detail Jadwal</th>
                             <th class="py-4 px-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">Nominal</th>
                             <th class="py-4 px-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">Status</th>
@@ -129,7 +131,18 @@
                                             {{ $enrollment->program_jenjang }}
                                         </span>
                                         <p class="text-xs font-bold text-slate-800 tracking-tight leading-none">
-                                            {{ $enrollment->program_name }}
+                                            {{ $enrollment->mapel ?? $enrollment->program_name }}
+                                        </p>
+                                    </div>
+                                </td>
+                                {{-- REVISI: Data Lokasi & Alamat --}}
+                                <td class="py-4 px-6">
+                                    <div class="flex flex-col">
+                                        <span class="text-[9px] font-black text-blue-600 uppercase tracking-tighter">
+                                            <i class="fas fa-map-marker-alt mr-1"></i>{{ $enrollment->lokasi_cabang ?? 'Wilayah Belum Dipilih' }}
+                                        </span>
+                                        <p class="text-[9px] text-slate-500 font-medium leading-tight mt-1 truncate max-w-[150px]" title="{{ $enrollment->alamat_siswa }}">
+                                            {{ $enrollment->alamat_siswa ?? 'Alamat tidak diisi' }}
                                         </p>
                                     </div>
                                 </td>

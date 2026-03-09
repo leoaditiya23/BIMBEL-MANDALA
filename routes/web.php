@@ -36,6 +36,8 @@ Route::prefix('program')->group(function () {
 Route::middleware(['guest'])->group(function () {
     Route::get('/login', [PageController::class, 'login'])->name('login');
     Route::post('/login', [PageController::class, 'authenticate'])->name('login.store');
+    // REVISI: Tambahkan GET logout di sini agar bisa diakses lewat URL langsung
+    Route::get('/logout', [PageController::class, 'logout']); 
     Route::get('/daftar', [PageController::class, 'register'])->name('register');
     Route::post('/daftar', [PageController::class, 'registerStore'])->name('register.store');
     
@@ -71,6 +73,7 @@ Route::middleware(['auth'])->group(function () {
         
         // --- MANAJEMEN PESAN ---
         Route::get('/messages', [PageController::class, 'adminMessages'])->name('admin.messages');
+        // REVISI: Gunakan POST/GET jika DELETE bermasalah, tapi di sini saya biarkan sesuai aslinya
         Route::delete('/messages/{id}', [PageController::class, 'deleteMessage'])->name('admin.messages.delete');
         
         Route::post('/messages/{id}/to-faq', [PageController::class, 'messageToFaq'])->name('admin.messages.to_faq');
@@ -137,5 +140,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/attendance', [PageController::class, 'siswaAbsen'])->name('siswa.absen');
     });
 
+    // Logout via POST tetap ada untuk keamanan form
     Route::post('/logout', [PageController::class, 'logout'])->name('logout');
+    // Tambahan GET logout agar navigasi manual tidak error
+    Route::get('/logout', [PageController::class, 'logout'])->name('logout.get');
 });

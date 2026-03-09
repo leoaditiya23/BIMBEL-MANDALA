@@ -129,12 +129,18 @@ public function index() {
         return redirect()->route('login');
     }
 
-    public function logout(Request $request) {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        return redirect('/');
-    }
+    public function logout(Request $request)
+{
+    Auth::logout();
+    
+    // Menghapus semua sesi agar bersih total
+    $request->session()->invalidate();
+    
+    // Membuat token baru agar tidak terkena 419 lagi nanti
+    $request->session()->regenerateToken();
+    
+    return redirect('/');
+}
 
     /**
      * ==========================================
@@ -158,6 +164,7 @@ public function index() {
      * ==========================================
      */
     public function adminOverview() {
+    try {
         $stats = [
             'total_pendapatan' => DB::table('enrollments')->where('status_pembayaran', 'verified')->sum('total_harga'),
             'total_siswa'     => DB::table('enrollments')->where('status_pembayaran', 'verified')->distinct('user_id')->count(), 
@@ -168,12 +175,24 @@ public function index() {
         $recent_enrollments = DB::table('enrollments')
             ->join('users', 'enrollments.user_id', '=', 'users.id')
             ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->select('enrollments.*', 'users.name as user_name', 'programs.name as program_name', 'programs.jenjang as program_jenjang')
+            ->select(
+                'enrollments.*', 
+                'users.name as user_name', 
+                'enrollments.mapel as program_name', 
+                'enrollments.lokasi_cabang', // Tambahan revisi
+                'enrollments.alamat_siswa', // Tambahan revisi
+                'programs.jenjang as program_jenjang'
+            )
             ->orderBy('enrollments.created_at', 'desc')
             ->paginate(10);
 
         return view('admin.overview', compact('stats', 'recent_enrollments'));
+        
+    } catch (\Exception $e) {
+        // Jika error, tampilkan pesannya di layar agar kita tahu salahnya di mana
+        return $e->getMessage();
     }
+}
 
     public function adminPayments() {
     $payments = DB::table('enrollments')
@@ -182,10 +201,11 @@ public function index() {
         ->select(
             'enrollments.*', 
             'users.name as user_name', 
-            'users.whatsapp as user_wa', // Tambahkan ini agar nomor WA muncul
-            'programs.name as program_name'
+            'users.whatsapp as user_wa',
+            // UBAH BARIS INI JUGA:
+            'enrollments.mapel as program_name' 
         )
-        ->where('enrollments.status_pembayaran', 'pending') // Biasanya admin hanya cek yang pending
+        ->where('enrollments.status_pembayaran', 'pending')
         ->orderBy('enrollments.created_at', 'desc')
         ->get();
 
@@ -509,7 +529,7 @@ public function index() {
      * 5. FITUR SISWA
      * ==========================================
      */
-    public function siswaOverview() {
+   public function siswaOverview() {
         $user = Auth::user();
 
         // REVISI: Tambahkan relasi materials agar siswa bisa melihat sesi yang dibuat mentor
@@ -518,7 +538,13 @@ public function index() {
             ->leftJoin('users as mentors', 'programs.mentor_id', '=', 'mentors.id')
             ->where('enrollments.user_id', $user->id)
             ->where('enrollments.status_pembayaran', 'verified')
-            ->select('programs.*', 'mentors.name as mentor_name')
+            ->select(
+                'programs.*', 
+                'mentors.name as mentor_name',
+                'enrollments.lokasi_cabang', // Tambahan revisi
+                'enrollments.alamat_siswa',  // Tambahan revisi
+                'enrollments.mapel'          // Tambahan revisi untuk nama mapel terpilih
+            )
             ->get()
             ->map(function($program) use ($user) {
                 // Ambil materi per program
@@ -654,8 +680,12 @@ public function index() {
         'program_id' => 'required|exists:programs,id',
         'per_minggu' => 'required',
         'jadwal_detail' => 'required',
-        'extra_hours' => 'nullable|numeric', // TAMBAHKAN INI
+        'extra_hours' => 'nullable|numeric',
         'bukti_pembayaran' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+        'program_name' => 'required',
+        // REVISI: Tambahkan validasi untuk lokasi dan alamat
+        'lokasi_cabang' => 'nullable|string',
+        'alamat_siswa' => 'nullable|string'
     ]);
 
     $program = DB::table('programs')->where('id', $request->program_id)->first();
@@ -676,10 +706,17 @@ public function index() {
         'user_id' => $user->id,
         'program_id' => $request->program_id,
         'per_minggu' => $request->per_minggu,
-        'extra_hours' => $request->extra_hours ?? 0,    // TAMBAHKAN INI
-        'ambil_mengaji' => $request->ambil_mengaji ?? 0, // TAMBAHKAN INI
+        'extra_hours' => $request->extra_hours ?? 0,
+        'ambil_mengaji' => $request->ambil_mengaji ?? 0,
         'jadwal_detail' => $request->jadwal_detail,
-        'mapel' => $request->mapel,                     // TAMBAHKAN INI (untuk daftar mapel)
+        
+        // REVISI DI SINI: Mengambil nama mapel dari input
+        'mapel' => $request->program_name, 
+        
+        // TAMBAHAN REVISI: Mengambil lokasi cabang sesuai pilihan dropdown di form
+        'lokasi_cabang' => $request->lokasi_cabang, 
+        'alamat_siswa' => $request->alamat_siswa ?? $user->alamat, 
+        
         'total_harga' => $finalAmount,
         'payment_code' => $uniqueCode,
         'status_pembayaran' => 'pending',
@@ -705,7 +742,15 @@ public function index() {
             ->where('programs.mentor_id', $user->id)
             ->where('enrollments.status_pembayaran', 'verified')
             ->where('programs.hari', $hari_ini)
-            ->select('enrollments.id', 'programs.name as program_name', 'programs.jam_mulai', 'users.name as student_name', 'users.id as student_id')
+            ->select(
+                'enrollments.id', 
+                'programs.name as program_name', 
+                'programs.jam_mulai', 
+                'users.name as student_name', 
+                'users.id as student_id',
+                'enrollments.lokasi_cabang', // Tambahan revisi
+                'enrollments.alamat_siswa'   // Tambahan revisi
+            )
             ->get()
             ->map(function($item) {
                 $item->jam_tampil = $item->jam_mulai ? Carbon::parse($item->jam_mulai)->format('H:i') : '--:--';

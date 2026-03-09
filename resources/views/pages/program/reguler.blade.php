@@ -244,7 +244,7 @@ class="relative">
                         <input type="hidden" name="selected_mapel[]" :value="mapel">
                     </template>
 
-                    {{-- STEP 1: METODE --}}
+                   {{-- STEP 1: METODE --}}
                     <div x-show="step === 1" x-transition>
                         <h3 class="text-xl font-bold text-slate-800 mb-8 flex items-center gap-2 uppercase tracking-tight">
                             <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">1</span>
@@ -268,11 +268,26 @@ class="relative">
                                         <i class="fas fa-car text-2xl"></i>
                                     </div>
                                     <h4 class="font-bold text-xl text-slate-800 uppercase tracking-tight">Reguler Offline</h4>
+                                    
                                     <div x-show="metode === 'offline'" class="mt-6" @click.stop>
-                                        <select x-model="lokasi" class="w-full border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-blue-600">
+                                        <select x-model="lokasi" name="lokasi_cabang" :value="lokasi" class="w-full border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-blue-600 mb-4">
                                             <option value="">-- PILIH WILAYAH --</option>
-                                            <template x-for="loc in listLokasi"><option :value="loc" x-text="loc"></option></template>
+                                            <template x-for="loc in listLokasi">
+                                                <option :value="loc" x-text="loc"></option>
+                                            </template>
                                         </select>
+
+                                        <template x-if="lokasi">
+                                            <div x-transition>
+                                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Alamat Lengkap Rumah / Titik Temu</label>
+                                                <textarea 
+                                                    name="alamat_siswa" 
+                                                    required
+                                                    class="w-full border-2 border-slate-100 p-4 rounded-2xl text-sm font-medium outline-none focus:border-blue-600 min-h-[100px]"
+                                                    placeholder="Contoh: Jl. Merpati No.12, RT 03/RW 01, Kel. Pedurungan Lor (Dekat Alfamart)"></textarea>
+                                                <p class="text-[9px] text-blue-600 mt-2 font-medium italic">*Alamat ini akan digunakan mentor untuk koordinasi kelas offline.</p>
+                                            </div>
+                                        </template>
                                     </div>
                                 </div>
                             </label>
@@ -293,22 +308,22 @@ class="relative">
                     </div>
 
                 {{-- STEP 2: KONFIGURASI --}}
-<div x-show="step === 2" x-transition x-cloak class="relative">
-    <div class="space-y-12">
-        {{-- 1. JENJANG SEKOLAH --}}
-        <section>
-            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
-                <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">1</span>
-                JENJANG SEKOLAH
-            </h3>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <template x-for="j in ['TK', 'SD', 'SMP', 'SMA']">
-                    <button type="button" @click="jenjang = j; pilihPaket(tipePaket)" 
-                            :class="jenjang === j ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-slate-500 border-slate-200'"
-                            class="py-5 border-2 rounded-2xl font-black uppercase text-sm transition-all" x-text="j"></button>
-                </template>
-            </div>
-        </section>
+                <div x-show="step === 2" x-transition x-cloak class="relative">
+                    <div class="space-y-12">
+                        {{-- 1. JENJANG SEKOLAH --}}
+                        <section>
+                            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 uppercase tracking-tight">
+                                <span class="w-7 h-7 bg-blue-600 text-white rounded flex items-center justify-center text-xs font-black">1</span>
+                                JENJANG SEKOLAH
+                            </h3>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <template x-for="j in ['TK', 'SD', 'SMP', 'SMA']">
+                                    <button type="button" @click="jenjang = j; pilihPaket(tipePaket)" 
+                                            :class="jenjang === j ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-slate-500 border-slate-200'"
+                                            class="py-5 border-2 rounded-2xl font-black uppercase text-sm transition-all" x-text="j"></button>
+                                </template>
+                            </div>
+                        </section>
 
         {{-- 2. BANDINGKAN PAKET BELAJAR --}}
         <section x-show="jenjang" x-transition>
@@ -370,6 +385,7 @@ class="relative">
                     </div>
                 </template>
             </div>
+            <input type="hidden" name="program_name" :value="selectedMapel.join(', ')">
         </section>
 
         {{-- 4. FREKUENSI PERTEMUAN --}}
@@ -590,7 +606,10 @@ class="relative">
                 <div class="space-y-3">
                     <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">UPLOAD BUKTI TRANSFER</span>
                     <label class="block border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center cursor-pointer hover:bg-slate-50 relative h-40 flex items-center justify-center overflow-hidden">
-                        <input type="file" name="bukti_pembayaran" @change="handleFileUpload" class="hidden" accept="image/*" required>
+                        {{-- REVISI: Menggunakan FileReader agar variabel buktiTransfer terisi dengan benar --}}
+                        <input type="file" name="bukti_pembayaran" 
+                               @change="const file = $event.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => { buktiTransfer = e.target.result; }; reader.readAsDataURL(file); }" 
+                               class="hidden" accept="image/*" required>
                         <template x-if="!buktiTransfer">
                             <div class="text-slate-400">
                                 <i class="fas fa-camera text-2xl mb-2"></i>
@@ -607,7 +626,13 @@ class="relative">
 
         <div class="mt-12 flex flex-col md:flex-row gap-4">
             <button type="button" @click="step = 2" class="flex-1 bg-slate-100 text-slate-500 py-6 rounded-2xl font-bold uppercase">KEMBALI</button>
-            <button type="submit" :disabled="!buktiTransfer" class="w-full bg-orange-500 text-white py-6 rounded-2xl font-bold uppercase shadow-xl tracking-[0.2em] disabled:opacity-50">
+            
+            {{-- REVISI: Menggunakan button type button agar memicu showConfirmation di x-data --}}
+            <button type="button" 
+                    @click="showConfirmation($event)"
+                    :disabled="!buktiTransfer" 
+                    :class="!buktiTransfer ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-orange-500 shadow-xl'"
+                    class="w-full text-white py-6 rounded-2xl font-bold uppercase shadow-xl tracking-[0.2em] transition-all duration-300 disabled:opacity-50">
                 KONFIRMASI SEKARANG
             </button>
         </div>
