@@ -39,7 +39,7 @@
                 <table class="w-full">
                     <thead>
                         <tr class="border-b-2 border-slate-50">
-                            <th class="text-left py-4 px-4 font-black text-slate-400 text-[10px] uppercase tracking-widest italic">Program</th>
+                            <th class="text-left py-4 px-4 font-black text-slate-400 text-[10px] uppercase tracking-widest italic">Program & Detail</th>
                             <th class="text-left py-4 px-4 font-black text-slate-400 text-[10px] uppercase tracking-widest italic">Nominal</th>
                             <th class="text-left py-4 px-4 font-black text-slate-400 text-[10px] uppercase tracking-widest italic">Status</th>
                             <th class="text-left py-4 px-4 font-black text-slate-400 text-[10px] uppercase tracking-widest italic">Tanggal</th>
@@ -50,13 +50,21 @@
                         @foreach($payments as $payment)
                             <tr class="group hover:bg-slate-50/50 transition-all">
                                 <td class="py-5 px-4">
-                                    <p class="font-bold text-slate-800">{{ $payment->program_name }}</p>
-                                    <p class="text-[10px] text-slate-400 font-medium tracking-tight">ID TX #{{ $payment->id }}</p>
+                                    <p class="font-bold text-slate-800 uppercase text-xs">{{ $payment->nama_program ?? $payment->program_name }}</p>
+                                    <div class="flex flex-col gap-1 mt-1">
+                                        <p class="text-[9px] text-blue-600 font-black uppercase tracking-tight">
+                                            <i class="fas fa-map-marker-alt"></i> {{ $payment->lokasi_cabang ?? 'Online' }}
+                                        </p>
+                                        <p class="text-[9px] text-slate-500 italic">
+                                            <i class="fas fa-clock"></i> {{ $payment->jadwal_detail }}
+                                        </p>
+                                        <p class="text-[9px] text-slate-300 font-medium tracking-tighter uppercase">ID TX #{{ $payment->id }}</p>
+                                    </div>
                                 </td>
                                 <td class="py-5 px-4">
                                     <p class="font-black text-slate-800 text-sm">Rp {{ number_format($payment->total_harga ?? 0, 0, ',', '.') }}</p>
                                     @if(isset($payment->payment_code))
-                                        <p class="text-[10px] text-orange-500 font-bold uppercase italic">Kode: {{ $payment->payment_code }}</p>
+                                        <p class="text-[10px] text-orange-500 font-bold uppercase italic">Kode Unik: {{ $payment->payment_code }}</p>
                                     @endif
                                 </td>
                                 <td class="py-5 px-4">
@@ -79,8 +87,14 @@
                                 </td>
                                 <td class="py-5 px-4 text-right">
                                     @if($payment->bukti_pembayaran)
+                                        @php
+                                            // Deteksi apakah di database sudah ada prefix folder 'bukti/' atau belum
+                                            $path = Str::contains($payment->bukti_pembayaran, 'bukti/') 
+                                                    ? asset('storage/' . $payment->bukti_pembayaran) 
+                                                    : asset('storage/bukti/' . $payment->bukti_pembayaran);
+                                        @endphp
                                         <button type="button" 
-                                            @click="imgSrc = '{{ asset('uploads/bukti/' . $payment->bukti_pembayaran) }}'; openModal = true" 
+                                            @click="imgSrc = '{{ $path }}'; openModal = true" 
                                             class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300 flex items-center justify-center ml-auto shadow-sm">
                                             <i class="fas fa-image"></i>
                                         </button>
@@ -114,7 +128,6 @@
         
         <div class="relative max-w-2xl w-full flex flex-col items-center" @click.stop>
             <div class="bg-white p-2 rounded-2xl shadow-2xl relative overflow-hidden">
-                {{-- GAMBAR DILETAKKAN DISINI --}}
                 <img :src="imgSrc" class="w-full h-auto max-h-[80vh] rounded-xl object-contain shadow-inner" @click.away="openModal = false">
             </div>
             

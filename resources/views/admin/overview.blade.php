@@ -1,18 +1,16 @@
 @extends('admin.dashboard_admin')
 
 @section('admin_content')
-    {{-- Revisi: Penambahan relative dan z-index agar konten tidak menimpa sidebar saat scale 0.85 --}}
     <div class="w-full pb-20 relative z-10" 
          x-transition:enter="transition ease-out duration-300" 
          x-transition:enter-start="opacity-0 translate-y-4" 
-         x-data="{ statusFilter: 'semua' }">
+         x-data="{ statusFilter: 'semua', showModalJadwal: false, selectedEnrollment: null }">
         
         <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Ringkasan <span class="text-slate-800">Dashboard</span></h2>
         <p class="text-sm text-slate-500 mt-1 font-medium mb-8">Lihat ringkasan data dan statistik penting aplikasi Mandala.</p>
         
         {{-- Stat Cards Section --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            {{-- Total Pendapatan --}}
             <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
@@ -28,7 +26,6 @@
                 </div>
             </div>
             
-            {{-- Total Siswa --}}
             <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
@@ -44,7 +41,6 @@
                 </div>
             </div>
 
-            {{-- Total Mentor --}}
             <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
@@ -60,7 +56,6 @@
                 </div>
             </div>
 
-            {{-- Total Program --}}
             <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
@@ -82,14 +77,13 @@
             <div class="p-8 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 flex-shrink-0">
                 <div>
                     <h3 class="text-lg font-bold text-slate-800 tracking-tight">Pendaftaran Terbaru</h3>
-                    <p class="text-xs text-slate-400 mt-1">Sistem sinkronisasi otomatis</p>
+                    <p class="text-xs text-slate-400 mt-1">Pantau lokasi dan pilihan jadwal siswa</p>
                 </div>
 
                 <div class="flex items-center gap-2 bg-slate-50 p-1 rounded-xl">
                     <button @click="statusFilter = 'semua'" :class="statusFilter === 'semua' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'" class="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">Semua</button>
                     <button @click="statusFilter = 'verified'" :class="statusFilter === 'verified' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'" class="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">Verified</button>
                     <button @click="statusFilter = 'pending'" :class="statusFilter === 'pending' ? 'bg-white shadow-sm text-amber-600' : 'text-slate-400'" class="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">Pending</button>
-                    <button @click="statusFilter = 'rejected'" :class="statusFilter === 'rejected' ? 'bg-white shadow-sm text-rose-600' : 'text-slate-400'" class="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">Ditolak</button>
                 </div>
 
                 <a href="{{ route('admin.payments') }}" class="text-blue-600 hover:text-blue-700 text-xs font-bold flex items-center transition-colors">
@@ -101,14 +95,11 @@
                 <table class="w-full text-left border-collapse">
                     <thead class="sticky top-0 z-10 bg-white">
                         <tr class="bg-slate-50/50">
-                            <th class="py-4 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Siswa</th>
-                            <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Jenjang & Program</th>
-                            {{-- REVISI: Tambahkan kolom lokasi --}}
-                            <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Lokasi & Alamat</th>
-                            <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Detail Jadwal</th>
-                            <th class="py-4 px-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">Nominal</th>
+                            <th class="py-4 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Siswa & Lokasi</th>
+                            <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Program</th>
+                            <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Detail Pertemuan</th>
                             <th class="py-4 px-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                            <th class="py-4 px-8 text-right text-[11px] font-black text-slate-400 uppercase tracking-widest">Waktu</th>
+                            <th class="py-4 px-8 text-right text-[11px] font-black text-slate-400 uppercase tracking-widest">Penugasan</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
@@ -121,54 +112,49 @@
                                         </div>
                                         <div>
                                             <p class="text-xs font-bold text-slate-700 leading-tight">{{ $enrollment->user_name }}</p>
-                                            <p class="text-[9px] text-slate-400">#UID-{{ $enrollment->user_id }}</p>
+                                            <p class="text-[10px] font-bold text-blue-600 mt-0.5 uppercase">
+                                                @php
+                                                    $isOnline = str_contains(strtoupper($enrollment->lokasi_cabang ?? ''), 'ONLINE') || ($enrollment->metode ?? '') === 'online';
+                                                @endphp
+
+                                                @if($isOnline)
+                                                    <i class="fas fa-video text-[9px] mr-1"></i> Zoom Meeting
+                                                @else
+                                                    <i class="fas fa-map-marker-alt text-[9px] mr-1"></i> {{ $enrollment->lokasi_cabang ?? 'Offline' }}
+                                                @endif
+                                            </p>
+                                            @if(!$isOnline && ($enrollment->alamat_semarang ?? null))
+                                                <p class="text-[9px] text-slate-400 italic leading-none mt-1">{{ $enrollment->alamat_semarang }}</p>
+                                            @endif
                                         </div>
                                     </div>
                                 </td>
                                 <td class="py-4 px-6">
-                                    <div class="flex items-center gap-2">
-                                        <span class="px-2 py-0.5 rounded-md bg-slate-900 text-[8px] font-black text-white uppercase tracking-tighter shadow-sm flex-shrink-0">
-                                            {{ $enrollment->program_jenjang }}
-                                        </span>
-                                        <p class="text-xs font-bold text-slate-800 tracking-tight leading-none">
-                                            {{ $enrollment->mapel ?? $enrollment->program_name }}
-                                        </p>
-                                    </div>
-                                </td>
-                                {{-- REVISI: Data Lokasi & Alamat --}}
-                                <td class="py-4 px-6">
-                                    <div class="flex flex-col">
-                                        <span class="text-[9px] font-black text-blue-600 uppercase tracking-tighter">
-                                            <i class="fas fa-map-marker-alt mr-1"></i>{{ $enrollment->lokasi_cabang ?? 'Wilayah Belum Dipilih' }}
-                                        </span>
-                                        <p class="text-[9px] text-slate-500 font-medium leading-tight mt-1 truncate max-w-[150px]" title="{{ $enrollment->alamat_siswa }}">
-                                            {{ $enrollment->alamat_siswa ?? 'Alamat tidak diisi' }}
-                                        </p>
-                                    </div>
-                                </td>
-                                <td class="py-4 px-6 text-center">
-                                    <div class="flex flex-col items-center gap-1">
-                                        <span class="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{{ $enrollment->per_minggu }}x Pertemuan</span>
-                                        @if($enrollment->extra_hours > 0)
-                                            <span class="text-[9px] font-bold text-orange-600">+{{ $enrollment->extra_hours }} Jam Extra</span>
-                                        @endif
-                                        <p class="text-[9px] text-slate-400 italic leading-tight">{{ $enrollment->jadwal_detail }}</p>
-                                    </div>
-                                </td>
-                                <td class="py-4 px-6 text-center text-xs font-bold text-slate-700">
-                                    Rp {{ number_format($enrollment->total_harga, 0, ',', '.') }}
-                                </td>
-                                <td class="py-4 px-6 text-center">
-                                    @if($enrollment->status_pembayaran === 'verified')
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-emerald-50 text-emerald-600 border border-emerald-100">Verified</span>
-                                    @elseif($enrollment->status_pembayaran === 'rejected')
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-rose-50 text-rose-600 border border-rose-100">Ditolak</span>
-                                    @else
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase bg-amber-50 text-amber-600 border border-amber-100">Pending</span>
+                                    <span class="px-2 py-0.5 rounded-md bg-slate-900 text-[8px] font-black text-white uppercase tracking-tighter">{{ $enrollment->program_jenjang }}</span>
+                                    <p class="text-xs font-bold text-slate-800 mt-1">{{ $enrollment->mapel ?? ($enrollment->program_name ?? 'Program') }}</p>
+                                    @if(($enrollment->ambil_mengaji ?? '') === 'ya')
+                                        <span class="text-[8px] font-black text-emerald-600 uppercase italic">+ Ambil Ngaji</span>
                                     @endif
                                 </td>
+                                <td class="py-4 px-6 text-center">
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-black text-slate-700 italic">{{ $enrollment->jadwal_pertemuan ?? 'Belum Pilih Hari' }}</span>
+                                        <div class="flex items-center justify-center gap-2 mt-1">
+                                            <span class="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-bold uppercase">{{ $enrollment->jumlah_pertemuan ?? '0' }}x Pertemuan</span>
+                                            <span class="text-[8px] bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-600 font-bold uppercase">{{ $enrollment->metode ?? 'N/A' }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6 text-center">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase {{ ($enrollment->status_pembayaran ?? '') === 'verified' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600' }}">
+                                        {{ $enrollment->status_pembayaran ?? 'pending' }}
+                                    </span>
+                                </td>
                                 <td class="py-4 px-8 text-right">
-                                    <p class="text-xs font-medium text-slate-500">{{ \Carbon\Carbon::parse($enrollment->created_at)->format('d/m/Y') }}</p>
+                                    <button @click="showModalJadwal = true; selectedEnrollment = {{ json_encode($enrollment) }}" 
+                                            class="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-sm">
+                                        {{ ($enrollment->mentor_id ?? null) ? 'Ganti Mentor' : 'Pilih Mentor' }}
+                                    </button>
                                 </td>
                             </tr>
                         @endforeach
@@ -176,28 +162,52 @@
                 </table>
             </div>
 
+            {{-- Pagination --}}
             <div class="px-8 py-3 bg-white border-t border-slate-50 flex items-center justify-between flex-shrink-0">
                 <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Showing {{ $recent_enrollments->firstItem() ?? 0 }}-{{ $recent_enrollments->lastItem() ?? 0 }} of {{ $recent_enrollments->total() }}
+                    Total {{ $recent_enrollments->total() }} Data
                 </div>
-                
                 <div class="flex items-center gap-1">
-                    @if ($recent_enrollments->onFirstPage())
-                        <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50 text-slate-300 cursor-not-allowed text-xs"><i class="fas fa-chevron-left"></i></span>
-                    @else
-                        <a href="{{ $recent_enrollments->previousPageUrl() }}" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-blue-600 hover:bg-blue-600 hover:text-white transition-all text-xs"><i class="fas fa-chevron-left"></i></a>
-                    @endif
-
-                    <div class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 font-black text-[10px]">
-                        {{ $recent_enrollments->currentPage() }}
-                    </div>
-
-                    @if ($recent_enrollments->hasMorePages())
-                        <a href="{{ $recent_enrollments->nextPageUrl() }}" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-blue-600 hover:bg-blue-600 hover:text-white transition-all text-xs"><i class="fas fa-chevron-right"></i></a>
-                    @else
-                        <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50 text-slate-300 cursor-not-allowed text-xs"><i class="fas fa-chevron-right"></i></span>
-                    @endif
+                    {{ $recent_enrollments->links() }}
                 </div>
+            </div>
+        </div>
+
+        {{-- MODAL PILIH MENTOR --}}
+        <div x-show="showModalJadwal" 
+             class="fixed inset-0 z-[99] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+             x-cloak>
+            <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl" @click.away="showModalJadwal = false">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-black text-slate-800 tracking-tighter">Tugaskan <span class="text-indigo-600">Mentor</span></h3>
+                    <button @click="showModalJadwal = false" class="text-slate-400 hover:text-rose-500"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-100">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Pilihan Jadwal Siswa:</p>
+                    <p class="text-xs font-bold text-slate-700" x-text="selectedEnrollment?.jadwal_pertemuan || '-'"></p>
+                </div>
+
+                <form :action="'/admin/enrollment/update-jadwal/' + selectedEnrollment?.id" method="POST">
+                    @csrf
+                    @method('PUT')
+                    
+                    <input type="hidden" name="jadwal_pertemuan" :value="selectedEnrollment?.jadwal_pertemuan">
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pilih Mentor Tersedia</label>
+                            <select name="mentor_id" class="w-full mt-2 p-4 bg-slate-50 border-none rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500">
+                                <option value="">-- Pilih Mentor --</option>
+                                @foreach($mentors as $m)
+                                    <option value="{{ $m->id }}">{{ $m->name }} ({{ $m->specialization }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full mt-8 py-4 bg-indigo-600 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">Konfirmasi Penugasan</button>
+                </form>
             </div>
         </div>
     </div>

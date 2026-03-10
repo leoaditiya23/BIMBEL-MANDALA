@@ -14,14 +14,15 @@
             <div class="flex justify-between items-start">
                 <div class="flex-1">
                     <p class="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest italic group-hover:text-blue-500 transition-colors">Kehadiran</p>
-                    <p class="text-3xl font-black text-blue-600">{{ $stats['attendance'] ?? 0 }}%</p>
+                    <p class="text-3xl font-black text-blue-600">{{ $stats['attendance'] ?? 0 }}</p>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Sesi Hadir</p>
                 </div>
                 <div class="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform text-blue-500">
                     <i class="fas fa-check-circle text-lg"></i>
                 </div>
             </div>
             <div class="w-full bg-slate-50 h-1.5 mt-4 rounded-full overflow-hidden">
-                <div class="bg-blue-500 h-full rounded-full" style="width: {{ $stats['attendance'] ?? 0 }}%"></div>
+                <div class="bg-blue-500 h-full rounded-full" style="width: {{ min(($stats['attendance'] ?? 0) * 10, 100) }}%"></div>
             </div>
         </div>
 
@@ -44,12 +45,11 @@
             </div>
         </div>
 
-        {{-- Nilai Rata-rata (Persen) --}}
+        {{-- Nilai Rata-rata --}}
         <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
             <div class="flex justify-between items-start">
                 <div class="flex-1">
                     <p class="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest italic group-hover:text-indigo-500 transition-colors">Rata-rata Nilai</p>
-                    {{-- Diperbaiki agar benar-benar nol jika data rata-rata tidak ada --}}
                     <p class="text-3xl font-black text-indigo-600">
                         {{ number_format($stats['average_score'] ?? 0, 0) }}%
                     </p>
@@ -59,7 +59,6 @@
                 </div>
             </div>
             <div class="w-full bg-slate-50 h-1.5 mt-4 rounded-full overflow-hidden shadow-inner">
-                {{-- Bar progres mengikuti data rata-rata secara presisi --}}
                 <div class="bg-indigo-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(79,70,229,0.4)]" 
                      style="width: {{ number_format($stats['average_score'] ?? 0, 0) }}%"></div>
             </div>
@@ -78,13 +77,23 @@
                     @foreach($recent_programs as $program)
                         <div class="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 hover:border-blue-200 transition-all group">
                             <div class="flex justify-between items-start mb-2">
-                                <p class="font-black text-slate-800 group-hover:text-blue-600 transition-colors">{{ $program->name }}</p>
-                                <span class="px-2 py-0.5 rounded-full bg-blue-100 text-[8px] font-black text-blue-600 uppercase">Aktif</span>
+                                {{-- REVISI: Menggunakan nama mapel yang dipilih --}}
+                                <p class="font-black text-slate-800 group-hover:text-blue-600 transition-colors uppercase text-sm tracking-tight">{{ $program->selected_mapel ?? $program->name }}</p>
+                                <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-[8px] font-black text-emerald-600 uppercase">Verified</span>
                             </div>
-                            <p class="text-xs text-slate-500 mb-4">Mentor: <span class="font-bold text-slate-700">{{ $program->mentor_name ?? '-' }}</span></p>
+                            
+                            <div class="space-y-1 mb-4">
+                                <p class="text-[10px] text-slate-500">Mentor: <span class="font-bold text-slate-700">{{ $program->mentor_name ?? '-' }}</span></p>
+                                <p class="text-[10px] text-blue-600 font-bold uppercase italic tracking-tight">
+                                    <i class="fas fa-map-marker-alt mr-1"></i> {{ $program->lokasi_cabang ?? 'Online' }}
+                                </p>
+                                <p class="text-[10px] text-slate-400 font-medium italic">
+                                    <i class="fas fa-clock mr-1"></i> {{ $program->sesi_jadwal ?? 'Jadwal belum diatur' }}
+                                </p>
+                            </div>
                             
                             <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                                <div class="bg-blue-500 h-full rounded-full transition-all duration-1000" style="width: 0%"></div> 
+                                <div class="bg-blue-500 h-full rounded-full transition-all duration-1000" style="width: 100%"></div> 
                             </div>
                         </div>
                     @endforeach

@@ -244,68 +244,70 @@ class="relative">
                         <input type="hidden" name="selected_mapel[]" :value="mapel">
                     </template>
 
-                   {{-- STEP 1: METODE --}}
-                    <div x-show="step === 1" x-transition>
-                        <h3 class="text-xl font-bold text-slate-800 mb-8 flex items-center gap-2 uppercase tracking-tight">
-                            <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">1</span>
-                            PILIH METODE BELAJAR
-                        </h3>
+                  {{-- STEP 1: METODE --}}
+<div x-show="step === 1" x-transition>
+    <h3 class="text-xl font-bold text-slate-800 mb-8 flex items-center gap-2 uppercase tracking-tight">
+        <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-sm">1</span>
+        PILIH METODE BELAJAR
+    </h3>
 
-                        <div class="grid md:grid-cols-2 gap-8">
-                            <label @click="metode = 'online'; lokasi = ''" class="cursor-pointer group">
-                                <div class="p-8 border-2 border-slate-100 rounded-[2rem] h-full transition-all hover:border-blue-200" :class="metode === 'online' ? 'border-blue-600 bg-blue-50' : ''">
-                                    <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mb-6">
-                                        <i class="fas fa-video text-2xl"></i>
-                                    </div>
-                                    <h4 class="font-bold text-xl text-slate-800 uppercase tracking-tight">Reguler Online</h4>
-                                    <p class="text-slate-500 text-sm mt-2 leading-relaxed">Sesi belajar interaktif via Zoom/Gmeet.</p>
-                                </div>
-                            </label>
+    <div class="grid md:grid-cols-2 gap-8">
+        {{-- REVISI: Saat diklik, lokasi langsung diisi 'ONLINE (ZOOM/GMEET)' agar tidak kosong di admin --}}
+        <label @click="metode = 'online'; lokasi = 'ONLINE (ZOOM/GMEET)'" class="cursor-pointer group">
+            <div class="p-8 border-2 border-slate-100 rounded-[2rem] h-full transition-all hover:border-blue-200" :class="metode === 'online' ? 'border-blue-600 bg-blue-50' : ''">
+                <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mb-6">
+                    <i class="fas fa-video text-2xl"></i>
+                </div>
+                <h4 class="font-bold text-xl text-slate-800 uppercase tracking-tight">Reguler Online</h4>
+                <p class="text-slate-500 text-sm mt-2 leading-relaxed">Sesi belajar interaktif via Zoom/Gmeet.</p>
+            </div>
+        </label>
 
-                            <label @click="metode = 'offline'" class="cursor-pointer group">
-                                <div class="p-8 border-2 border-slate-100 rounded-[2rem] h-full transition-all hover:border-blue-200" :class="metode === 'offline' ? 'border-blue-600 bg-blue-50' : ''">
-                                    <div class="w-16 h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center mb-6">
-                                        <i class="fas fa-car text-2xl"></i>
-                                    </div>
-                                    <h4 class="font-bold text-xl text-slate-800 uppercase tracking-tight">Reguler Offline</h4>
-                                    
-                                    <div x-show="metode === 'offline'" class="mt-6" @click.stop>
-                                        <select x-model="lokasi" name="lokasi_cabang" :value="lokasi" class="w-full border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-blue-600 mb-4">
-                                            <option value="">-- PILIH WILAYAH --</option>
-                                            <template x-for="loc in listLokasi">
-                                                <option :value="loc" x-text="loc"></option>
-                                            </template>
-                                        </select>
+        <label @click="metode = 'offline'; lokasi = ''" class="cursor-pointer group">
+            <div class="p-8 border-2 border-slate-100 rounded-[2rem] h-full transition-all hover:border-blue-200" :class="metode === 'offline' ? 'border-blue-600 bg-blue-50' : ''">
+                <div class="w-16 h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center mb-6">
+                    <i class="fas fa-car text-2xl"></i>
+                </div>
+                <h4 class="font-bold text-xl text-slate-800 uppercase tracking-tight">Reguler Offline</h4>
+                
+                <div x-show="metode === 'offline'" class="mt-6" @click.stop>
+                    <select x-model="lokasi" name="lokasi_cabang" class="w-full border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-blue-600 mb-4">
+                        <option value="">-- PILIH WILAYAH --</option>
+                        <template x-for="loc in listLokasi">
+                            <option :value="loc" x-text="loc"></option>
+                        </template>
+                    </select>
 
-                                        <template x-if="lokasi">
-                                            <div x-transition>
-                                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Alamat Lengkap Rumah / Titik Temu</label>
-                                                <textarea 
-                                                    name="alamat_siswa" 
-                                                    required
-                                                    class="w-full border-2 border-slate-100 p-4 rounded-2xl text-sm font-medium outline-none focus:border-blue-600 min-h-[100px]"
-                                                    placeholder="Contoh: Jl. Merpati No.12, RT 03/RW 01, Kel. Pedurungan Lor (Dekat Alfamart)"></textarea>
-                                                <p class="text-[9px] text-blue-600 mt-2 font-medium italic">*Alamat ini akan digunakan mentor untuk koordinasi kelas offline.</p>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </div>
-                            </label>
+                    <template x-if="lokasi">
+                        <div x-transition>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Alamat Lengkap Rumah / Titik Temu</label>
+                            <textarea 
+                                name="alamat_siswa" 
+                                required
+                                x-on:input="sessionStorage.setItem('reg_alamat_siswa', $event.target.value)"
+                                class="w-full border-2 border-slate-100 p-4 rounded-2xl text-sm font-medium outline-none focus:border-blue-600 min-h-[100px]"
+                                placeholder="Contoh: Jl. Merpati No.12..."></textarea>
+                            <p class="text-[9px] text-blue-600 mt-2 font-medium italic">*Alamat ini akan digunakan mentor untuk koordinasi kelas offline.</p>
                         </div>
+                    </template>
+                </div>
+            </div>
+        </label>
+    </div>
 
-                        <div class="mt-14">
-                            <button type="button" 
-                                    @click="step = 2; saveToSession()" 
-                                    :disabled="(metode === 'offline' && !lokasi) || !metode" 
-                                    :class="(metode === 'offline' && !lokasi) || !metode ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-blue-600 shadow-xl'"
-                                    class="w-full text-white py-6 rounded-[1.5rem] font-bold uppercase tracking-[0.2em] transition-all duration-300">
-                                LANJUT KONFIGURASI
-                            </button>
-                            <p x-show="metode === 'offline' && !lokasi" class="text-center text-red-500 text-[10px] font-bold mt-4 uppercase tracking-widest animate-pulse">
-                                * Harap pilih wilayah lokasi belajar terlebih dahulu
-                            </p>
-                        </div>
-                    </div>
+    <div class="mt-14">
+        <button type="button" 
+                @click="step = 2; saveToSession()" 
+                :disabled="(metode === 'offline' && !lokasi) || !metode" 
+                :class="(metode === 'offline' && !lokasi) || !metode ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-blue-600 shadow-xl'"
+                class="w-full text-white py-6 rounded-[1.5rem] font-bold uppercase tracking-[0.2em] transition-all duration-300">
+            LANJUT KONFIGURASI
+        </button>
+        <p x-show="metode === 'offline' && !lokasi" class="text-center text-red-500 text-[10px] font-bold mt-4 uppercase tracking-widest animate-pulse">
+            * Harap pilih wilayah lokasi belajar terlebih dahulu
+        </p>
+    </div>
+</div>
 
                 {{-- STEP 2: KONFIGURASI --}}
                 <div x-show="step === 2" x-transition x-cloak class="relative">
@@ -573,6 +575,10 @@ class="relative">
         <input type="hidden" name="is_mengaji" :value="mauMengaji ? 1 : 0">
         <input type="hidden" name="jadwal_detail" :value="jadwalDetail">
         <input type="hidden" name="selected_subjects" :value="JSON.stringify(selectedMapel)">
+        
+        {{-- REVISI: Tambahkan Lokasi dan Alamat agar data tidak kosong di admin --}}
+        <input type="hidden" name="lokasi_cabang" :value="lokasi">
+        <input type="hidden" name="alamat_siswa" :value="sessionStorage.getItem('reg_alamat_siswa')">
 
         <div class="grid md:grid-cols-2 gap-10">
             <div class="space-y-6">
@@ -606,7 +612,6 @@ class="relative">
                 <div class="space-y-3">
                     <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">UPLOAD BUKTI TRANSFER</span>
                     <label class="block border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center cursor-pointer hover:bg-slate-50 relative h-40 flex items-center justify-center overflow-hidden">
-                        {{-- REVISI: Menggunakan FileReader agar variabel buktiTransfer terisi dengan benar --}}
                         <input type="file" name="bukti_pembayaran" 
                                @change="const file = $event.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => { buktiTransfer = e.target.result; }; reader.readAsDataURL(file); }" 
                                class="hidden" accept="image/*" required>
@@ -626,13 +631,11 @@ class="relative">
 
         <div class="mt-12 flex flex-col md:flex-row gap-4">
             <button type="button" @click="step = 2" class="flex-1 bg-slate-100 text-slate-500 py-6 rounded-2xl font-bold uppercase">KEMBALI</button>
-            
-            {{-- REVISI: Menggunakan button type button agar memicu showConfirmation di x-data --}}
             <button type="button" 
                     @click="showConfirmation($event)"
                     :disabled="!buktiTransfer" 
-                    :class="!buktiTransfer ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-orange-500 shadow-xl'"
-                    class="w-full text-white py-6 rounded-2xl font-bold uppercase shadow-xl tracking-[0.2em] transition-all duration-300 disabled:opacity-50">
+                    :class="!buktiTransfer ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-orange-500 shadow-xl hover:scale-[1.01] transition-transform'"
+                    class="w-full text-white py-6 rounded-2xl font-bold uppercase shadow-xl tracking-[0.2em] disabled:opacity-50">
                 KONFIRMASI SEKARANG
             </button>
         </div>

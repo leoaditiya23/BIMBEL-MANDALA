@@ -3,16 +3,18 @@
 @section('mentor_content')
 <div x-data="{ 
     activeTab: 'semua', 
+    searchQuery: '',
     modalMateri: false, 
     modalAbsen: false,
     modalTugas: false,
     selectedSubmissions: [],
     isAbsenOpen: false, 
-    selectedClass: {id: '', name: '', students: [], materials: []},
+    selectedClass: {id: '', name: '', students: [], materials: [], total_sessions: 12},
     fileName: '',
     editingMaterial: null,
 
     toggleAbsen(status) {
+        if(!this.selectedClass.id) return;
         this.isAbsenOpen = status;
         fetch('{{ route('mentor.toggleAbsen') }}', {
             method: 'POST',
@@ -27,10 +29,12 @@
         })
         .then(res => res.json())
         .then(data => {
-            console.log('Status updated:', data);
+            if(data.success) {
+                // Notifikasi sukses
+            }
         }).catch(err => console.error(err));
     }
-}" x-transition:enter="transition ease-out duration-300">
+}" x-transition:enter="transition ease-out duration-300" class="min-h-screen flex flex-col pb-20">
     
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <div class="bg-white p-6 rounded-[25px] border border-slate-100 shadow-sm hover:shadow-md transition-all">
@@ -53,7 +57,7 @@
                 <div>
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Materi</p>
                     <h4 class="text-xl font-black text-slate-800">
-                        {{ $classes->sum(function($c) { return count($c->materials); }) }}
+                        {{ $classes->sum(function($c) { return count($c->materials ?? []); }) }}
                         <span class="text-xs font-bold text-slate-400">Sesi</span>
                     </h4>
                 </div>
@@ -78,9 +82,9 @@
                     <i class="fas fa-tower-broadcast text-lg"></i>
                 </div>
                 <div>
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sesi Aktif</p>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Absensi Aktif</p>
                     <h4 class="text-xl font-black text-slate-800">
-                        {{ $classes->where('is_active', true)->count() }}
+                        {{ $classes->where('is_absen_active', true)->count() }}
                         <span class="text-xs font-bold text-slate-400">Kelas</span>
                     </h4>
                 </div>
@@ -88,262 +92,281 @@
         </div>
     </div>
 
-    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div class="mb-8 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
         <div>
             <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Manajemen Kelas</h2>
-            <p class="text-sm text-slate-500 mt-1 font-medium">Pantau progres kurikulum dan penilaian siswa secara mendalam</p>
+            <p class="text-sm text-slate-500 mt-1 font-medium italic">"Membimbing dengan hati, mencetak prestasi."</p>
         </div>
-        <div class="flex bg-slate-100 p-1 rounded-[20px]">
-            <button @click="activeTab = 'semua'" :class="activeTab === 'semua' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'" class="px-6 py-2 rounded-[15px] text-xs font-bold transition-all duration-200">Semua Kelas</button>
-            <button @click="activeTab = 'aktif'" :class="activeTab === 'aktif' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'" class="px-6 py-2 rounded-[15px] text-xs font-bold transition-all duration-200">Sesi Berjalan</button>
+        
+        <div class="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
+            <div class="relative w-full md:w-72">
+                <input type="text" x-model="searchQuery" placeholder="Cari nama kelas..." 
+                    class="w-full px-5 py-3 bg-white border border-slate-200 rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-indigo-500 transition-all shadow-sm outline-none placeholder:text-slate-400">
+            </div>
+
+            <div class="flex bg-slate-200/50 p-1 rounded-[20px] w-full md:w-auto">
+                <button @click="activeTab = 'semua'" :class="activeTab === 'semua' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'" class="flex-1 md:flex-none px-6 py-2 rounded-[15px] text-xs font-bold transition-all duration-200">Semua</button>
+                <button @click="activeTab = 'aktif'" :class="activeTab === 'aktif' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'" class="flex-1 md:flex-none px-6 py-2 rounded-[15px] text-xs font-bold transition-all duration-200">Sesi Aktif</button>
+            </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 flex-1">
         @forelse($classes as $class)
-            <div x-show="activeTab === 'semua' || (activeTab === 'aktif' && '{{ $class->is_active ?? false }}')"
-                 class="bg-white rounded-[20px] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group overflow-hidden">
-                <div class="p-6">
+            <div x-show="(activeTab === 'semua' || (activeTab === 'aktif' && {{ ($class->is_absen_active ?? false) ? 'true' : 'false' }})) && ('{{ strtolower($class->name) }}'.includes(searchQuery.toLowerCase()))"
+                 x-transition
+                 class="bg-white rounded-[25px] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-500 group overflow-hidden flex flex-col h-full">
+                
+                <div class="p-6 flex-1">
                     <div class="flex items-start justify-between mb-4">
-                        <div class="p-3 bg-indigo-50 rounded-[15px] transition-colors duration-300">
-                            <i class="fas fa-book-open text-indigo-600"></i>
+                        <div class="p-3 bg-indigo-50 rounded-[18px] text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500">
+                            <i class="fas fa-graduation-cap"></i>
                         </div>
-                        <span class="text-[10px] font-black px-3 py-1 bg-green-100 text-green-600 rounded-full uppercase tracking-wider">Terverifikasi</span>
+                        @if($class->is_absen_active ?? false)
+                            <span class="flex items-center gap-1.5 text-[9px] font-black px-3 py-1 bg-rose-100 text-rose-600 rounded-full uppercase tracking-wider animate-pulse">
+                                <span class="w-1.5 h-1.5 bg-rose-600 rounded-full"></span> Absensi Dibuka
+                            </span>
+                        @else
+                            <span class="text-[9px] font-black px-3 py-1 bg-slate-100 text-slate-400 rounded-full uppercase tracking-wider">Materi Standby</span>
+                        @endif
                     </div>
                     
-                    <h3 class="font-black text-slate-800 text-lg leading-tight mb-1">{{ $class->name }}</h3>
-                    <p class="text-xs font-bold text-indigo-500 uppercase tracking-wider mb-4">{{ $class->jenjang }} - {{ $class->type }}</p>
+                    <h3 class="font-black text-slate-800 text-lg leading-tight mb-1 group-hover:text-indigo-600 transition-colors">{{ $class->name }}</h3>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 italic">{{ $class->jenjang }} • {{ $class->type }}</p>
 
                     <div class="grid grid-cols-2 gap-3 mb-6">
-                        <div class="bg-slate-50 p-3 rounded-[15px] border border-transparent hover:border-indigo-100 transition-all">
-                            <p class="text-[9px] font-black text-slate-400 uppercase">Siswa Aktif</p>
-                            <p class="font-black text-slate-700 text-sm">{{ $class->student_count }} Orang</p>
+                        <div class="bg-slate-50 p-3 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
+                            <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Total Siswa</p>
+                            <p class="font-black text-slate-700 text-sm"><i class="fas fa-user-friends mr-1 text-indigo-400"></i> {{ $class->student_count }} <span class="text-[10px]">Pax</span></p>
                         </div>
-                        <div class="bg-slate-50 p-3 rounded-[15px] border border-transparent hover:border-indigo-100 transition-all">
-                            <p class="text-[9px] font-black text-slate-400 uppercase">Materi Sesi</p>
-                            <p class="font-black text-slate-700 text-sm">{{ count($class->materials) }} Sesi</p>
+                        <div class="bg-slate-50 p-3 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
+                            <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Sesi Selesai</p>
+                            <p class="font-black text-slate-700 text-sm"><i class="fas fa-check-circle mr-1 text-emerald-400"></i> {{ count($class->materials ?? []) }} / {{ $class->total_sessions ?? 0 }}</p>
                         </div>
                     </div>
 
                     <div class="mb-6">
                         @php
-                            $progress = ($class->total_sessions > 0) ? (count($class->materials) / $class->total_sessions) * 100 : 0;
+                            $total_sessions = $class->total_sessions ?? 1;
+                            $materials_count = count($class->materials ?? []);
+                            $progress = ($total_sessions > 0) ? ($materials_count / $total_sessions) * 100 : 0;
                         @endphp
-                        <div class="flex justify-between text-[10px] font-black mb-1">
-                            <span class="text-slate-400 uppercase tracking-widest">Progress Kurikulum</span>
-                            <span class="text-indigo-600">{{ round($progress) }}%</span>
+                        <div class="flex justify-between text-[10px] font-black mb-2">
+                            <span class="text-slate-400 uppercase tracking-widest">Kurikulum Progress</span>
+                            <span class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{{ round($progress) }}%</span>
                         </div>
-                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden shadow-inner">
-                            <div class="bg-indigo-500 h-full rounded-full shadow-[0_0_10px_rgba(79,70,229,0.4)] transition-all duration-1000" style="width: {{ $progress }}%"></div>
+                        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
+                            <div class="bg-gradient-to-r from-indigo-400 to-indigo-600 h-full rounded-full transition-all duration-1000 relative" style="width: {{ $progress }}%">
+                                <div class="absolute top-0 right-0 h-full w-4 bg-white/20 skew-x-12 animate-shimmer"></div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
-                        <button @click="selectedClass = {id: '{{ $class->id }}', name: '{{ $class->name }}', students: {{ json_encode($class->students) }}}; modalAbsen = true" 
-                                class="py-3 bg-slate-100 text-slate-700 rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:bg-slate-800 hover:text-white transition-all duration-200">
-                            <i class="fas fa-list-ol mr-1"></i> Absensi
+                        <button @click="selectedClass = {id: '{{ $class->id }}', name: '{{ $class->name }}', students: {{ json_encode($class->students ?? []) }}}; isAbsenOpen = {{ ($class->is_absen_active ?? false) ? 'true' : 'false' }}; modalAbsen = true" 
+                                class="py-3 bg-slate-900 text-white rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-slate-200">
+                            <i class="fas fa-fingerprint mr-1.5"></i> Absensi
                         </button>
-                        <button @click="selectedClass = {id: '{{ $class->id }}', name: '{{ $class->name }}', students: {{ json_encode($class->students) }} }; selectedSubmissions = {{ json_encode($class->submissions ?? []) }}; modalTugas = true" 
-                                class="py-3 bg-indigo-50 text-indigo-600 rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all duration-200">
-                            <i class="fas fa-tasks mr-1"></i> Tugas & Nilai
+                        <button @click="selectedClass = {id: '{{ $class->id }}', name: '{{ $class->name }}', students: {{ json_encode($class->students ?? []) }} }; modalTugas = true" 
+                                class="py-3 bg-indigo-600 text-white rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-indigo-100">
+                            <i class="fas fa-star mr-1.5"></i> Nilai
                         </button>
                     </div>
                 </div>
 
-                <button @click="selectedClass = {id: '{{ $class->id }}', name: '{{ $class->name }}', materials: {{ json_encode($class->materials) }} }; modalMateri = true; fileName = ''" 
-                        class="w-full px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center hover:bg-indigo-50 transition-colors group/btn">
+                <button @click="selectedClass = {id: '{{ $class->id }}', name: '{{ $class->name }}', materials: {{ json_encode($class->materials ?? []) }}, total_sessions: {{ $class->total_sessions ?? 0 }} }; modalMateri = true; fileName = ''; editingMaterial = null" 
+                        class="w-full px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center hover:bg-white transition-colors group/btn">
                     <span class="text-[10px] font-black text-slate-500 group-hover/btn:text-indigo-600 transition uppercase tracking-widest">
-                        <i class="fas fa-folder-plus mr-1"></i> Kelola Materi Sesi
+                        <i class="fas fa-layer-group mr-1.5"></i> Input Materi & Sesi
                     </span>
-                    <i class="fas fa-chevron-right text-slate-300 group-hover/btn:text-indigo-600 group-hover/btn:translate-x-1 transition-all"></i>
+                    <i class="fas fa-arrow-right text-slate-300 group-hover/btn:text-indigo-600 group-hover/btn:translate-x-1 transition-all"></i>
                 </button>
             </div>
         @empty
-            <div class="col-span-full bg-white p-12 rounded-[30px] border-2 border-dashed border-slate-200 text-center shadow-inner">
-                <i class="fas fa-folder-open text-6xl text-slate-200 mb-4 block"></i>
-                <p class="text-slate-400 font-bold">Belum ada kelas yang ditugaskan kepada Anda.</p>
+            <div class="col-span-full bg-white p-20 rounded-[40px] border-2 border-dashed border-slate-100 text-center">
+                <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-200 text-3xl">
+                    <i class="fas fa-calendar-times"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-800">Tidak Ada Jadwal</h3>
+                <p class="text-slate-400 font-bold mt-2">Belum ada kelas yang ditugaskan untuk akun Anda saat ini.</p>
             </div>
         @endforelse
     </div>
 
-    {{-- MODAL ABSENSI --}}
-    <div x-show="modalAbsen" class="fixed inset-0 z-[70] flex items-start justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto pt-10" x-cloak>
-        <div @click.away="modalAbsen = false" class="bg-white rounded-[35px] shadow-2xl w-full max-w-md overflow-hidden border border-white/20 my-auto">
+    <div x-show="modalAbsen" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition>
+        <div @click.away="modalAbsen = false" class="bg-white rounded-[35px] shadow-2xl w-full max-w-md overflow-hidden border border-white">
             <div class="p-8">
-                <div class="flex justify-between items-center mb-8 mt-6">
+                <div class="flex justify-between items-center mb-8">
                     <div>
                         <h3 class="text-2xl font-black text-slate-800 leading-tight">Sesi Presensi</h3>
-                        <p class="text-sm font-bold text-indigo-500 mt-1" x-text="selectedClass.name"></p>
+                        <p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1" x-text="selectedClass.name"></p>
                     </div>
-                    <div :class="isAbsenOpen ? 'bg-rose-50 text-rose-600 animate-pulse' : 'bg-slate-50 text-slate-400'" 
-                         class="w-14 h-14 rounded-2xl flex items-center justify-center transition-colors duration-500 shadow-sm">
-                        <i class="fas fa-tower-broadcast text-xl"></i>
-                    </div>
+                    <button @click="modalAbsen = false" class="text-slate-300 hover:text-rose-500 transition-colors"><i class="fas fa-times-circle text-2xl"></i></button>
                 </div>
 
-                <div class="bg-slate-50 p-5 rounded-[25px] border border-slate-100 mb-6">
-                    <p class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest text-center">Kontrol Sesi Hari Ini</p>
-                    <div class="flex gap-2">
-                        <button type="button" @click="toggleAbsen(true)" :disabled="isAbsenOpen" :class="isAbsenOpen ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50'" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">Buka Sesi</button>
-                        <button type="button" @click="toggleAbsen(false)" :disabled="!isAbsenOpen" :class="!isAbsenOpen ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white text-rose-500 border border-rose-100 hover:bg-rose-50'" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm">Tutup Sesi</button>
+                <div class="bg-indigo-600 p-6 rounded-[25px] text-white shadow-xl shadow-indigo-100 mb-8 relative overflow-hidden group">
+                    <div class="absolute -right-4 -top-4 text-white/10 text-7xl rotate-12 group-hover:rotate-45 transition-transform duration-700">
+                        <i class="fas fa-signal"></i>
+                    </div>
+                    <p class="text-[9px] font-black uppercase text-indigo-200 mb-4 tracking-[0.2em]">Remote Control Absensi</p>
+                    <div class="flex gap-3">
+                        <button type="button" @click="toggleAbsen(true)" :class="isAbsenOpen ? 'bg-white/20 text-white cursor-not-allowed opacity-50' : 'bg-white text-indigo-600 hover:bg-indigo-50 shadow-lg'" class="flex-1 py-3 rounded-[15px] text-[10px] font-black uppercase tracking-widest transition-all">Buka Sesi</button>
+                        <button type="button" @click="toggleAbsen(false)" :class="!isAbsenOpen ? 'bg-white/20 text-white cursor-not-allowed opacity-50' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg'" class="flex-1 py-3 rounded-[15px] text-[10px] font-black uppercase tracking-widest transition-all">Tutup Sesi</button>
                     </div>
                 </div>
 
                 <div class="space-y-4">
-                    <div class="flex justify-between items-end px-1">
-                        <label class="text-[10px] font-black uppercase text-slate-400">Kehadiran :</label>
-                        <span class="text-[10px] font-black text-indigo-600">
-                            <span x-text="selectedClass.students ? selectedClass.students.filter(s => s.status === 'Hadir').length : 0"></span> / <span x-text="selectedClass.students ? selectedClass.students.length : 0"></span> Siswa
+                    <div class="flex justify-between items-center px-1">
+                        <label class="text-[10px] font-black uppercase text-slate-400 tracking-tighter">Monitoring Realtime :</label>
+                        <span class="text-[10px] font-black text-indigo-600 px-2 py-1 bg-indigo-50 rounded-lg">
+                            <span x-text="selectedClass.students ? selectedClass.students.filter(s => s.status === 'Hadir').length : 0"></span> / <span x-text="selectedClass.students ? selectedClass.students.length : 0"></span> Siswa Hadir
                         </span>
                     </div>
-                    <div class="max-h-52 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                    <div class="max-h-60 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
                         <template x-for="student in selectedClass.students" :key="student.id">
-                            <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 transition-all hover:border-indigo-100">
+                            <div class="flex items-center justify-between p-4 bg-slate-50 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-[10px] font-black text-slate-400" x-text="student.name.charAt(0)"></div>
-                                    <span class="text-xs font-bold text-slate-700" x-text="student.name"></span>
+                                    <div class="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-[10px] font-black text-indigo-500" x-text="student.name.substring(0,2).toUpperCase()"></div>
+                                    <span class="text-xs font-black text-slate-700" x-text="student.name"></span>
                                 </div>
-                                <span :class="student.status === 'Hadir' ? 'bg-green-100 text-green-600' : 'bg-slate-50 text-slate-300'" class="text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-tighter" x-text="student.status || 'Menunggu...'"></span>
+                                <template x-if="student.status === 'Hadir'">
+                                    <span class="text-[8px] font-black px-3 py-1.5 bg-green-500 text-white rounded-full uppercase tracking-widest shadow-sm">Present</span>
+                                </template>
+                                <template x-if="!student.status">
+                                    <span class="text-[8px] font-black px-3 py-1.5 bg-slate-200 text-slate-400 rounded-full uppercase tracking-widest animate-pulse">Waiting...</span>
+                                </template>
                             </div>
                         </template>
                     </div>
-                    <button type="button" @click="modalAbsen = false" class="w-full mt-4 py-4 text-[10px] font-black uppercase bg-slate-100 text-slate-500 rounded-[18px]">Kembali</button>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- MODAL MATERI --}}
-    <div x-show="modalMateri" class="fixed inset-0 z-[70] flex items-start justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto" x-cloak>
-        <div @click.away="modalMateri = false; editingMaterial = null" 
-             class="bg-white rounded-[35px] shadow-2xl w-full max-w-5xl overflow-hidden border border-white/20 flex flex-col md:flex-row min-h-[500px] my-10 relative">
+    <div x-show="modalMateri" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto" x-cloak x-transition>
+        <div @click.away="modalMateri = false" 
+             class="bg-white rounded-[40px] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col md:flex-row h-[85vh]">
             
-            <div class="w-full md:w-1/2 bg-slate-50 border-r border-slate-100 flex flex-col h-full">
-                <div class="p-8 border-b border-slate-200 bg-white pt-20">
-                    <h3 class="text-xl font-black text-slate-800 tracking-tight">Riwayat Sesi</h3>
-                    <p class="text-[10px] font-bold text-indigo-500 uppercase">Klik ikon edit untuk mengubah data</p>
+            <div class="w-full md:w-5/12 bg-slate-50 border-r border-slate-100 flex flex-col h-full">
+                <div class="p-8 border-b border-slate-200 bg-white">
+                    <h3 class="text-xl font-black text-slate-800 tracking-tight">Kurikulum Sesi</h3>
+                    <p class="text-[10px] font-bold text-indigo-500 uppercase mt-1">Total: <span x-text="selectedClass.materials ? selectedClass.materials.length : 0"></span> Materi Terunggah</p>
                 </div>
                 
                 <div class="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
                     <template x-if="selectedClass.materials && selectedClass.materials.length > 0">
                         <template x-for="material in selectedClass.materials" :key="material.id">
-                            <button @click="editingMaterial = material" 
-                                    class="w-full text-left bg-white p-4 rounded-[20px] border border-slate-200 flex items-center justify-between group hover:border-indigo-500 transition-all">
+                            <button @click="editingMaterial = material; fileName = ''" 
+                                    :class="editingMaterial?.id === material.id ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100' : 'bg-white border-slate-200'"
+                                    class="w-full text-left p-4 rounded-[22px] border flex items-center justify-between group transition-all duration-300">
                                 <div class="flex items-center gap-4">
-                                    <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 font-black text-xs group-hover:bg-indigo-600 group-hover:text-white transition-colors" x-text="material.session_number"></div>
-                                    <h4 class="font-bold text-slate-800 text-sm" x-text="material.title"></h4>
+                                    <div :class="editingMaterial?.id === material.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-800 group-hover:text-white'" 
+                                         class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs transition-colors" x-text="material.session_number"></div>
+                                    <div>
+                                        <h4 class="font-black text-slate-800 text-[13px] leading-tight" x-text="material.title"></h4>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span x-show="material.video_url" class="text-[8px] font-black text-indigo-400 uppercase"><i class="fas fa-video mr-0.5"></i> Video</span>
+                                            <span x-show="material.file_path" class="text-[8px] font-black text-rose-400 uppercase"><i class="fas fa-file-pdf mr-0.5"></i> PDF</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <i class="fas fa-edit text-slate-300 group-hover:text-indigo-500 transition-colors text-xs"></i>
+                                <i class="fas fa-chevron-right text-slate-200 group-hover:text-indigo-500 text-xs"></i>
                             </button>
                         </template>
                     </template>
                 </div>
             </div>
 
-            <div class="w-full md:w-1/2 p-8 bg-white flex flex-col relative">
-                <div class="absolute top-6 right-8 flex gap-2">
-                    <button x-show="editingMaterial" @click="editingMaterial = null; fileName = ''" class="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center hover:bg-amber-100 transition-colors">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                    <button @click="modalMateri = false; editingMaterial = null" class="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
+            <div class="w-full md:w-7/12 p-10 bg-white flex flex-col relative overflow-y-auto custom-scrollbar">
+                <div class="absolute top-8 right-8 flex items-center gap-3 z-50">
+    <button x-show="editingMaterial" @click="editingMaterial = null; fileName = ''" 
+            class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-indigo-100 transition-all shadow-sm">
+        <i class="fas fa-plus"></i>
+    </button>
+    
+    <button @click="modalMateri = false" 
+            class="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all shadow-sm border border-slate-100">
+        <i class="fas fa-times text-lg"></i>
+    </button>
+</div>
 
-                <div class="pt-10 mb-8">
-                    <h3 class="text-2xl font-black text-slate-800 leading-tight" x-text="editingMaterial ? 'Edit Sesi' : 'Tambah Sesi'"></h3>
-                    <p class="text-sm font-bold text-indigo-500" x-text="selectedClass.name"></p>
+                <div class="mb-10">
+                    <h3 class="text-3xl font-black text-slate-800 leading-none" x-text="editingMaterial ? 'Update Sesi' : 'Buat Sesi Baru'"></h3>
+                    <p class="text-sm font-bold text-slate-400 mt-3" x-text="'Kelas: ' + selectedClass.name"></p>
                 </div>
                 
                 <form :action="editingMaterial ? `{{ url('mentor/materials/update') }}/${editingMaterial.id}` : '{{ route('mentor.storeMaterial') }}'" 
-                      method="POST" enctype="multipart/form-data" class="space-y-5">
+                      method="POST" enctype="multipart/form-data" class="space-y-6">
                     @csrf
                     <template x-if="editingMaterial"><input type="hidden" name="_method" value="PUT"></template>
                     <input type="hidden" name="program_id" :value="selectedClass.id">
                     
-                    <div class="grid grid-cols-4 gap-4">
+                    <div class="grid grid-cols-5 gap-4">
                         <div class="col-span-1">
-                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Sesi</label>
-                            <input type="number" name="session_number" :value="editingMaterial ? editingMaterial.session_number : (selectedClass.materials ? selectedClass.materials.length + 1 : 1)" class="w-full mt-2 bg-slate-50 border-none rounded-[15px] text-sm font-bold">
+                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">No. Sesi</label>
+                            <input type="number" name="session_number" required :value="editingMaterial ? editingMaterial.session_number : (selectedClass.materials ? selectedClass.materials.length + 1 : 1)" class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black focus:ring-2 focus:ring-indigo-500 p-4">
                         </div>
-                        <div class="col-span-3">
-                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Judul Pembahasan</label>
-                            <input type="text" name="title" :value="editingMaterial ? editingMaterial.title : ''" placeholder="Judul" class="w-full mt-2 bg-slate-50 border-none rounded-[15px] text-sm font-bold">
+                        <div class="col-span-4">
+                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Judul Materi Pembelajaran</label>
+                            <input type="text" name="title" required :value="editingMaterial ? editingMaterial.title : ''" placeholder="Contoh: Dasar-dasar Pemrograman" class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black focus:ring-2 focus:ring-indigo-500 p-4">
                         </div>
                     </div>
 
                     <div>
-                        <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Link Video / Modul</label>
-                        <input type="url" name="video_url" :value="editingMaterial ? editingMaterial.video_url : ''" placeholder="https://..." class="w-full mt-2 bg-slate-50 border-none rounded-[15px] text-sm font-bold">
-                        <div class="mt-4 p-6 border-2 border-dashed border-slate-100 rounded-[20px] text-center">
-                            <input type="file" name="file" class="hidden" id="fileInp" @change="fileName = $event.target.files[0].name">
-                            <label for="fileInp" class="cursor-pointer text-[10px] font-black text-slate-400 uppercase tracking-widest" x-text="fileName || 'Klik untuk Upload PDF'"></label>
+    <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">URL Video (Youtube/Lainnya)</label>
+    <div class="relative mt-2">
+        <input type="url" name="video_url" :value="editingMaterial ? editingMaterial.video_url : ''" 
+               placeholder="https://youtube.com/watch?v=..." 
+               class="w-full px-5 py-4 bg-slate-50 border-none rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-indigo-500 shadow-inner">
+    </div>
+</div>
+
+                    <div>
+                        <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Modul Dokumentasi (PDF/PPT)</label>
+                        <div class="mt-2 p-8 border-2 border-dashed border-slate-100 rounded-[30px] text-center hover:border-indigo-400 hover:bg-indigo-50 transition-all relative group cursor-pointer">
+                            <input type="file" name="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" id="fileInp" @change="fileName = $event.target.files[0].name">
+                            <div class="space-y-3">
+                                <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm group-hover:scale-110 transition-transform">
+                                    <i class="fas fa-cloud-upload-alt text-indigo-500"></i>
+                                </div>
+                                <p class="text-xs font-black text-slate-500 uppercase tracking-tighter" x-text="fileName || 'Tarik file atau klik untuk telusuri'"></p>
+                                <p class="text-[9px] font-bold text-slate-300">Format: PDF, PPTX (Maks. 10MB)</p>
+                            </div>
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full py-4 bg-indigo-600 text-white rounded-[18px] text-[10px] font-black uppercase">Simpan Sesi</button>
+                    <div class="pt-4">
+                        <button type="submit" class="w-full py-5 bg-slate-900 text-white rounded-[22px] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-indigo-600 transition-all active:scale-95">
+                            <i class="fas fa-save mr-2"></i> Konfirmasi Sesi
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
 
-    {{-- MODAL ALL-IN-ONE: TUGAS & PENILAIAN --}}
-    <div x-show="modalTugas" class="fixed inset-0 z-[70] flex items-start justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto pt-10" x-cloak>
-        <div @click.away="modalTugas = false" class="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl overflow-hidden my-auto border border-white/20">
-            <div class="flex flex-col md:flex-row h-full min-h-[550px]">
-                
-                <div class="w-full md:w-3/5 p-8 border-r border-slate-100">
-                    <div class="flex justify-between items-center mb-8">
-                        <div>
-                            <h3 class="text-2xl font-black text-slate-800 leading-tight">Submisi Siswa</h3>
-                            <p class="text-sm font-bold text-indigo-500 mt-1" x-text="selectedClass.name"></p>
-                        </div>
-                        <div class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase" x-text="selectedSubmissions.length + ' Submisi'"></div>
+    <div x-show="modalTugas" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition>
+        <div @click.away="modalTugas = false" class="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden border border-white">
+            <div class="p-10">
+                <div class="flex justify-between items-start mb-10">
+                    <div>
+                        <h3 class="text-3xl font-black text-slate-800 leading-tight">Input Nilai Siswa</h3>
+                        <p class="text-sm font-bold text-indigo-500 mt-2" x-text="selectedClass.name"></p>
                     </div>
-
-                    <div class="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        <template x-for="item in selectedSubmissions" :key="item.id">
-                            <div class="p-4 bg-slate-50 rounded-[22px] border border-transparent hover:border-indigo-100 hover:bg-white transition-all group flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 bg-white shadow-sm rounded-xl flex items-center justify-center font-black text-xs text-indigo-600" x-text="item.student_name.charAt(0)"></div>
-                                    <div class="flex flex-col">
-                                        <span class="text-xs font-black text-slate-700" x-text="item.student_name"></span>
-                                        <span class="text-[9px] font-bold text-slate-400 uppercase" x-text="item.assignment_title"></span>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <a :href="item.file_url" target="_blank" class="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all">
-                                        <i class="fas fa-eye text-xs"></i>
-                                    </a>
-                                    <span :class="item.is_graded ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'" 
-                                          class="text-[8px] font-black px-3 py-2 rounded-lg uppercase"
-                                          x-text="item.is_graded ? 'Tersimpan' : 'Pending'"></span>
-                                </div>
-                            </div>
-                        </template>
-                        <template x-if="selectedSubmissions.length === 0">
-                            <div class="text-center py-20">
-                                <i class="fas fa-inbox text-4xl text-slate-200 mb-4"></i>
-                                <p class="text-slate-400 font-bold text-sm">Belum ada tugas masuk</p>
-                            </div>
-                        </template>
-                    </div>
+                    <button @click="modalTugas = false" class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 hover:text-rose-500 transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
 
-                <div class="w-full md:w-2/5 p-8 bg-slate-50/50">
-                    <div class="mb-8">
-                        <h4 class="text-sm font-black text-slate-800 uppercase tracking-widest">Panel Penilaian</h4>
-                        <p class="text-[10px] text-slate-400 font-bold">Input skor dan feedback di sini</p>
-                    </div>
-
-                    <form action="{{ route('mentor.storeGrade') }}" method="POST" class="space-y-4">
-                        @csrf
-                        <input type="hidden" name="program_id" :value="selectedClass.id">
-                        
+                <form action="{{ route('mentor.storeGrade') }}" method="POST" class="space-y-6">
+                    @csrf
+                    <input type="hidden" name="program_id" :value="selectedClass.id">
+                    
+                    <div class="space-y-4">
                         <div>
-                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Pilih Nama Siswa</label>
-                            <select name="student_id" required class="w-full mt-1 bg-white border-none rounded-[15px] text-xs font-bold shadow-sm focus:ring-2 focus:ring-indigo-500 transition-all">
-                                <option value="">-- Pilih Siswa --</option>
+                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Nama Lengkap Siswa</label>
+                            <select name="student_id" required class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black p-4 focus:ring-2 focus:ring-indigo-500">
+                                <option value="">-- Pilih salah satu --</option>
                                 <template x-for="student in selectedClass.students" :key="student.id">
                                     <option :value="student.id" x-text="student.name"></option>
                                 </template>
@@ -352,36 +375,52 @@
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Kategori</label>
-                                <input type="text" name="title" placeholder="Tugas 1" required class="w-full mt-1 bg-white border-none rounded-[15px] text-xs font-bold shadow-sm">
+                                <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Kategori Tugas / Ujian</label>
+                                <input type="text" name="title" placeholder="Misal: Proyek Tengah Semester" required class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black p-4 focus:ring-2 focus:ring-indigo-500">
                             </div>
                             <div>
-                                <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Skor</label>
-                                <input type="number" name="score" max="100" placeholder="0-100" required class="w-full mt-1 bg-white border-none rounded-[15px] text-xs font-bold shadow-sm">
+                                <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Skor Akhir (0-100)</label>
+                                <input type="number" name="score" min="0" max="100" placeholder="0" required class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black p-4 focus:ring-2 focus:ring-indigo-500">
                             </div>
                         </div>
 
                         <div>
-                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Catatan Mentor</label>
-                            <textarea name="note" rows="4" placeholder="Feedback untuk siswa..." class="w-full mt-1 bg-white border-none rounded-[15px] text-xs font-bold shadow-sm"></textarea>
+                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Feedback / Catatan Mentor</label>
+                            <textarea name="note" rows="3" placeholder="Berikan kata-kata motivasi atau evaluasi untuk siswa ini..." class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black p-4 focus:ring-2 focus:ring-indigo-500"></textarea>
                         </div>
+                    </div>
 
-                        <div class="pt-4 space-y-3">
-                            <button type="submit" class="w-full py-4 bg-indigo-600 text-white rounded-[20px] text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">Submit Penilaian</button>
-                            <button type="button" @click="modalTugas = false" class="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-all">Tutup Halaman</button>
-                        </div>
-                    </form>
-                </div>
-
+                    <div class="pt-6">
+                        <button type="submit" class="w-full py-5 bg-indigo-600 text-white rounded-[22px] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 hover:bg-slate-900 transition-all active:scale-95">
+                            Kirim & Publikasikan Nilai
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
+
 </div>
+
 <style>
-    body { background-color: #fcfcfd; }
+    html, body { 
+        height: auto !important; 
+        min-height: 100% !important; 
+        background-color: #fcfcfd; 
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        overflow-y: auto !important;
+    }
+    
     [x-cloak] { display: none !important; }
-    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 20px; }
+    
+    @keyframes shimmer {
+        0% { transform: translateX(-150%) skewX(-12deg); }
+        100% { transform: translateX(150%) skewX(-12deg); }
+    }
+    .animate-shimmer { animation: shimmer 2s infinite linear; }
 </style>
 @endsection

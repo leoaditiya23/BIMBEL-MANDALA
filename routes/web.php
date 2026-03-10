@@ -73,7 +73,6 @@ Route::middleware(['auth'])->group(function () {
         
         // --- MANAJEMEN PESAN ---
         Route::get('/messages', [PageController::class, 'adminMessages'])->name('admin.messages');
-        // REVISI: Gunakan POST/GET jika DELETE bermasalah, tapi di sini saya biarkan sesuai aslinya
         Route::delete('/messages/{id}', [PageController::class, 'deleteMessage'])->name('admin.messages.delete');
         
         Route::post('/messages/{id}/to-faq', [PageController::class, 'messageToFaq'])->name('admin.messages.to_faq');
@@ -92,6 +91,9 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/verify-payment/{id}', [PageController::class, 'verifyEnrollment'])->name('admin.payments.verify');
         Route::delete('/reject-payment/{id}', [PageController::class, 'rejectPayment'])->name('admin.payments.reject');
+
+        // --- REVISI: RUTE UNTUK SET JADWAL DARI DASHBOARD ADMIN ---
+        Route::put('/enrollment/update-jadwal/{id}', [PageController::class, 'updateJadwal'])->name('admin.enrollment.update_jadwal');
 
         // CRUD Program
         Route::post('/programs-action/store', [PageController::class, 'storeProgram'])->name('admin.programs.store');
