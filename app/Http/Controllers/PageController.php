@@ -173,27 +173,25 @@ public function index() {
         ];
 
         $recent_enrollments = DB::table('enrollments')
-    ->join('users', 'enrollments.user_id', '=', 'users.id')
-    ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-    ->select(
-        'enrollments.id',
-        'enrollments.user_id',
-        'enrollments.status_pembayaran',
-        'enrollments.created_at',
-        'enrollments.mapel',
-        'enrollments.metode',
-        'enrollments.lokasi_cabang',
-        'enrollments.alamat_semarang',
-        'enrollments.jadwal_pertemuan',
-        'enrollments.mentor_id',
-        'enrollments.ambil_mengaji',    // TAMBAHKAN INI
-        'enrollments.jumlah_pertemuan', // TAMBAHKAN INI
-        'users.name as user_name',
-        'programs.jenjang as program_jenjang',
-        'programs.name as program_name'
-    )
-    ->orderBy('enrollments.created_at', 'desc')
-    ->paginate(10);
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->select(
+                'enrollments.id',
+                'enrollments.user_id',
+                'enrollments.metode',         // <--- PASTIKAN INI DIAMBIL
+                'enrollments.lokasi_cabang',  // <--- PASTIKAN INI DIAMBIL
+                'enrollments.alamat_siswa',   // <--- PASTIKAN INI DIAMBIL
+                'enrollments.jadwal_detail',
+                'enrollments.per_minggu',
+                'enrollments.mapel',
+                'enrollments.status_pembayaran',
+                'enrollments.created_at',
+                'users.name as user_name',
+                'programs.jenjang as program_jenjang',
+                'programs.name as program_name'
+            )
+            ->orderBy('enrollments.created_at', 'desc')
+            ->paginate(10);
 
         $mentors = User::where('role', 'mentor')->get();
 
@@ -204,18 +202,19 @@ public function index() {
     }
 }
 
-    // REVISI: Fungsi baru untuk memproses Update Jadwal dari Dashboard Admin
+    // REVISI: Pastikan fungsi update ini sinkron dengan kolom yang kita gunakan
     public function updateJadwal(Request $request, $id) {
         $request->validate([
             'mentor_id' => 'required|exists:users,id',
-            'hari' => 'required',
-            'jam_mulai' => 'required',
+            // 'hari' dan 'jam_mulai' dilemahkan validasinya jika kamu hanya pakai satu input jadwal_pertemuan
+            'hari' => 'nullable',
+            'jam_mulai' => 'nullable',
         ]);
 
         DB::table('enrollments')->where('id', $id)->update([
             'mentor_id' => $request->mentor_id,
-            'hari' => $request->hari,
-            'jam_mulai' => $request->jam_mulai,
+            // Jika kamu menggunakan sistem jadwal gabungan (jadwal_pertemuan)
+            'jadwal_pertemuan' => $request->jadwal_pertemuan, 
             'updated_at' => now(),
         ]);
 
@@ -707,56 +706,56 @@ public function index() {
     }
 
     public function enrollProgram(Request $request) {
-        // 1. Validasi
-        $request->validate([
-            'program_id' => 'required|exists:programs,id',
-            'per_minggu' => 'required',
-            'jadwal_detail' => 'required',
-            'extra_hours' => 'nullable|numeric',
-            'bukti_pembayaran' => 'required|image|mimes:jpg,jpeg,png|max:2048',
-            'total_harga' => 'required',
-            'lokasi_cabang' => 'nullable|string',
-            'alamat_siswa' => 'nullable|string',
-            'selected_subjects' => 'nullable' // Data JSON Mapel
-        ]);
+    // 1. Validasi (Pastikan lokasi_cabang masuk dalam list validasi)
+    $request->validate([
+        'program_id' => 'required|exists:programs,id',
+        'per_minggu' => 'required',
+        'jadwal_detail' => 'required',
+        'extra_hours' => 'nullable|numeric',
+        'bukti_pembayaran' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+        'total_harga' => 'required',
+        'lokasi_cabang' => 'nullable|string', // Pastikan ini ada
+        'alamat_siswa' => 'nullable|string',  // Pastikan ini ada
+        'selected_subjects' => 'nullable' 
+    ]);
 
-        $user = Auth::user();
-        
-        // Logic Kode Unik dari WA
-        $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp ?? '000');
-        $uniqueCode = (int) substr($cleanPhone, -3); 
-        
-        $finalAmount = (int)$request->total_harga + $uniqueCode;
+    $user = Auth::user();
+    
+    // Logic Kode Unik
+    $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp ?? '000');
+    $uniqueCode = (int) substr($cleanPhone, -3); 
+    $finalAmount = (int)$request->total_harga + $uniqueCode;
 
-        // REVISI: Gunakan folder public/bukti agar bisa diakses asset()
-        $path = $request->file('bukti_pembayaran')->store('bukti', 'public');
-        $namaFile = basename($path);
+    $path = $request->file('bukti_pembayaran')->store('bukti', 'public');
+    $namaFile = basename($path);
 
-        // Parsing mapel dari JSON jika ada
-        $subjects = json_decode($request->selected_subjects, true);
-        $mapelName = is_array($subjects) ? implode(', ', $subjects) : 'Program Bimbel';
+    $subjects = json_decode($request->selected_subjects, true);
+    $mapelName = is_array($subjects) ? implode(', ', $subjects) : 'Program Bimbel';
 
-        // 2. SIMPAN KE DATABASE
-        DB::table('enrollments')->insert([
-            'user_id' => $user->id,
-            'program_id' => $request->program_id,
-            'per_minggu' => $request->per_minggu,
-            'extra_hours' => $request->extra_hours ?? 0,
-            'ambil_mengaji' => $request->is_mengaji ?? 0,
-            'jadwal_detail' => $request->jadwal_detail,
-            'mapel' => $mapelName, 
-            'lokasi_cabang' => $request->lokasi_cabang ?? 'ONLINE', 
-            'alamat_siswa' => $request->alamat_siswa ?? $user->alamat, 
-            'total_harga' => $finalAmount,
-            'payment_code' => $uniqueCode,
-            'status_pembayaran' => 'pending',
-            'bukti_pembayaran' => 'bukti/' . $namaFile, // Simpan path lengkap untuk asset()
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+    // 2. SIMPAN KE DATABASE
+    // Di dalam fungsi enrollProgram
+DB::table('enrollments')->insert([
+    'user_id' => $user->id,
+    'program_id' => $request->program_id,
+    'per_minggu' => $request->per_minggu,
+    'jadwal_detail' => $request->jadwal_detail,
+    'mapel' => $mapelName, 
+    
+    // CARA PASTI: Ambil dari input, kalau kosong cek lokasi_cabang
+    // Jika lokasi_cabang ada isinya, berarti dia OFFLINE.
+    'metode' => $request->metode ?? ($request->lokasi_cabang ? 'offline' : 'online'),
+    
+    'lokasi_cabang' => $request->lokasi_cabang, 
+    'alamat_siswa' => $request->alamat_siswa, 
+    'total_harga' => $finalAmount,
+    'status_pembayaran' => 'pending',
+    'bukti_pembayaran' => 'bukti/' . $namaFile,
+    'created_at' => now(),
+    'updated_at' => now(),
+]);
 
-        return redirect()->route('siswa.billing')->with('success', 'Berhasil! Menunggu verifikasi.');
-    }
+    return redirect()->route('siswa.billing')->with('success', 'Berhasil! Menunggu verifikasi.');
+}
     
    /**
      * ==========================================

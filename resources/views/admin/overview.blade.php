@@ -103,61 +103,82 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
-                        @foreach($recent_enrollments as $enrollment)
-                            <tr x-show="statusFilter === 'semua' || statusFilter === '{{ $enrollment->status_pembayaran }}'" class="hover:bg-slate-50/80 transition-colors group">
-                                <td class="py-4 px-8">
-                                    <div class="flex items-center">
-                                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mr-3 border border-slate-200">
-                                            <i class="fas fa-user text-[10px]"></i>
-                                        </div>
-                                        <div>
-                                            <p class="text-xs font-bold text-slate-700 leading-tight">{{ $enrollment->user_name }}</p>
-                                            <p class="text-[10px] font-bold text-blue-600 mt-0.5 uppercase">
-                                                @php
-                                                    $isOnline = str_contains(strtoupper($enrollment->lokasi_cabang ?? ''), 'ONLINE') || ($enrollment->metode ?? '') === 'online';
-                                                @endphp
-
-                                                @if($isOnline)
-                                                    <i class="fas fa-video text-[9px] mr-1"></i> Zoom Meeting
-                                                @else
-                                                    <i class="fas fa-map-marker-alt text-[9px] mr-1"></i> {{ $enrollment->lokasi_cabang ?? 'Offline' }}
-                                                @endif
-                                            </p>
-                                            @if(!$isOnline && ($enrollment->alamat_semarang ?? null))
-                                                <p class="text-[9px] text-slate-400 italic leading-none mt-1">{{ $enrollment->alamat_semarang }}</p>
+                     @foreach($recent_enrollments as $enrollment)
+                        <tr x-show="statusFilter === 'semua' || statusFilter === '{{ $enrollment->status_pembayaran }}'" class="hover:bg-slate-50/80 transition-colors group">
+                            <td class="py-4 px-8">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mr-3 border border-slate-200">
+                                        <i class="fas fa-user text-[10px]"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-700 leading-tight">{{ $enrollment->user_name }}</p>
+                                        
+                                        {{-- LOKASI LOGIC --}}
+                                        <p class="text-[10px] font-bold text-blue-600 mt-0.5 uppercase">
+                                            @if(!empty($enrollment->lokasi_cabang))
+                                                <i class="fas fa-map-marker-alt text-[9px] mr-1"></i> 
+                                                {{ $enrollment->lokasi_cabang }}
+                                            @elseif(!empty($enrollment->alamat_siswa))
+                                                <i class="fas fa-home text-[9px] mr-1"></i> 
+                                                Privat (Rumah)
+                                            @else
+                                                <i class="fas fa-video text-[9px] mr-1"></i> 
+                                                Zoom Meeting
                                             @endif
-                                        </div>
+                                        </p>
+
+                                        @if(!empty($enrollment->lokasi_cabang) || !empty($enrollment->alamat_siswa))
+                                            <p class="text-[9px] text-slate-400 italic leading-none mt-1">{{ $enrollment->alamat_siswa }}</p>
+                                        @endif
                                     </div>
-                                </td>
-                                <td class="py-4 px-6">
-                                    <span class="px-2 py-0.5 rounded-md bg-slate-900 text-[8px] font-black text-white uppercase tracking-tighter">{{ $enrollment->program_jenjang }}</span>
-                                    <p class="text-xs font-bold text-slate-800 mt-1">{{ $enrollment->mapel ?? ($enrollment->program_name ?? 'Program') }}</p>
-                                    @if(($enrollment->ambil_mengaji ?? '') === 'ya')
-                                        <span class="text-[8px] font-black text-emerald-600 uppercase italic">+ Ambil Ngaji</span>
-                                    @endif
-                                </td>
-                                <td class="py-4 px-6 text-center">
-                                    <div class="flex flex-col">
-                                        <span class="text-[10px] font-black text-slate-700 italic">{{ $enrollment->jadwal_pertemuan ?? 'Belum Pilih Hari' }}</span>
-                                        <div class="flex items-center justify-center gap-2 mt-1">
-                                            <span class="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-bold uppercase">{{ $enrollment->jumlah_pertemuan ?? '0' }}x Pertemuan</span>
-                                            <span class="text-[8px] bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-600 font-bold uppercase">{{ $enrollment->metode ?? 'N/A' }}</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="py-4 px-6 text-center">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase {{ ($enrollment->status_pembayaran ?? '') === 'verified' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600' }}">
-                                        {{ $enrollment->status_pembayaran ?? 'pending' }}
+                                </div>
+                            </td>
+
+                            <td class="py-4 px-6">
+                                <span class="px-2 py-0.5 rounded-md bg-slate-900 text-[8px] font-black text-white uppercase tracking-tighter">{{ $enrollment->program_jenjang }}</span>
+                                <p class="text-xs font-bold text-slate-800 mt-1">{{ $enrollment->mapel ?? ($enrollment->program_name ?? 'Program') }}</p>
+                                @if(($enrollment->mau_mengaji ?? 0) == 1)
+                                    <span class="text-[8px] font-black text-emerald-600 uppercase italic">+ Ambil Ngaji</span>
+                                @endif
+                            </td>
+
+                            <td class="py-4 px-6 text-center">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-black text-slate-700 italic">
+                                        {{ $enrollment->jadwal_detail ?: 'Belum Pilih Jadwal' }}
                                     </span>
-                                </td>
-                                <td class="py-4 px-8 text-right">
-                                    <button @click="showModalJadwal = true; selectedEnrollment = {{ json_encode($enrollment) }}" 
-                                            class="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-sm">
-                                        {{ ($enrollment->mentor_id ?? null) ? 'Ganti Mentor' : 'Pilih Mentor' }}
-                                    </button>
-                                </td>
-                            </tr>
-                        @endforeach
+                                    <div class="flex items-center justify-center gap-2 mt-1">
+                                        <span class="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-bold uppercase">
+                                            {{ $enrollment->per_minggu ?? '0' }}x Pertemuan
+                                        </span>
+                                        
+                                        {{-- REVISI STATUS ONLINE/OFFLINE DI DETAIL PERTEMUAN --}}
+                                        @if(!empty($enrollment->lokasi_cabang) || !empty($enrollment->alamat_siswa))
+                                            <span class="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-orange-50 text-orange-600">
+                                                OFFLINE
+                                            </span>
+                                        @else
+                                            <span class="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-blue-50 text-blue-600">
+                                                ONLINE
+                                            </span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="py-4 px-6 text-center">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full font-black text-[8px] uppercase {{ ($enrollment->status_pembayaran ?? '') === 'verified' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600' }}">
+                                    {{ $enrollment->status_pembayaran ?? 'pending' }}
+                                </span>
+                            </td>
+                            <td class="py-4 px-8 text-right">
+                                <button @click="showModalJadwal = true; selectedEnrollment = {{ json_encode($enrollment) }}" 
+                                        class="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-sm">
+                                    {{ ($enrollment->mentor_id ?? null) ? 'Ganti Mentor' : 'Pilih Mentor' }}
+                                </button>
+                            </td>
+                        </tr>
+                    @endforeach
                     </tbody>
                 </table>
             </div>
@@ -185,14 +206,14 @@
 
                 <div class="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-100">
                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Pilihan Jadwal Siswa:</p>
-                    <p class="text-xs font-bold text-slate-700" x-text="selectedEnrollment?.jadwal_pertemuan || '-'"></p>
+                    <p class="text-xs font-bold text-slate-700" x-text="selectedEnrollment?.jadwal_detail || selectedEnrollment?.jadwal_pertemuan || '-'"></p>
                 </div>
 
                 <form :action="'/admin/enrollment/update-jadwal/' + selectedEnrollment?.id" method="POST">
                     @csrf
                     @method('PUT')
                     
-                    <input type="hidden" name="jadwal_pertemuan" :value="selectedEnrollment?.jadwal_pertemuan">
+                    <input type="hidden" name="jadwal_pertemuan" :value="selectedEnrollment?.jadwal_detail || selectedEnrollment?.jadwal_pertemuan">
                     
                     <div class="space-y-4">
                         <div>
@@ -200,7 +221,7 @@
                             <select name="mentor_id" class="w-full mt-2 p-4 bg-slate-50 border-none rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500">
                                 <option value="">-- Pilih Mentor --</option>
                                 @foreach($mentors as $m)
-                                    <option value="{{ $m->id }}">{{ $m->name }} ({{ $m->specialization }})</option>
+                                    <option value="{{ $m->id }}">{{ $m->name }} ({{ $m->specialization ?? 'Umum' }})</option>
                                 @endforeach
                             </select>
                         </div>
