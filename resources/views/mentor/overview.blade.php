@@ -66,7 +66,6 @@
                             </div>
                         </div>
 
-                        {{-- REVISI: Tambahan Detail Lokasi & Alamat Siswa --}}
                         <div class="mt-2 pt-3 border-t border-slate-200/50 flex flex-col gap-1">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
@@ -148,8 +147,22 @@
                                 style="color: #1e293b !important; background-color: #f8fafc !important; border: 1px solid #e2e8f0 !important;"
                                 class="w-full px-6 py-4 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 appearance-none">
                             <option value="">-- Klik untuk memilih siswa --</option>
-                            @foreach($today_schedule as $jadwal)
-                                <option value="{{ $jadwal->student_id }}">{{ $jadwal->student_name }} ({{ $jadwal->program_name }})</option>
+                            {{-- REVISI: Menggunakan list siswa dari semua jadwal agar semua penugasan muncul --}}
+                            @php
+                                $all_students = DB::table('enrollments')
+                                    ->join('users', 'enrollments.user_id', '=', 'users.id')
+                                    ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+                                    ->where(function($q) {
+                                        $q->where('enrollments.mentor_id', Auth::id())
+                                          ->orWhere('programs.mentor_id', Auth::id());
+                                    })
+                                    ->where('enrollments.status_pembayaran', 'verified')
+                                    ->select('users.id as student_id', 'users.name as student_name', 'programs.name as program_name')
+                                    ->distinct()
+                                    ->get();
+                            @endphp
+                            @foreach($all_students as $mhs)
+                                <option value="{{ $mhs->student_id }}">{{ $mhs->student_name }} ({{ $mhs->program_name }})</option>
                             @endforeach
                         </select>
                     </div>

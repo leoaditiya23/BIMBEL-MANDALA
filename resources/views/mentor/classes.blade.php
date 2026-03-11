@@ -7,20 +7,41 @@
     modalMateri: false, 
     modalAbsen: false,
     modalTugas: false,
-    selectedSubmissions: [],
     isAbsenOpen: false, 
-    selectedClass: {id: '', name: '', students: [], materials: [], total_sessions: 12},
+    selectedClass: {id: '', name: '', students: [], materials: [], total_sessions: 0},
     fileName: '',
     editingMaterial: null,
 
+    // Fungsi untuk membuka modal absensi dengan data yang benar
+    openAbsenModal(item) {
+        this.selectedClass = JSON.parse(JSON.stringify(item));
+        this.isAbsenOpen = !!item.is_absen_active;
+        this.modalAbsen = true;
+    },
+
+    // Fungsi untuk membuka modal materi
+    openMateriModal(item) {
+        this.selectedClass = JSON.parse(JSON.stringify(item));
+        this.editingMaterial = null;
+        this.fileName = '';
+        this.modalMateri = true;
+    },
+
+    // Fungsi untuk membuka modal nilai
+    openNilaiModal(item) {
+        this.selectedClass = JSON.parse(JSON.stringify(item));
+        this.modalTugas = true;
+    },
+
     toggleAbsen(status) {
         if(!this.selectedClass.id) return;
-        this.isAbsenOpen = status;
+        
         fetch('{{ route('mentor.toggleAbsen') }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 class_id: this.selectedClass.id,
@@ -30,9 +51,11 @@
         .then(res => res.json())
         .then(data => {
             if(data.success) {
-                // Notifikasi sukses
+                this.isAbsenOpen = status;
+                // Reload disarankan agar badge 'Absensi Dibuka' terupdate di semua card secara konsisten dengan database
+                window.location.reload();
             }
-        }).catch(err => console.error(err));
+        }).catch(err => console.error('Error toggling attendance:', err));
     }
 }" x-transition:enter="transition ease-out duration-300" class="min-h-screen flex flex-col pb-20">
     
@@ -115,6 +138,7 @@
         @forelse($classes as $class)
             <div x-show="(activeTab === 'semua' || (activeTab === 'aktif' && {{ ($class->is_absen_active ?? false) ? 'true' : 'false' }})) && ('{{ strtolower($class->name) }}'.includes(searchQuery.toLowerCase()))"
                  x-transition
+                 data-class-id="{{ $class->id }}"
                  class="bg-white rounded-[25px] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-500 group overflow-hidden flex flex-col h-full">
                 
                 <div class="p-6 flex-1">
@@ -134,6 +158,23 @@
                     <h3 class="font-black text-slate-800 text-lg leading-tight mb-1 group-hover:text-indigo-600 transition-colors">{{ $class->name }}</h3>
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 italic">{{ $class->jenjang }} • {{ $class->type }}</p>
 
+                    {{-- DAFTAR SISWA LANGSUNG --}}
+                    <div class="mb-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Siswa Terdaftar :</p>
+                        <div class="flex flex-wrap gap-1.5">
+                            @forelse($class->students ?? [] as $student)
+                                <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg group/name hover:border-indigo-200 transition-all">
+                                    <div class="w-4 h-4 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center text-[7px] font-black">
+                                        {{ strtoupper(substr($student->name, 0, 1)) }}
+                                    </div>
+                                    <span class="text-[9px] font-bold text-slate-600">{{ $student->name }}</span>
+                                </div>
+                            @empty
+                                <p class="text-[9px] font-bold text-slate-300 italic">Belum ada siswa</p>
+                            @endforelse
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-3 mb-6">
                         <div class="bg-slate-50 p-3 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
                             <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Total Siswa</p>
@@ -147,9 +188,10 @@
 
                     <div class="mb-6">
                         @php
-                            $total_sessions = $class->total_sessions ?? 1;
+                            $total_sessions = $class->total_sessions > 0 ? $class->total_sessions : 1;
                             $materials_count = count($class->materials ?? []);
-                            $progress = ($total_sessions > 0) ? ($materials_count / $total_sessions) * 100 : 0;
+                            $progress = ($materials_count / $total_sessions) * 100;
+                            $progress = $progress > 100 ? 100 : $progress;
                         @endphp
                         <div class="flex justify-between text-[10px] font-black mb-2">
                             <span class="text-slate-400 uppercase tracking-widest">Kurikulum Progress</span>
@@ -163,18 +205,18 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
-                        <button @click="selectedClass = {id: '{{ $class->id }}', name: '{{ $class->name }}', students: {{ json_encode($class->students ?? []) }}}; isAbsenOpen = {{ ($class->is_absen_active ?? false) ? 'true' : 'false' }}; modalAbsen = true" 
+                        <button @click="openAbsenModal({{ json_encode($class) }})" 
                                 class="py-3 bg-slate-900 text-white rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-slate-200">
                             <i class="fas fa-fingerprint mr-1.5"></i> Absensi
                         </button>
-                        <button @click="selectedClass = {id: '{{ $class->id }}', name: '{{ $class->name }}', students: {{ json_encode($class->students ?? []) }} }; modalTugas = true" 
+                        <button @click="openNilaiModal({{ json_encode($class) }})" 
                                 class="py-3 bg-indigo-600 text-white rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-indigo-100">
                             <i class="fas fa-star mr-1.5"></i> Nilai
                         </button>
                     </div>
                 </div>
 
-                <button @click="selectedClass = {id: '{{ $class->id }}', name: '{{ $class->name }}', materials: {{ json_encode($class->materials ?? []) }}, total_sessions: {{ $class->total_sessions ?? 0 }} }; modalMateri = true; fileName = ''; editingMaterial = null" 
+                <button @click="openMateriModal({{ json_encode($class) }})" 
                         class="w-full px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center hover:bg-white transition-colors group/btn">
                     <span class="text-[10px] font-black text-slate-500 group-hover/btn:text-indigo-600 transition uppercase tracking-widest">
                         <i class="fas fa-layer-group mr-1.5"></i> Input Materi & Sesi
@@ -193,6 +235,7 @@
         @endforelse
     </div>
 
+    {{-- MODAL ABSEN --}}
     <div x-show="modalAbsen" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition>
         <div @click.away="modalAbsen = false" class="bg-white rounded-[35px] shadow-2xl w-full max-w-md overflow-hidden border border-white">
             <div class="p-8">
@@ -210,8 +253,8 @@
                     </div>
                     <p class="text-[9px] font-black uppercase text-indigo-200 mb-4 tracking-[0.2em]">Remote Control Absensi</p>
                     <div class="flex gap-3">
-                        <button type="button" @click="toggleAbsen(true)" :class="isAbsenOpen ? 'bg-white/20 text-white cursor-not-allowed opacity-50' : 'bg-white text-indigo-600 hover:bg-indigo-50 shadow-lg'" class="flex-1 py-3 rounded-[15px] text-[10px] font-black uppercase tracking-widest transition-all">Buka Sesi</button>
-                        <button type="button" @click="toggleAbsen(false)" :class="!isAbsenOpen ? 'bg-white/20 text-white cursor-not-allowed opacity-50' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg'" class="flex-1 py-3 rounded-[15px] text-[10px] font-black uppercase tracking-widest transition-all">Tutup Sesi</button>
+                        <button type="button" @click="toggleAbsen(true)" :disabled="isAbsenOpen" :class="isAbsenOpen ? 'bg-white/20 text-white cursor-not-allowed opacity-50' : 'bg-white text-indigo-600 hover:bg-indigo-50 shadow-lg'" class="flex-1 py-3 rounded-[15px] text-[10px] font-black uppercase tracking-widest transition-all">Buka Sesi</button>
+                        <button type="button" @click="toggleAbsen(false)" :disabled="!isAbsenOpen" :class="!isAbsenOpen ? 'bg-white/20 text-white cursor-not-allowed opacity-50' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg'" class="flex-1 py-3 rounded-[15px] text-[10px] font-black uppercase tracking-widest transition-all">Tutup Sesi</button>
                     </div>
                 </div>
 
@@ -232,7 +275,7 @@
                                 <template x-if="student.status === 'Hadir'">
                                     <span class="text-[8px] font-black px-3 py-1.5 bg-green-500 text-white rounded-full uppercase tracking-widest shadow-sm">Present</span>
                                 </template>
-                                <template x-if="!student.status">
+                                <template x-if="!student.status || student.status === 'Alfa'">
                                     <span class="text-[8px] font-black px-3 py-1.5 bg-slate-200 text-slate-400 rounded-full uppercase tracking-widest animate-pulse">Waiting...</span>
                                 </template>
                             </div>
@@ -243,6 +286,7 @@
         </div>
     </div>
 
+    {{-- MODAL MATERI --}}
     <div x-show="modalMateri" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto" x-cloak x-transition>
         <div @click.away="modalMateri = false" 
              class="bg-white rounded-[40px] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col md:flex-row h-[85vh]">
@@ -279,16 +323,15 @@
 
             <div class="w-full md:w-7/12 p-10 bg-white flex flex-col relative overflow-y-auto custom-scrollbar">
                 <div class="absolute top-8 right-8 flex items-center gap-3 z-50">
-    <button x-show="editingMaterial" @click="editingMaterial = null; fileName = ''" 
-            class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-indigo-100 transition-all shadow-sm">
-        <i class="fas fa-plus"></i>
-    </button>
-    
-    <button @click="modalMateri = false" 
-            class="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all shadow-sm border border-slate-100">
-        <i class="fas fa-times text-lg"></i>
-    </button>
-</div>
+                    <button x-show="editingMaterial" @click="editingMaterial = null; fileName = ''" 
+                            class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-indigo-100 transition-all shadow-sm">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button @click="modalMateri = false" 
+                            class="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all shadow-sm border border-slate-100">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
 
                 <div class="mb-10">
                     <h3 class="text-3xl font-black text-slate-800 leading-none" x-text="editingMaterial ? 'Update Sesi' : 'Buat Sesi Baru'"></h3>
@@ -313,18 +356,18 @@
                     </div>
 
                     <div>
-    <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">URL Video (Youtube/Lainnya)</label>
-    <div class="relative mt-2">
-        <input type="url" name="video_url" :value="editingMaterial ? editingMaterial.video_url : ''" 
-               placeholder="https://youtube.com/watch?v=..." 
-               class="w-full px-5 py-4 bg-slate-50 border-none rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-indigo-500 shadow-inner">
-    </div>
-</div>
+                        <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">URL Video (Youtube/Lainnya)</label>
+                        <div class="relative mt-2">
+                            <input type="url" name="video_url" :value="editingMaterial ? editingMaterial.video_url : ''" 
+                                   placeholder="https://youtube.com/watch?v=..." 
+                                   class="w-full px-5 py-4 bg-slate-50 border-none rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-indigo-500 shadow-inner">
+                        </div>
+                    </div>
 
                     <div>
                         <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Modul Dokumentasi (PDF/PPT)</label>
                         <div class="mt-2 p-8 border-2 border-dashed border-slate-100 rounded-[30px] text-center hover:border-indigo-400 hover:bg-indigo-50 transition-all relative group cursor-pointer">
-                            <input type="file" name="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" id="fileInp" @change="fileName = $event.target.files[0].name">
+                            <input type="file" name="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="fileName = $event.target.files[0].name">
                             <div class="space-y-3">
                                 <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm group-hover:scale-110 transition-transform">
                                     <i class="fas fa-cloud-upload-alt text-indigo-500"></i>
@@ -345,62 +388,73 @@
         </div>
     </div>
 
+   {{-- MODAL NILAI --}}
     <div x-show="modalTugas" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition>
-        <div @click.away="modalTugas = false" class="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden border border-white">
-            <div class="p-10">
-                <div class="flex justify-between items-start mb-10">
+        <div @click.away="modalTugas = false" class="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden border border-white flex flex-col h-[85vh]">
+            
+            <div class="p-10 pb-6">
+                <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="text-3xl font-black text-slate-800 leading-tight">Input Nilai Siswa</h3>
+                        <h3 class="text-3xl font-black text-slate-800 leading-tight">Penilaian Siswa</h3>
                         <p class="text-sm font-bold text-indigo-500 mt-2" x-text="selectedClass.name"></p>
                     </div>
                     <button @click="modalTugas = false" class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 hover:text-rose-500 transition-colors">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
+            </div>
 
-                <form action="{{ route('mentor.storeGrade') }}" method="POST" class="space-y-6">
-                    @csrf
-                    <input type="hidden" name="program_id" :value="selectedClass.id">
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Nama Lengkap Siswa</label>
-                            <select name="student_id" required class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black p-4 focus:ring-2 focus:ring-indigo-500">
-                                <option value="">-- Pilih salah satu --</option>
-                                <template x-for="student in selectedClass.students" :key="student.id">
-                                    <option :value="student.id" x-text="student.name"></option>
-                                </template>
-                            </select>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Kategori Tugas / Ujian</label>
-                                <input type="text" name="title" placeholder="Misal: Proyek Tengah Semester" required class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black p-4 focus:ring-2 focus:ring-indigo-500">
+            <div class="flex-1 overflow-y-auto px-10 pb-10 space-y-6 custom-scrollbar">
+                <template x-for="student in selectedClass.students" :key="student.id">
+                    <div class="bg-white rounded-[30px] border-2 border-slate-100 shadow-sm overflow-hidden hover:border-indigo-200 transition-all">
+                        
+                        <div class="bg-slate-50 p-5 flex items-center gap-4 border-b border-slate-100">
+                            <div class="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100">
+                                <span class="font-black text-sm" x-text="student.name.substring(0,2).toUpperCase()"></span>
                             </div>
                             <div>
-                                <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Skor Akhir (0-100)</label>
-                                <input type="number" name="score" min="0" max="100" placeholder="0" required class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black p-4 focus:ring-2 focus:ring-indigo-500">
+                                <h4 class="text-sm font-black text-slate-800 leading-tight" x-text="student.name"></h4>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Student ID: #<span x-text="student.id"></span></p>
                             </div>
                         </div>
 
-                        <div>
-                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Feedback / Catatan Mentor</label>
-                            <textarea name="note" rows="3" placeholder="Berikan kata-kata motivasi atau evaluasi untuk siswa ini..." class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black p-4 focus:ring-2 focus:ring-indigo-500"></textarea>
-                        </div>
-                    </div>
+                        <form action="{{ route('mentor.storeGrade') }}" method="POST" class="p-6 space-y-4">
+                            @csrf
+                            <input type="hidden" name="program_id" :value="selectedClass.id">
+                            <input type="hidden" name="student_id" :value="student.id">
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Kategori Tugas</label>
+                                    <input type="text" name="title" placeholder="Misal: Kuis 1" required class="w-full mt-2 bg-slate-50 border-none rounded-[15px] text-[11px] font-black p-3 focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Skor (0-100)</label>
+                                    <input type="number" name="score" min="0" max="100" placeholder="0" required class="w-full mt-2 bg-slate-50 border-none rounded-[15px] text-[11px] font-black p-3 focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                            </div>
 
-                    <div class="pt-6">
-                        <button type="submit" class="w-full py-5 bg-indigo-600 text-white rounded-[22px] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 hover:bg-slate-900 transition-all active:scale-95">
-                            Kirim & Publikasikan Nilai
-                        </button>
+                            <div>
+                                <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Feedback Mentor</label>
+                                <textarea name="note" rows="2" placeholder="Tulis catatan perkembangan..." class="w-full mt-2 bg-slate-50 border-none rounded-[15px] text-[11px] font-black p-3 focus:ring-2 focus:ring-indigo-500"></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full py-3.5 bg-slate-900 text-white rounded-[18px] text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-slate-100 active:scale-95">
+                                <i class="fas fa-paper-plane mr-2"></i> Simpan Nilai <span x-text="student.name.split(' ')[0]"></span>
+                            </button>
+                        </form>
                     </div>
-                </form>
+                </template>
+                
+                <template x-if="!selectedClass.students || selectedClass.students.length === 0">
+                    <div class="text-center py-10">
+                        <i class="fas fa-user-slash text-4xl text-slate-200 mb-4"></i>
+                        <p class="text-slate-400 font-bold text-sm">Belum ada siswa di kelas ini.</p>
+                    </div>
+                </template>
             </div>
         </div>
     </div>
-
-</div>
 
 <style>
     html, body { 
