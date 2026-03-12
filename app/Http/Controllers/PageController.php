@@ -762,41 +762,55 @@ DB::table('enrollments')->insert([
      * FITUR MENTOR (OTOMATIS BERDASARKAN ADMIN)
      * ==========================================
      */
-   public function mentorOverview() {
-    $user = Auth::user();
-    $hari_ini = Carbon::now()->locale('id')->dayName;
+    public function mentorOverview() {
+        $user = Auth::user();
+        $hari_ini = Carbon::now()->locale('id')->dayName;
 
-    $today_schedule = DB::table('enrollments')
-        ->join('users', 'enrollments.user_id', '=', 'users.id') // Ambil data siswa
-        ->where('enrollments.mentor_id', $user->id)
-        ->where('enrollments.status_pembayaran', 'verified')
-        ->where('enrollments.hari', 'like', '%' . $hari_ini . '%')
-        ->select(
-            'enrollments.id', 
-            'enrollments.mapel as program_name', 
-            'enrollments.jam_mulai', 
-            'users.name as student_name', // NAMA SISWA MUNCUL DI SINI
-            'enrollments.lokasi_cabang'
-        )
-        ->get()
+        // 1. Ambil Jadwal Hari Ini (Sinkron dengan Enrollments)
+        $today_schedule = DB::table('enrollments')
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->where('enrollments.mentor_id', $user->id)
+            ->whereRaw('LOWER(enrollments.status_pembayaran) = ?', ['verified'])
+            ->where('enrollments.hari', 'like', '%' . $hari_ini . '%')
+            ->select(
+                'enrollments.id', 
+                'enrollments.mapel as program_name', 
+                'enrollments.jam_mulai', 
+                'users.name as student_name', 
+                'enrollments.lokasi_cabang'
+            )
+            ->get()
             ->map(function($item) {
                 $item->jam_tampil = $item->jam_mulai ? Carbon::parse($item->jam_mulai)->format('H:i') : '--:--';
                 return $item;
             });
 
+        // 2. Ambil data Assignments (Tugas)
+        $assignments = DB::table('assignments')
+            ->join('users', 'assignments.student_id', '=', 'users.id')
+            ->where('assignments.mentor_id', $user->id)
+            ->select('assignments.*', 'users.name as student_name')
+            ->orderBy('assignments.created_at', 'desc')
+            ->get()
+            ->map(function($item) {
+                $item->created_at = Carbon::parse($item->created_at);
+                return $item;
+            });
+
+        // 3. Statistik
         $stats = [
             'total_siswa' => DB::table('enrollments')
                 ->where('mentor_id', $user->id)
-                ->where('status_pembayaran', 'verified')
+                ->whereRaw('LOWER(status_pembayaran) = ?', ['verified'])
                 ->distinct('user_id')->count(),
             'total_kelas' => DB::table('enrollments')
                 ->where('mentor_id', $user->id)
-                ->where('status_pembayaran', 'verified')
-                ->distinct('mapel')->count(), // Hitung berdasarkan kolom mapel
+                ->whereRaw('LOWER(status_pembayaran) = ?', ['verified'])
+                ->distinct('mapel')->count(),
         ];
 
-        return view('mentor.overview', compact('user', 'today_schedule', 'stats'));
-}
+        return view('mentor.overview', compact('user', 'today_schedule', 'stats', 'assignments'));
+    }
 
     public function storeAssignment(Request $request) {
         $request->validate([
@@ -840,29 +854,35 @@ DB::table('enrollments')->insert([
         return back()->with('error', 'Tugas tidak ditemukan.');
     }
 
-  public function mentorClasses() {
+    public function mentorClasses(Request $request) {
         $user = Auth::user();
         $today = date('Y-m-d');
+        $targetId = $request->query('id'); // Menangkap ID dari tombol "Mulai Mengajar" di Timeline
 
-        // REVISI: Mengambil data enrollment secara individu agar 1 pendaftaran = 1 kartu
+        // Mengambil data enrollment secara individu agar 1 pendaftaran = 1 kartu
         $classes = DB::table('enrollments')
             ->join('users', 'enrollments.user_id', '=', 'users.id') 
             ->where('enrollments.mentor_id', $user->id)
-            ->where('enrollments.status_pembayaran', 'verified')
+            ->whereRaw('LOWER(enrollments.status_pembayaran) = ?', ['verified'])
+            ->when($targetId, function($query, $targetId) {
+                return $query->where('enrollments.id', $targetId);
+            })
             ->select(
                 'enrollments.id', 
                 'enrollments.mapel as name', 
                 'enrollments.jenjang', 
                 'enrollments.hari',
+                'enrollments.jam_mulai as jam',
                 'enrollments.user_id',
-                'users.name as student_name' // Nama siswa ditarik ke level utama
+                'enrollments.is_absen_active',
+                'users.name as student_name'
             )
             ->get()
             ->map(function($class) use ($today, $user) {
                 $class->type = 'Reguler'; 
                 $class->total_sessions = 12;
 
-                // Mengambil data siswa untuk modal absensi/nilai (Tetap dalam bentuk array agar Alpine.js tidak error)
+                // Data siswa untuk modal absensi/nilai
                 $class->students = DB::table('users')
                     ->leftJoin('attendances', function($join) use ($today, $class) {
                         $join->on('users.id', '=', 'attendances.student_id')
@@ -873,10 +893,8 @@ DB::table('enrollments')->insert([
                     ->select('users.id', 'users.name', 'attendances.status as status')
                     ->get();
                 
-                // Indikator jumlah siswa di kartu tersebut
                 $class->student_count = 1; 
                 
-                // Mengambil materi berdasarkan ID enrollment (program_id)
                 $class->materials = DB::table('program_materials')
                     ->where('program_id', $class->id)
                     ->orderBy('session_number', 'asc')
@@ -889,23 +907,22 @@ DB::table('enrollments')->insert([
     }
 
     public function toggleAbsen(Request $request) {
-        // Cek dulu apakah kolom exists untuk menghindari error SQL
         $request->validate(['class_id' => 'required', 'is_active' => 'required|boolean']);
         
         try {
-            DB::table('programs')->where('id', $request->class_id)->update([
+            DB::table('enrollments')->where('id', $request->class_id)->update([
                 'is_absen_active' => $request->is_active,
                 'updated_at' => now()
             ]);
             return response()->json(['success' => true, 'message' => 'Status absensi diperbarui']);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Gagal memperbarui (Fitur butuh update database)']);
+            return response()->json(['success' => false, 'message' => 'Gagal memperbarui status']);
         }
     }
 
     public function storeMaterial(Request $request) {
         $request->validate([
-            'program_id' => 'required|exists:programs,id',
+            'program_id' => 'required',
             'session_number' => 'required|integer',
             'title' => 'required|string|max:255',
             'file' => 'nullable|file|max:10240',
@@ -1011,19 +1028,45 @@ DB::table('enrollments')->insert([
     }
 
     public function mentorSchedule() {
-        $schedule = DB::table('enrollments')
-            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->join('users', 'enrollments.user_id', '=', 'users.id')
-            ->where('enrollments.mentor_id', Auth::id())
-            ->where('enrollments.status_pembayaran', 'verified')
-            ->select('programs.name as program_name', 'programs.hari', 'programs.jam_mulai', 'users.name as student_name')
-            ->get()
-            ->map(function($item) {
-                $item->jam_mulai = $item->jam_mulai ? Carbon::parse($item->jam_mulai)->format('H:i') : '--:--';
-                return $item;
-            });
+        $user = Auth::user();
 
-        return view('mentor.schedule', compact('schedule'));
+        $schedule = DB::table('enrollments')
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->where('enrollments.mentor_id', $user->id)
+            ->whereRaw('LOWER(enrollments.status_pembayaran) = ?', ['verified'])
+            ->select(
+                'enrollments.id',
+                'enrollments.mapel as program_name', 
+                'enrollments.hari', 
+                'enrollments.jam_mulai', 
+                'enrollments.jadwal_detail',
+                'users.name as student_name',
+                'enrollments.jenjang',
+                'enrollments.lokasi_cabang'
+            )
+            ->get();
+
+        $formattedSchedule = $schedule->flatMap(function($item) {
+            $sessions = [];
+            if ($item->jadwal_detail) {
+                $parts = explode(',', $item->jadwal_detail);
+                foreach ($parts as $part) {
+                    preg_match('/(\w+)\s*\(([\d.]+)\)/', strtolower($part), $matches);
+                    if (count($matches) >= 3) {
+                        $newEntry = clone $item;
+                        $newEntry->hari = ucfirst(trim($matches[1]));
+                        $newEntry->jam_mulai = str_replace('.', ':', $matches[2]);
+                        $sessions[] = $newEntry;
+                    }
+                }
+            } else {
+                $item->jam_mulai = $item->jam_mulai ? Carbon::parse($item->jam_mulai)->format('H:i') : '--:--';
+                $sessions[] = $item;
+            }
+            return $sessions;
+        });
+
+        return view('mentor.schedule', ['schedule' => $formattedSchedule]);
     }
 
     public function mentorSubmissions() {

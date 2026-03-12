@@ -2,7 +2,7 @@
 
 @section('mentor_content')
 <div x-data="{ 
-    activeTab: 'semua', 
+    activeTab: '{{ request()->query('id') ? 'semua' : 'semua' }}', 
     searchQuery: '',
     modalMateri: false, 
     modalAbsen: false,
@@ -52,7 +52,6 @@
         .then(data => {
             if(data.success) {
                 this.isAbsenOpen = status;
-                // Reload disarankan agar badge 'Absensi Dibuka' terupdate di semua card secara konsisten dengan database
                 window.location.reload();
             }
         }).catch(err => console.error('Error toggling attendance:', err));
@@ -134,16 +133,34 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 flex-1">
-        @forelse($classes as $class)
+    {{-- NOTIFIKASI MODE FOKUS --}}
+    @if(request()->query('id'))
+    <div class="mb-6 bg-indigo-600 p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-indigo-100 animate-in fade-in slide-in-from-top-4 duration-700">
+        <div class="flex items-center gap-3 text-white">
+            <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                <i class="fas fa-bullseye text-sm"></i>
+            </div>
+            <p class="text-xs font-bold uppercase tracking-wider">Mode Fokus: Menampilkan kelas yang dipilih dari jadwal</p>
+        </div>
+        <a href="{{ route('mentor.classes') }}" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase transition-all">Tampilkan Semua</a>
+    </div>
+    @endif
+
+ <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 flex-1">
+    @forelse($classes as $class)
+        @php 
+            $isFocused = request()->query('id') == $class->id; 
+        @endphp
+        
+        @if(!request()->query('id') || $isFocused)
             <div x-show="(activeTab === 'semua' || (activeTab === 'aktif' && {{ ($class->is_absen_active ?? false) ? 'true' : 'false' }})) && ('{{ strtolower($class->name) }}'.includes(searchQuery.toLowerCase()))"
                  x-transition
                  data-class-id="{{ $class->id }}"
-                 class="bg-white rounded-[25px] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-500 group overflow-hidden flex flex-col h-full">
+                 class="bg-white rounded-[25px] border {{ $isFocused ? 'border-indigo-500 ring-4 ring-indigo-50 shadow-2xl scale-[1.02]' : 'border-slate-100 shadow-sm' }} hover:shadow-xl transition-all duration-500 group overflow-hidden flex flex-col h-full">
                 
                 <div class="p-6 flex-1">
                     <div class="flex items-start justify-between mb-4">
-                        <div class="p-3 bg-indigo-50 rounded-[18px] text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500">
+                        <div class="p-3 {{ $isFocused ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600' }} rounded-[18px] group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500">
                             <i class="fas fa-graduation-cap"></i>
                         </div>
                         @if($class->is_absen_active ?? false)
@@ -156,14 +173,28 @@
                     </div>
                     
                     <h3 class="font-black text-slate-800 text-lg leading-tight mb-1 group-hover:text-indigo-600 transition-colors">{{ $class->name }}</h3>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 italic">{{ $class->jenjang }} • {{ $class->type }}</p>
+                    
+                   {{-- INFO JADWAL --}}
+<div class="flex items-center gap-3 mt-1 mb-4">
+    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">• {{ $class->type ?? 'Reguler' }}</span>
+    <div class="flex items-center gap-2 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+        <i class="far fa-calendar-alt text-[9px] text-indigo-500"></i>
+        {{-- Menampilkan Hari dari DB --}}
+        <span class="text-[9px] font-black text-indigo-600 uppercase">{{ $class->hari ?? 'TBA' }}</span>
+        
+        <span class="text-indigo-200">|</span>
+        
+        <i class="far fa-clock text-[9px] text-indigo-500"></i>
+        {{-- Menampilkan Jam Mulai dari DB --}}
+        <span class="text-[9px] font-black text-indigo-600">{{ $class->jam ?? '--:--' }}</span>
+    </div>
+</div>
 
-                    {{-- DAFTAR SISWA LANGSUNG --}}
                     <div class="mb-4">
                         <p class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Siswa Terdaftar :</p>
                         <div class="flex flex-wrap gap-1.5">
                             @forelse($class->students ?? [] as $student)
-                                <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg group/name hover:border-indigo-200 transition-all">
+                                <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg">
                                     <div class="w-4 h-4 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center text-[7px] font-black">
                                         {{ strtoupper(substr($student->name, 0, 1)) }}
                                     </div>
@@ -178,7 +209,7 @@
                     <div class="grid grid-cols-2 gap-3 mb-6">
                         <div class="bg-slate-50 p-3 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
                             <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Total Siswa</p>
-                            <p class="font-black text-slate-700 text-sm"><i class="fas fa-user-friends mr-1 text-indigo-400"></i> {{ $class->student_count }} <span class="text-[10px]">Pax</span></p>
+                            <p class="font-black text-slate-700 text-sm"><i class="fas fa-user-friends mr-1 text-indigo-400"></i> {{ $class->student_count ?? count($class->students ?? []) }} <span class="text-[10px]">Pax</span></p>
                         </div>
                         <div class="bg-slate-50 p-3 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
                             <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Sesi Selesai</p>
@@ -186,9 +217,10 @@
                         </div>
                     </div>
 
+                    {{-- PROGRESS BAR --}}
                     <div class="mb-6">
                         @php
-                            $total_sessions = $class->total_sessions > 0 ? $class->total_sessions : 1;
+                            $total_sessions = ($class->total_sessions ?? 0) > 0 ? $class->total_sessions : 1;
                             $materials_count = count($class->materials ?? []);
                             $progress = ($materials_count / $total_sessions) * 100;
                             $progress = $progress > 100 ? 100 : $progress;
@@ -224,16 +256,17 @@
                     <i class="fas fa-arrow-right text-slate-300 group-hover/btn:text-indigo-600 group-hover/btn:translate-x-1 transition-all"></i>
                 </button>
             </div>
-        @empty
-            <div class="col-span-full bg-white p-20 rounded-[40px] border-2 border-dashed border-slate-100 text-center">
-                <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-200 text-3xl">
-                    <i class="fas fa-calendar-times"></i>
-                </div>
-                <h3 class="text-xl font-black text-slate-800">Tidak Ada Jadwal</h3>
-                <p class="text-slate-400 font-bold mt-2">Belum ada kelas yang ditugaskan untuk akun Anda saat ini.</p>
+        @endif
+    @empty
+        <div class="col-span-full bg-white p-20 rounded-[40px] border-2 border-dashed border-slate-100 text-center">
+            <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-200 text-3xl">
+                <i class="fas fa-calendar-times"></i>
             </div>
-        @endforelse
-    </div>
+            <h3 class="text-xl font-black text-slate-800">Tidak Ada Jadwal</h3>
+            <p class="text-slate-400 font-bold mt-2">Belum ada kelas yang ditugaskan untuk akun Anda saat ini.</p>
+        </div>
+    @endforelse
+</div>
 
     {{-- MODAL ABSEN --}}
     <div x-show="modalAbsen" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition>
@@ -476,5 +509,11 @@
         100% { transform: translateX(150%) skewX(-12deg); }
     }
     .animate-shimmer { animation: shimmer 2s infinite linear; }
+
+    /* CSS tambahan untuk memastikan transisi modal halus */
+    .backdrop-blur-md {
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
 </style>
 @endsection
