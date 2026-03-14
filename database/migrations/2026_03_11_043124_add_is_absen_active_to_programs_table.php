@@ -9,11 +9,14 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
+    public function up(): void
 {
-    Schema::table('programs', function (Blueprint $table) {
-        $table->boolean('is_absen_active')->default(false)->after('hari');
-    });
+    // Cek dulu apakah kolom 'is_absen_active' sudah ada
+    if (!Schema::hasColumn('programs', 'is_absen_active')) {
+        Schema::table('programs', function (Blueprint $table) {
+            $table->boolean('is_absen_active')->default(false)->after('hari');
+        });
+    }
 }
 
 public function down()

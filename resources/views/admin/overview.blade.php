@@ -113,22 +113,14 @@
                                     <div>
                                         <p class="text-xs font-bold text-slate-700 leading-tight">{{ $enrollment->user_name }}</p>
                                         
-                                        {{-- LOKASI LOGIC --}}
-                                        <p class="text-[10px] font-bold text-blue-600 mt-0.5 uppercase">
-                                            @if(!empty($enrollment->lokasi_cabang))
-                                                <i class="fas fa-map-marker-alt text-[9px] mr-1"></i> 
-                                                {{ $enrollment->lokasi_cabang }}
-                                            @elseif(!empty($enrollment->alamat_siswa))
-                                                <i class="fas fa-home text-[9px] mr-1"></i> 
-                                                Privat (Rumah)
-                                            @else
-                                                <i class="fas fa-video text-[9px] mr-1"></i> 
-                                                Zoom Meeting
-                                            @endif
+                                        {{-- REVISI LOKASI: Pengecekan Aman dengan operator null coalescing ?? --}}
+                                        <p class="text-[10px] font-bold mt-0.5 uppercase {{ ($enrollment->is_online ?? false) ? 'text-indigo-600' : 'text-rose-600' }}">
+                                            <i class="fas {{ ($enrollment->is_online ?? false) ? 'fa-video' : 'fa-house-user' }} text-[9px] mr-1"></i>
+                                            {{ $enrollment->display_lokasi ?? ($enrollment->alamat_siswa ?: 'Lokasi Tidak Terdeteksi') }}
                                         </p>
 
-                                        @if(!empty($enrollment->lokasi_cabang) || !empty($enrollment->alamat_siswa))
-                                            <p class="text-[9px] text-slate-400 italic leading-none mt-1">{{ $enrollment->alamat_siswa }}</p>
+                                        @if(!($enrollment->is_online ?? false) && !empty($enrollment->lokasi_cabang))
+                                            <p class="text-[8px] text-slate-400 font-black uppercase tracking-tighter italic">Cabang: {{ $enrollment->lokasi_cabang }}</p>
                                         @endif
                                     </div>
                                 </div>
@@ -136,8 +128,9 @@
 
                             <td class="py-4 px-6">
                                 <span class="px-2 py-0.5 rounded-md bg-slate-900 text-[8px] font-black text-white uppercase tracking-tighter">{{ $enrollment->program_jenjang }}</span>
-                                <p class="text-xs font-bold text-slate-800 mt-1">{{ $enrollment->mapel ?? ($enrollment->program_name ?? 'Program') }}</p>
-                                @if(($enrollment->mau_mengaji ?? 0) == 1)
+                                {{-- REVISI PROGRAM: Menampilkan nama mapel asli --}}
+                                <p class="text-xs font-bold text-slate-800 mt-1 uppercase tracking-tight">{{ $enrollment->display_program ?? ($enrollment->mapel ?? $enrollment->program_name) }}</p>
+                                @if(($enrollment->is_mengaji ?? 0) == 1)
                                     <span class="text-[8px] font-black text-emerald-600 uppercase italic">+ Ambil Ngaji</span>
                                 @endif
                             </td>
@@ -152,16 +145,9 @@
                                             {{ $enrollment->per_minggu ?? '0' }}x Pertemuan
                                         </span>
                                         
-                                        {{-- REVISI STATUS ONLINE/OFFLINE DI DETAIL PERTEMUAN --}}
-                                        @if(!empty($enrollment->lokasi_cabang) || !empty($enrollment->alamat_siswa))
-                                            <span class="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-orange-50 text-orange-600">
-                                                OFFLINE
-                                            </span>
-                                        @else
-                                            <span class="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-blue-50 text-blue-600">
-                                                ONLINE
-                                            </span>
-                                        @endif
+                                        <span class="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase {{ ($enrollment->is_online ?? false) ? 'bg-indigo-50 text-indigo-600' : 'bg-orange-50 text-orange-600' }}">
+                                            {{ strtoupper($enrollment->metode) }}
+                                        </span>
                                     </div>
                                 </div>
                             </td>

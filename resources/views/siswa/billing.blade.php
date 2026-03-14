@@ -50,10 +50,12 @@
                         @foreach($payments as $payment)
                             <tr class="group hover:bg-slate-50/50 transition-all">
                                 <td class="py-5 px-4">
-                                    <p class="font-bold text-slate-800 uppercase text-xs">{{ $payment->nama_program ?? $payment->program_name }}</p>
+                                    {{-- REVISI: Menggunakan nama_program hasil konversi di Controller --}}
+                                    <p class="font-bold text-slate-800 uppercase text-xs tracking-tight">{{ $payment->nama_program ?? ($payment->nama_program ?? 'Program Pilihan') }}</p>
                                     <div class="flex flex-col gap-1 mt-1">
-                                        <p class="text-[9px] text-blue-600 font-black uppercase tracking-tight">
-                                            <i class="fas fa-map-marker-alt"></i> {{ $payment->lokasi_cabang ?? 'Online' }}
+                                        <p class="text-[9px] font-black uppercase tracking-tight {{ ($payment->is_online ?? false) ? 'text-indigo-600' : 'text-rose-600' }}">
+                                            <i class="fas {{ ($payment->is_online ?? false) ? 'fa-video' : 'fa-map-marker-alt' }}"></i> 
+                                            {{ ($payment->is_online ?? false) ? 'Online / Virtual' : ($payment->lokasi_cabang ?? 'Privat Rumah') }}
                                         </p>
                                         <p class="text-[9px] text-slate-500 italic">
                                             <i class="fas fa-clock"></i> {{ $payment->jadwal_detail }}
@@ -63,21 +65,20 @@
                                 </td>
                                 <td class="py-5 px-4">
                                     <p class="font-black text-slate-800 text-sm">Rp {{ number_format($payment->total_harga ?? 0, 0, ',', '.') }}</p>
-                                    @if(isset($payment->payment_code))
-                                        <p class="text-[10px] text-orange-500 font-bold uppercase italic">Kode Unik: {{ $payment->payment_code }}</p>
-                                    @endif
+                                    {{-- Menampilkan 3 digit terakhir nomor WA sebagai kode unik dinamis --}}
+                                    <p class="text-[10px] text-orange-500 font-bold uppercase italic">Unik: #{{ substr(preg_replace('/[^0-9]/', '', Auth::user()->whatsapp), -3) }}</p>
                                 </td>
                                 <td class="py-5 px-4">
                                     @if($payment->status_pembayaran === 'verified')
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-600">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-600 border border-emerald-200">
                                             <i class="fas fa-check-circle mr-1"></i> Berhasil
                                         </span>
                                     @elseif($payment->status_pembayaran === 'pending')
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black uppercase bg-orange-100 text-orange-600 animate-pulse">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-600 border border-amber-200 animate-pulse">
                                             <i class="fas fa-clock mr-1"></i> Proses
                                         </span>
                                     @else
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black uppercase bg-red-100 text-red-600">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black uppercase bg-red-100 text-red-600 border border-red-200">
                                             <i class="fas fa-times-circle mr-1"></i> Gagal
                                         </span>
                                     @endif
@@ -88,14 +89,11 @@
                                 <td class="py-5 px-4 text-right">
                                     @if($payment->bukti_pembayaran)
                                         @php
-                                            // Deteksi apakah di database sudah ada prefix folder 'bukti/' atau belum
-                                            $path = Str::contains($payment->bukti_pembayaran, 'bukti/') 
-                                                    ? asset('storage/' . $payment->bukti_pembayaran) 
-                                                    : asset('storage/bukti/' . $payment->bukti_pembayaran);
+                                            $path = asset('storage/' . $payment->bukti_pembayaran);
                                         @endphp
                                         <button type="button" 
                                             @click="imgSrc = '{{ $path }}'; openModal = true" 
-                                            class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300 flex items-center justify-center ml-auto shadow-sm">
+                                            class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300 flex items-center justify-center ml-auto shadow-sm border border-blue-100">
                                             <i class="fas fa-image"></i>
                                         </button>
                                     @else
@@ -131,7 +129,7 @@
                 <img :src="imgSrc" class="w-full h-auto max-h-[80vh] rounded-xl object-contain shadow-inner" @click.away="openModal = false">
             </div>
             
-            <button @click="openModal = false" class="mt-6 px-8 py-3 bg-white text-slate-900 hover:bg-blue-500 hover:text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-xl">
+            <button @click="openModal = false" class="mt-6 px-10 py-3 bg-white text-slate-900 hover:bg-blue-600 hover:text-white rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-xl">
                 Tutup Pratinjau
             </button>
         </div>

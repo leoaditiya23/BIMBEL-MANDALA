@@ -11,15 +11,12 @@ return new class extends Migration
      */
     public function up(): void
 {
-    Schema::table('programs', function (Blueprint $table) {
-        // Kita hapus ->after('hari') agar tidak error jika kolom hari tidak ada
-        $table->time('jam_mulai')->nullable();
-        
-        // Sekalian saja tambahkan kolom hari jika memang hilang dari database
-        if (!Schema::hasColumn('programs', 'hari')) {
-            $table->string('hari')->nullable();
-        }
-    });
+    // Hanya tambah kolom jika belum ada
+    if (!Schema::hasColumn('programs', 'jam_mulai')) {
+        Schema::table('programs', function (Blueprint $table) {
+            $table->time('jam_mulai')->nullable();
+        });
+    }
 }
 
 public function down(): void

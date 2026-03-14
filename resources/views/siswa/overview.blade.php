@@ -22,7 +22,7 @@
                 </div>
             </div>
             <div class="w-full bg-slate-50 h-1.5 mt-4 rounded-full overflow-hidden">
-                <div class="bg-blue-500 h-full rounded-full" style="width: {{ min(($stats['attendance'] ?? 0) * 10, 100) }}%"></div>
+                <div class="bg-blue-500 h-full rounded-full" style="width: {{ min(($stats['attendance'] ?? 0) * 12.5, 100) }}%"></div>
             </div>
         </div>
 
@@ -38,7 +38,8 @@
                 </div>
             </div>
             @php
-                $task_progress = ($stats['total_tasks'] ?? 0) > 0 ? (($stats['completed_tasks'] ?? 0) / $stats['total_tasks']) * 100 : 0;
+                $task_total = $stats['total_tasks'] ?? 0;
+                $task_progress = $task_total > 0 ? (($stats['completed_tasks'] ?? 0) / $task_total) * 100 : 0;
             @endphp
             <div class="w-full bg-slate-50 h-1.5 mt-4 rounded-full overflow-hidden">
                 <div class="bg-orange-500 h-full rounded-full" style="width: {{ $task_progress }}%"></div>
@@ -77,23 +78,49 @@
                     @foreach($recent_programs as $program)
                         <div class="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 hover:border-blue-200 transition-all group">
                             <div class="flex justify-between items-start mb-2">
-                                {{-- REVISI: Menggunakan nama mapel yang dipilih --}}
-                                <p class="font-black text-slate-800 group-hover:text-blue-600 transition-colors uppercase text-sm tracking-tight">{{ $program->selected_mapel ?? $program->name }}</p>
-                                <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-[8px] font-black text-emerald-600 uppercase">Verified</span>
+                                <p class="font-black text-slate-800 group-hover:text-blue-600 transition-colors uppercase text-sm tracking-tight">
+                                    {{ $program->display_mapel ?? $program->base_program_name }}
+                                </p>
+                                <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-[8px] font-black text-emerald-600 uppercase italic">Verified</span>
                             </div>
                             
                             <div class="space-y-1 mb-4">
-                                <p class="text-[10px] text-slate-500">Mentor: <span class="font-bold text-slate-700">{{ $program->mentor_name ?? '-' }}</span></p>
-                                <p class="text-[10px] text-blue-600 font-bold uppercase italic tracking-tight">
-                                    <i class="fas fa-map-marker-alt mr-1"></i> {{ $program->lokasi_cabang ?? 'Online' }}
-                                </p>
-                                <p class="text-[10px] text-slate-400 font-medium italic">
-                                    <i class="fas fa-clock mr-1"></i> {{ $program->sesi_jadwal ?? 'Jadwal belum diatur' }}
+                                <p class="text-[10px] text-slate-500">Mentor: <span class="font-bold text-slate-700">{{ $program->mentor_name ?? 'Menunggu Mentor' }}</span></p>
+                                
+                                <div class="flex flex-col gap-0.5">
+                                    <p class="text-[10px] text-blue-600 font-bold uppercase italic tracking-tight">
+                                        <i class="fas fa-map-marker-alt mr-1 text-rose-500"></i> 
+                                        {{ !empty($program->lokasi_cabang) ? 'Offline (' . $program->lokasi_cabang . ')' : 'Online' }}
+                                    </p>
+                                    
+                                    {{-- REVISI: Menghapus Link Zoom mentah dan menggantinya dengan informasi metode --}}
+                                    @if(empty($program->lokasi_cabang))
+                                        <p class="text-[9px] text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded-lg w-fit mt-1 uppercase tracking-tighter">
+                                            <i class="fas fa-video mr-1"></i> Interactive Virtual Class
+                                        </p>
+                                    @else
+                                        <p class="text-[9px] text-slate-500 font-medium leading-tight">
+                                            <i class="fas fa-info-circle mr-1 text-slate-400"></i> {{ $program->alamat_siswa ?? 'Alamat belum disetel' }}
+                                        </p>
+                                    @endif
+                                </div>
+
+                                <p class="text-[10px] text-slate-400 font-medium italic mt-1">
+                                    <i class="fas fa-clock mr-1 text-indigo-400"></i> {{ $program->sesi_jadwal ?? 'Jadwal belum diatur' }}
                                 </p>
                             </div>
                             
+                            @php
+                                $total_sesi = ($program->jumlah_pertemuan > 0) ? $program->jumlah_pertemuan : 8;
+                                $selesai = $program->pertemuan_selesai ?? 0;
+                                $persen_progres = ($selesai / $total_sesi) * 100;
+                            @endphp
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{{ $selesai }}/{{ $total_sesi }} SESI</span>
+                                <span class="text-[9px] font-black text-blue-600">{{ round($persen_progres) }}%</span>
+                            </div>
                             <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                                <div class="bg-blue-500 h-full rounded-full transition-all duration-1000" style="width: 100%"></div> 
+                                <div class="bg-blue-500 h-full rounded-full transition-all duration-1000" style="width: {{ min($persen_progres, 100) }}%"></div> 
                             </div>
                         </div>
                     @endforeach
@@ -118,16 +145,25 @@
                 @forelse($activities as $activity)
                     <div class="flex items-start space-x-4 group">
                         <div class="relative">
-                            <div class="w-3 h-3 {{ $activity->status == 'verified' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]' }} rounded-full mt-1.5 flex-shrink-0 z-10 relative"></div>
+                            <div class="w-3 h-3 {{ strtolower($activity->status) == 'verified' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]' }} rounded-full mt-1.5 flex-shrink-0 z-10 relative"></div>
                             @if(!$loop->last)
-                                <div class="absolute top-5 left-1.5 w-[1px] h-10 bg-slate-100"></div>
+                                <div class="absolute top-5 left-1.5 w-[1px] h-14 bg-slate-100"></div>
                             @endif
                         </div>
                         <div class="flex-1">
-                            <p class="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors">{{ $activity->title }}</p>
-                            <div class="flex items-center gap-2 mt-0.5">
-                                <span class="text-[9px] text-slate-400 uppercase font-black tracking-tighter">{{ $activity->type }}</span>
-                                <span class="text-[9px] font-black uppercase {{ $activity->status == 'verified' ? 'text-emerald-500' : 'text-orange-500' }} tracking-tighter">{{ $activity->status }}</span>
+                            <p class="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors uppercase tracking-tight">{{ $activity->title }}</p>
+                            
+                            @if(isset($activity->description))
+                                <p class="text-[10px] text-slate-500 leading-relaxed mt-0.5 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                    <i class="fas fa-info-circle mr-1 text-blue-400"></i> {{ $activity->description }}
+                                </p>
+                            @endif
+
+                            <div class="flex items-center gap-2 mt-1.5">
+                                <span class="text-[9px] text-slate-400 uppercase font-black tracking-tighter">PENDAFTARAN PROGRAM</span>
+                                <span class="text-[9px] font-black uppercase {{ strtolower($activity->status) == 'verified' ? 'text-emerald-500' : 'text-orange-500' }} tracking-tighter italic">
+                                    {{ $activity->status }}
+                                </span>
                             </div>
                             <p class="text-[10px] text-slate-400 mt-1 font-medium italic">{{ \Carbon\Carbon::parse($activity->created_at)->diffForHumans() }}</p>
                         </div>

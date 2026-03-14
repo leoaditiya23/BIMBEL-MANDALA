@@ -9,10 +9,12 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void {
-    if (!Schema::hasColumn('programs', 'jenjang')) {
-        Schema::table('programs', function (Blueprint $table) {
-            $table->string('jenjang')->nullable()->after('name');
+    public function up(): void
+{
+    // Hanya tambah kolom JIKA kolom tersebut belum ada
+    if (!Schema::hasColumn('enrollments', 'tipe_paket')) {
+        Schema::table('enrollments', function (Blueprint $table) {
+            $table->string('tipe_paket')->nullable()->after('jenjang');
         });
     }
 }
@@ -22,7 +24,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('programs', function (Blueprint $table) {
+        Schema::table('enrollments', function (Blueprint $table) {
             //
         });
     }

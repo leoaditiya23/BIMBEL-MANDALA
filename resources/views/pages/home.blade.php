@@ -158,7 +158,7 @@
                     <div class="text-center pb-2">
                         <h3 class="text-lg font-black text-slate-800 leading-tight">{{ $mentor->name }}</h3>
                         <p class="{{ $index % 2 == 0 ? 'text-blue-600' : 'text-orange-500' }} font-bold text-[10px] uppercase tracking-wider mt-1">
-                            {{ $mentor->specialist }}
+                            {{ $mentor->specialist ?? 'Mentor Mandala' }}
                         </p>
                     </div>
                 </div>

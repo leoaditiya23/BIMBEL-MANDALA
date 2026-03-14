@@ -41,10 +41,17 @@
                                 </div>
                                 <div class="flex flex-col gap-0.5 mt-0.5">
                                     <div class="flex items-center gap-2">
-                                        <span class="text-[10px] font-black text-blue-500 uppercase">{{ $payment->program_name ?? 'Program' }}</span>
+                                        <span class="text-[10px] font-black text-blue-500 uppercase">{{ $payment->program_name_ref ?? 'Program' }}</span>
                                         <span class="text-slate-300">•</span>
                                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">WA: {{ $payment->user_wa ?? '-' }}</span>
                                     </div>
+                                    
+                                    {{-- REVISI: Tambahan Detail Lokasi --}}
+                                    <div class="flex items-center gap-1 mt-0.5">
+                                        <i class="fas fa-map-marker-alt text-[9px] text-rose-500"></i>
+                                        <span class="text-[9px] font-black text-slate-600 uppercase">LOKASI: {{ $payment->lokasi_info ?? 'Tidak Terdeteksi' }}</span>
+                                    </div>
+
                                     {{-- Info Jadwal & Extra --}}
                                     <div class="flex items-center gap-2">
                                         <span class="text-[9px] font-black text-blue-600/70 uppercase italic tracking-tighter">{{ $payment->per_minggu ?? 0 }}x Pertemuan</span>
@@ -63,15 +70,15 @@
                                 <p class="font-black text-slate-800 text-xl tracking-tighter">
                                     Rp {{ number_format($payment->total_harga ?? 0, 0, ',', '.') }}
                                 </p>
-                                <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest">Unik: #{{ $payment->payment_code ?? '000' }}</p>
+                                {{-- REVISI: Kode Unik Dinamis --}}
+                                <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest">Unik: #{{ $payment->kode_unik_tampil ?? '000' }}</p>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-2 ml-auto mt-4 md:mt-0">
                             @if($payment->bukti_pembayaran)
                                 <button type="button" 
-                                    {{-- Path disesuaikan dengan Storage::disk('public') sesuai Controller --}}
-                                    onclick="showImageModal('{{ asset('storage/bukti/' . $payment->bukti_pembayaran) }}')"
+                                    onclick="showImageModal('{{ asset('storage/' . $payment->bukti_pembayaran) }}')"
                                     class="h-11 w-11 flex items-center justify-center rounded-xl border-2 border-blue-50 bg-white text-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all">
                                     <i class="fas fa-image text-sm"></i>
                                 </button>

@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
 {
-    Schema::table('programs', function (Blueprint $table) {
-        // Menambahkan kolom description setelah kolom quran_price
-        $table->text('description')->nullable()->after('quran_price');
-    });
+    // Cek dulu apakah kolom 'description' sudah ada
+    if (!Schema::hasColumn('programs', 'description')) {
+        Schema::table('programs', function (Blueprint $table) {
+            $table->text('description')->nullable()->after('quran_price');
+        });
+    }
 }
 
 public function down(): void

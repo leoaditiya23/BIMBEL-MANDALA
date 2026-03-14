@@ -174,78 +174,92 @@
                     
                     <h3 class="font-black text-slate-800 text-lg leading-tight mb-1 group-hover:text-indigo-600 transition-colors">{{ $class->name }}</h3>
                     
-                   {{-- INFO JADWAL --}}
-<div class="flex items-center gap-3 mt-1 mb-4">
+                   {{-- INFO JADWAL (Mendukung Multi-Hari dalam 1 Card) --}}
+<div class="flex flex-col gap-2 mt-1 mb-4">
     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">• {{ $class->type ?? 'Reguler' }}</span>
-    <div class="flex items-center gap-2 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-        <i class="far fa-calendar-alt text-[9px] text-indigo-500"></i>
-        {{-- Menampilkan Hari dari DB --}}
-        <span class="text-[9px] font-black text-indigo-600 uppercase">{{ $class->hari ?? 'TBA' }}</span>
-        
-        <span class="text-indigo-200">|</span>
-        
-        <i class="far fa-clock text-[9px] text-indigo-500"></i>
-        {{-- Menampilkan Jam Mulai dari DB --}}
-        <span class="text-[9px] font-black text-indigo-600">{{ $class->jam ?? '--:--' }}</span>
+    
+    <div class="flex flex-wrap gap-1.5">
+        @php
+            // Pecah jadwal jika ada isi di jadwal_detail (format: "Rabu (14.00), Jumat (16.00)")
+            $listJadwal = !empty($class->jadwal_detail) ? explode(',', $class->jadwal_detail) : [];
+        @endphp
+
+        @if(count($listJadwal) > 0)
+            @foreach($listJadwal as $j)
+                <div class="flex items-center gap-2 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100">
+                    <i class="far fa-calendar-alt text-[9px] text-indigo-500"></i>
+                    <span class="text-[9px] font-black text-indigo-600 uppercase">{{ trim($j) }}</span>
+                </div>
+            @endforeach
+        @else
+            {{-- Fallback jika jadwal_detail kosong --}}
+            <div class="flex items-center gap-2 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                <i class="far fa-calendar-alt text-[9px] text-indigo-500"></i>
+                <span class="text-[9px] font-black text-indigo-600 uppercase">{{ $class->hari ?? 'TBA' }}</span>
+                <span class="text-indigo-200">|</span>
+                <i class="far fa-clock text-[9px] text-indigo-500"></i>
+                <span class="text-[9px] font-black text-indigo-600">{{ $class->jam ?? '--:--' }}</span>
+            </div>
+        @endif
     </div>
 </div>
 
-                    <div class="mb-4">
-                        <p class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Siswa Terdaftar :</p>
-                        <div class="flex flex-wrap gap-1.5">
-                            @forelse($class->students ?? [] as $student)
-                                <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg">
-                                    <div class="w-4 h-4 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center text-[7px] font-black">
-                                        {{ strtoupper(substr($student->name, 0, 1)) }}
-                                    </div>
-                                    <span class="text-[9px] font-bold text-slate-600">{{ $student->name }}</span>
-                                </div>
-                            @empty
-                                <p class="text-[9px] font-bold text-slate-300 italic">Belum ada siswa</p>
-                            @endforelse
-                        </div>
-                    </div>
+<div class="mb-4">
+    <p class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Siswa Terdaftar :</p>
+    <div class="flex flex-wrap gap-1.5">
+        @forelse($class->students ?? [] as $student)
+            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg">
+                <div class="w-4 h-4 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center text-[7px] font-black">
+                    {{ strtoupper(substr($student->name, 0, 1)) }}
+                </div>
+                <span class="text-[9px] font-bold text-slate-600">{{ $student->name }}</span>
+            </div>
+        @empty
+            <p class="text-[9px] font-bold text-slate-300 italic">Belum ada siswa</p>
+        @endforelse
+    </div>
+</div>
 
-                    <div class="grid grid-cols-2 gap-3 mb-6">
-                        <div class="bg-slate-50 p-3 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
-                            <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Total Siswa</p>
-                            <p class="font-black text-slate-700 text-sm"><i class="fas fa-user-friends mr-1 text-indigo-400"></i> {{ $class->student_count ?? count($class->students ?? []) }} <span class="text-[10px]">Pax</span></p>
-                        </div>
-                        <div class="bg-slate-50 p-3 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
-                            <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Sesi Selesai</p>
-                            <p class="font-black text-slate-700 text-sm"><i class="fas fa-check-circle mr-1 text-emerald-400"></i> {{ count($class->materials ?? []) }} / {{ $class->total_sessions ?? 0 }}</p>
-                        </div>
-                    </div>
+<div class="grid grid-cols-2 gap-3 mb-6">
+    <div class="bg-slate-50 p-3 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
+        <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Total Siswa</p>
+        <p class="font-black text-slate-700 text-sm"><i class="fas fa-user-friends mr-1 text-indigo-400"></i> {{ $class->student_count ?? count($class->students ?? []) }} <span class="text-[10px]">Pax</span></p>
+    </div>
+    <div class="bg-slate-50 p-3 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
+        <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Sesi Selesai</p>
+        <p class="font-black text-slate-700 text-sm"><i class="fas fa-check-circle mr-1 text-emerald-400"></i> {{ count($class->materials ?? []) }} / {{ $class->total_sessions ?? 0 }}</p>
+    </div>
+</div>
 
-                    {{-- PROGRESS BAR --}}
-                    <div class="mb-6">
-                        @php
-                            $total_sessions = ($class->total_sessions ?? 0) > 0 ? $class->total_sessions : 1;
-                            $materials_count = count($class->materials ?? []);
-                            $progress = ($materials_count / $total_sessions) * 100;
-                            $progress = $progress > 100 ? 100 : $progress;
-                        @endphp
-                        <div class="flex justify-between text-[10px] font-black mb-2">
-                            <span class="text-slate-400 uppercase tracking-widest">Kurikulum Progress</span>
-                            <span class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{{ round($progress) }}%</span>
-                        </div>
-                        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
-                            <div class="bg-gradient-to-r from-indigo-400 to-indigo-600 h-full rounded-full transition-all duration-1000 relative" style="width: {{ $progress }}%">
-                                <div class="absolute top-0 right-0 h-full w-4 bg-white/20 skew-x-12 animate-shimmer"></div>
-                            </div>
-                        </div>
-                    </div>
+{{-- PROGRESS BAR --}}
+<div class="mb-6">
+    @php
+        $total_sessions = ($class->total_sessions ?? 0) > 0 ? $class->total_sessions : 1;
+        $materials_count = count($class->materials ?? []);
+        $progress = ($materials_count / $total_sessions) * 100;
+        $progress = $progress > 100 ? 100 : $progress;
+    @endphp
+    <div class="flex justify-between text-[10px] font-black mb-2">
+        <span class="text-slate-400 uppercase tracking-widest">Kurikulum Progress</span>
+        <span class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{{ round($progress) }}%</span>
+    </div>
+    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
+        <div class="bg-gradient-to-r from-indigo-400 to-indigo-600 h-full rounded-full transition-all duration-1000 relative" style="width: {{ $progress }}%">
+            <div class="absolute top-0 right-0 h-full w-4 bg-white/20 skew-x-12 animate-shimmer"></div>
+        </div>
+    </div>
+</div>
 
-                    <div class="grid grid-cols-2 gap-2">
-                        <button @click="openAbsenModal({{ json_encode($class) }})" 
-                                class="py-3 bg-slate-900 text-white rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-slate-200">
-                            <i class="fas fa-fingerprint mr-1.5"></i> Absensi
-                        </button>
-                        <button @click="openNilaiModal({{ json_encode($class) }})" 
-                                class="py-3 bg-indigo-600 text-white rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-indigo-100">
-                            <i class="fas fa-star mr-1.5"></i> Nilai
-                        </button>
-                    </div>
+<div class="grid grid-cols-2 gap-2">
+    <button @click="openAbsenModal({{ json_encode($class) }})" 
+            class="py-3 bg-slate-900 text-white rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-slate-200">
+        <i class="fas fa-fingerprint mr-1.5"></i> Absensi
+    </button>
+    <button @click="openNilaiModal({{ json_encode($class) }})" 
+            class="py-3 bg-indigo-600 text-white rounded-[15px] text-[9px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-indigo-100">
+        <i class="fas fa-star mr-1.5"></i> Nilai
+    </button>
+</div>
                 </div>
 
                 <button @click="openMateriModal({{ json_encode($class) }})" 
