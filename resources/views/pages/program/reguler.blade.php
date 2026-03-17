@@ -13,6 +13,7 @@
     selectedMapel: JSON.parse(sessionStorage.getItem('reg_selectedMapel')) || [],
     mauMengaji: sessionStorage.getItem('reg_mauMengaji') === 'true',
     lokasi: sessionStorage.getItem('reg_lokasi') || '',
+    alamatSiswa: sessionStorage.getItem('reg_alamat_siswa') || '',
     
     extraHours: parseInt(sessionStorage.getItem('reg_extraHours')) || 0,
     perMinggu: parseInt(sessionStorage.getItem('reg_perMinggu')) || 1,
@@ -35,6 +36,7 @@
         sessionStorage.setItem('reg_selectedMapel', JSON.stringify(this.selectedMapel));
         sessionStorage.setItem('reg_mauMengaji', this.mauMengaji);
         sessionStorage.setItem('reg_lokasi', this.lokasi);
+        sessionStorage.setItem('reg_alamat_siswa', this.alamatSiswa);
         sessionStorage.setItem('reg_extraHours', this.extraHours);
         sessionStorage.setItem('reg_perMinggu', this.perMinggu);
         sessionStorage.setItem('reg_jadwalDetail', this.jadwalDetail);
@@ -175,7 +177,7 @@ class="relative">
     <input type="hidden" name="jadwal_detail" :value="jadwalDetail">
     <input type="hidden" name="selected_subjects" :value="JSON.stringify(selectedMapel)">
     <input type="hidden" name="lokasi_cabang" :value="lokasi">
-    <input type="hidden" name="alamat_siswa" :value="sessionStorage.getItem('reg_alamat_siswa') || ''">
+    <input type="hidden" name="alamat_siswa" :value="alamatSiswa">
                     
                     <template x-for="mapel in selectedMapel">
                         <input type="hidden" name="selected_mapel[]" :value="mapel">
@@ -189,8 +191,7 @@ class="relative">
                         </h3>
 
                         <div class="grid md:grid-cols-2 gap-8">
-                            {{-- REVISI: Saat diklik, lokasi langsung diisi 'ONLINE (ZOOM/GMEET)' --}}
-                            <label @click="metode = 'online'; lokasi = 'ONLINE (ZOOM/GMEET)'" class="cursor-pointer group">
+                            <label @click="metode = 'online'; lokasi = 'ONLINE (ZOOM/GMEET)'; alamatSiswa = ''" class="cursor-pointer group">
                                 <div class="p-8 border-2 border-slate-100 rounded-[2rem] h-full transition-all hover:border-blue-200" :class="metode === 'online' ? 'border-blue-600 bg-blue-50' : ''">
                                     <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mb-6">
                                         <i class="fas fa-video text-2xl"></i>
@@ -208,7 +209,7 @@ class="relative">
                                     <h4 class="font-bold text-xl text-slate-800 uppercase tracking-tight">Reguler Offline</h4>
                                     
                                     <div x-show="metode === 'offline'" class="mt-6" @click.stop>
-                                        <select x-model="lokasi" name="lokasi_cabang" class="w-full border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-blue-600 mb-4">
+                                        <select x-model="lokasi" name="lokasi_cabang_select" class="w-full border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-blue-600 mb-4">
                                             <option value="">-- PILIH WILAYAH --</option>
                                             <template x-for="loc in listLokasi">
                                                 <option :value="loc" x-text="loc"></option>
@@ -219,9 +220,9 @@ class="relative">
                                             <div x-transition>
                                                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Alamat Lengkap Rumah / Titik Temu</label>
                                                 <textarea 
-                                                    name="alamat_siswa" 
                                                     required
-                                                    x-on:input="sessionStorage.setItem('reg_alamat_siswa', $event.target.value)"
+                                                    x-model="alamatSiswa"
+                                                    @input="saveToSession()"
                                                     class="w-full border-2 border-slate-100 p-4 rounded-2xl text-sm font-medium outline-none focus:border-blue-600 min-h-[100px]"
                                                     placeholder="Contoh: Jl. Merpati No.12..."></textarea>
                                             </div>
@@ -234,8 +235,8 @@ class="relative">
                         <div class="mt-14">
                             <button type="button" 
                                     @click="goToStep(2)" 
-                                    :disabled="(metode === 'offline' && !lokasi) || !metode" 
-                                    :class="(metode === 'offline' && !lokasi) || !metode ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-blue-600 shadow-xl'"
+                                    :disabled="(metode === 'offline' && (!lokasi || !alamatSiswa)) || !metode" 
+                                    :class="(metode === 'offline' && (!lokasi || !alamatSiswa)) || !metode ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-blue-600 shadow-xl'"
                                     class="w-full text-white py-6 rounded-[1.5rem] font-bold uppercase tracking-[0.2em] transition-all duration-300">
                                 LANJUT KONFIGURASI
                             </button>

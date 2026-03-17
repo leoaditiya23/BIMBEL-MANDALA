@@ -113,13 +113,13 @@
                                     <div>
                                         <p class="text-xs font-bold text-slate-700 leading-tight">{{ $enrollment->user_name }}</p>
                                         
-                                        {{-- REVISI LOKASI: Pengecekan Aman dengan operator null coalescing ?? --}}
+                                        {{-- REVISI LOKASI: Menggunakan display_lokasi yang sudah diolah di Controller --}}
                                         <p class="text-[10px] font-bold mt-0.5 uppercase {{ ($enrollment->is_online ?? false) ? 'text-indigo-600' : 'text-rose-600' }}">
                                             <i class="fas {{ ($enrollment->is_online ?? false) ? 'fa-video' : 'fa-house-user' }} text-[9px] mr-1"></i>
-                                            {{ $enrollment->display_lokasi ?? ($enrollment->alamat_siswa ?: 'Lokasi Tidak Terdeteksi') }}
+                                            {{ $enrollment->display_lokasi ?? 'VIA ZOOM (ONLINE)' }}
                                         </p>
 
-                                        @if(!($enrollment->is_online ?? false) && !empty($enrollment->lokasi_cabang))
+                                        @if(!($enrollment->is_online ?? false) && !empty($enrollment->lokasi_cabang) && $enrollment->lokasi_cabang != '-')
                                             <p class="text-[8px] text-slate-400 font-black uppercase tracking-tighter italic">Cabang: {{ $enrollment->lokasi_cabang }}</p>
                                         @endif
                                     </div>
@@ -128,7 +128,6 @@
 
                             <td class="py-4 px-6">
                                 <span class="px-2 py-0.5 rounded-md bg-slate-900 text-[8px] font-black text-white uppercase tracking-tighter">{{ $enrollment->program_jenjang }}</span>
-                                {{-- REVISI PROGRAM: Menampilkan nama mapel asli --}}
                                 <p class="text-xs font-bold text-slate-800 mt-1 uppercase tracking-tight">{{ $enrollment->display_program ?? ($enrollment->mapel ?? $enrollment->program_name) }}</p>
                                 @if(($enrollment->is_mengaji ?? 0) == 1)
                                     <span class="text-[8px] font-black text-emerald-600 uppercase italic">+ Ambil Ngaji</span>
@@ -144,9 +143,8 @@
                                         <span class="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-bold uppercase">
                                             {{ $enrollment->per_minggu ?? '0' }}x Pertemuan
                                         </span>
-                                        
-                                        <span class="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase {{ ($enrollment->is_online ?? false) ? 'bg-indigo-50 text-indigo-600' : 'bg-orange-50 text-orange-600' }}">
-                                            {{ strtoupper($enrollment->metode) }}
+                                        <span class="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase {{ ($enrollment->is_online ?? false) ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600' }}">
+                                            {{ ($enrollment->is_online ?? false) ? 'ONLINE' : 'OFFLINE' }}
                                         </span>
                                     </div>
                                 </div>

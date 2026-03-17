@@ -72,16 +72,23 @@ public function reguler(Request $request) {
      * 3. AUTENTIKASI & REDIRECT LOGIC
      * ==========================================
      */
-    public function login() { return view('pages.login'); }
-    public function register()
-{
-    // Ambil semua program reguler
-    $programs = Program::where('type', 'reguler')->get();
+public function login() 
+    { 
+        return view('pages.login'); 
+    }
 
-    // Kirim data utuh ke view
-    return view('reguler', compact('programs'));
-}
+    public function register(Request $request)
+    {
+        // 1. Ambil semua program untuk pilihan di form (opsional)
+        $programs = Program::all();
 
+        // 2. Ambil data dari URL jika ada (misal dari tombol daftar di halaman reguler/intensif)
+        $selectedType = $request->query('type'); // reguler atau intensif
+        $selectedProgram = $request->query('program_id');
+
+        // 3. Arahkan ke file view yang benar sesuai struktur folder Anda (pages/register.blade.php)
+        return view('pages.register', compact('programs', 'selectedType', 'selectedProgram'));
+    }
     public function registerStore(Request $request) {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -94,7 +101,8 @@ public function reguler(Request $request) {
             'school' => 'required|string|max:255',
         ]);
 
-        User::create([
+        // 1. Simpan data user ke variabel $user
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'username' => $request->username,
@@ -107,7 +115,11 @@ public function reguler(Request $request) {
             'referral' => $request->referral,
         ]);
 
-        return redirect()->route('login')->with('success', 'Pendaftaran berhasil! Silakan masuk.');
+        // 2. Otomatis login pengguna yang baru mendaftar
+        Auth::login($user);
+
+        // 3. Alihkan langsung ke dashboard utama
+        return redirect()->route('dashboard')->with('success', 'Pendaftaran berhasil! Selamat datang.');
     }
 
     public function authenticate(Request $request) {
@@ -167,7 +179,7 @@ public function reguler(Request $request) {
 
     // --- DASHBOARD & PEMBAYARAN ---
 
-   public function adminOverview() {
+  public function adminOverview() {
     try {
         $stats = [
             'total_pendapatan' => DB::table('enrollments')->where('status_pembayaran', 'verified')->sum('total_harga'),
@@ -190,20 +202,31 @@ public function reguler(Request $request) {
 
         // TRANSFORMASI DATA UNTUK TAMPILAN DASHBOARD
         $recent_enrollments->getCollection()->transform(function($item) {
-            // 1. Logika Lokasi: Zoom jika Online, Alamat/Cabang jika Offline
-            if (empty($item->lokasi_cabang) && (empty($item->alamat_siswa) || $item->alamat_siswa == '-')) {
+            // 1. REVISI LOGIKA LOKASI: Menyesuaikan dengan kolom 'alamat_semarang' di database
+            // Gunakan trim untuk memastikan data kosong/null ditangani dengan benar
+            $alamatSemarang = trim($item->alamat_semarang ?? '');
+            $cabang = trim($item->lokasi_cabang ?? '');
+            
+            // Cek apakah kolom berisi alamat nyata (bukan kosong, null, atau strip '-')
+            $hasRealAlamat = !empty($alamatSemarang) && $alamatSemarang !== '-';
+            $hasRealCabang = !empty($cabang) && $cabang !== '-';
+
+            if ($hasRealAlamat || $hasRealCabang) {
+                // Tampilkan alamat_semarang jika ada, jika tidak gunakan lokasi cabang
+                $item->display_lokasi = $hasRealAlamat ? $item->alamat_semarang : $item->lokasi_cabang;
+                $item->is_online = false;
+            } else {
+                // Fallback jika benar-benar tidak ada data alamat offline
                 $item->display_lokasi = "VIA ZOOM (ONLINE)";
                 $item->is_online = true;
-            } else {
-                $item->display_lokasi = $item->alamat_siswa ?: $item->lokasi_cabang;
-                $item->is_online = false;
             }
             
-            // 2. Logika Program: Mengubah ID (seperti "1") menjadi Nama Mata Pelajaran asli
-            // Kita coba decode jika mapel adalah array JSON, jika tidak anggap string biasa
-            $mapelIds = json_decode($item->mapel, true);
+            // 2. Logika Program: Mengubah ID menjadi Nama Mata Pelajaran asli
+            $mapelRaw = $item->mapel;
+            $mapelIds = json_decode($mapelRaw, true);
+            
             if (!is_array($mapelIds)) {
-                $mapelIds = [$item->mapel];
+                $mapelIds = array_filter(explode(',', $mapelRaw));
             }
 
             // Ambil nama-nama mata pelajaran dari database berdasarkan ID
@@ -215,7 +238,7 @@ public function reguler(Request $request) {
             // Tampilkan daftar nama mapel yang dipisah koma, atau fallback ke program_name
             $item->display_program = count($mapelNames) > 0 
                 ? implode(', ', $mapelNames) 
-                : ($item->mapel ?: $item->program_name);
+                : ( (!empty($mapelRaw) && $mapelRaw !== '0') ? $mapelRaw : $item->program_name );
             
             return $item;
         });
@@ -228,7 +251,6 @@ public function reguler(Request $request) {
         return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
     }
 }
-
     public function adminPayments() {
     $payments = DB::table('enrollments')
         ->join('users', 'enrollments.user_id', '=', 'users.id')
@@ -797,7 +819,7 @@ public function reguler(Request $request) {
         return response()->json(['success' => true, 'message' => 'Berhasil absen!']);
     }
 
-    public function enrollProgram(Request $request) {
+   public function enrollProgram(Request $request) {
     // 1. Validasi Input (Pastikan data minimal tersedia)
     $request->validate([
         'program_id' => 'required',
@@ -852,10 +874,14 @@ public function reguler(Request $request) {
             'extra_hours' => $request->extra_hours ?? 0,
             'is_mengaji' => $request->is_mengaji ?? 0,
             'jadwal_detail' => $request->jadwal_detail,
-            'mapel' => $mapelString, // Disimpan sebagai nama mapel, bukan ID mentah
+            'mapel' => $mapelString, 
             'metode' => $request->lokasi_cabang ? 'offline' : 'online',
             'lokasi_cabang' => $request->lokasi_cabang,
-            'alamat_siswa' => $request->alamat_siswa ?? '-',
+            
+            // PENYAMBUNGAN KRUSIAL: Memastikan data input 'alamat_siswa' dari form
+            // masuk ke kolom 'alamat_semarang' sesuai struktur database Anda.
+            'alamat_semarang' => $request->alamat_siswa ?? '-', 
+            
             'total_harga' => $finalAmount,
             'status_pembayaran' => 'pending',
             'bukti_pembayaran' => 'pembayaran/reguler/' . $namaFile,
@@ -867,7 +893,6 @@ public function reguler(Request $request) {
 
         DB::commit();
         
-        // Langsung ke dashboard siswa setelah berhasil simpan
         return redirect()->route('siswa.overview')->with('success', 'Pendaftaran Berhasil! Admin akan segera memverifikasi.');
         
     } catch (\Exception $e) {
