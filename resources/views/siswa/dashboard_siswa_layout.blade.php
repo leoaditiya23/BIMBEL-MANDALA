@@ -78,4 +78,33 @@
         flex: 1 0 auto;
     }
 </style>
+
+{{-- Script untuk Notifikasi Sukses Pendaftaran --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    @if(session('success'))
+        Swal.fire({
+            title: 'BERHASIL!',
+            text: "{{ session('success') }}",
+            icon: 'success',
+            timer: 3000,
+            showConfirmButton: false,
+            customClass: {
+                popup: 'rounded-[2rem]'
+            }
+        });
+    @endif
+
+    @if(session('error'))
+        Swal.fire({
+            title: 'GAGAL!',
+            text: "{{ session('error') }}",
+            icon: 'error',
+            confirmButtonColor: '#ef4444',
+            customClass: {
+                popup: 'rounded-[2rem]'
+            }
+        });
+    @endif
+</script>
 @endsection

@@ -41,54 +41,56 @@
     </div>
     @endif
 
-    {{-- Mentors Grid --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {{-- Mentors Grid - REVISI: Menggunakan grid-cols lebih banyak agar kartu merapat --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
         @foreach($mentors as $mentor)
-            <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all group relative" style="max-width: 280px; width: 100%; margin-left: 0;">
-                <div class="flex flex-col items-center text-center">
-                    
-                    {{-- Avatar --}}
-                    <div class="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-4 border-2 border-slate-50 group-hover:border-blue-100 transition-all shadow-inner">
-                        @if($mentor->photo)
-                            <img src="{{ asset('storage/' . $mentor->photo) }}" class="w-full h-full object-cover">
-                        @else
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ urlencode($mentor->name) }}" class="w-full h-full object-cover">
-                        @endif
-                    </div>
+            <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 hover:shadow-md transition-all group relative flex flex-col items-center text-center h-full">
+                
+                {{-- Avatar --}}
+                <div class="w-20 h-20 rounded-[1.5rem] overflow-hidden mb-4 border-2 border-slate-50 group-hover:border-blue-100 transition-all shadow-inner shrink-0">
+                    @if($mentor->photo)
+                        <img src="{{ asset('storage/' . $mentor->photo) }}" class="w-full h-full object-cover">
+                    @else
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ urlencode($mentor->name) }}" class="w-full h-full object-cover">
+                    @endif
+                </div>
 
-                    {{-- Text Information --}}
-                    <h3 class="text-base font-black text-slate-800 leading-tight mb-1">{{ $mentor->name }}</h3>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                {{-- Text Information --}}
+                <div class="flex-grow">
+                    <h3 class="text-sm font-black text-slate-800 leading-tight mb-1">{{ $mentor->name }}</h3>
+                    <p class="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-3">
                         {{ $mentor->specialist }}
                     </p>
 
                     {{-- WhatsApp Link --}}
-                    @if($mentor->whatsapp)
-                        <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $mentor->whatsapp) }}" 
-                           target="_blank"
-                           class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-600 border border-green-100 text-[10px] font-black uppercase hover:bg-green-600 hover:text-white transition-all">
-                            <i class="fab fa-whatsapp text-xs"></i>
-                            {{ $mentor->whatsapp }}
-                        </a>
-                    @else
-                        <span class="text-[10px] font-bold text-slate-300 uppercase italic">No WhatsApp -</span>
-                    @endif
-
-                    {{-- Action Buttons --}}
-                    <div class="flex gap-2 mt-6 w-full">
-                        <button @click="openEdit({{ json_encode($mentor) }})" 
-                                class="flex-1 py-2.5 bg-slate-50 text-slate-600 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all">
-                            Edit
-                        </button>
-
-                        <form action="{{ route('admin.mentors.delete', $mentor->id) }}" method="POST" class="flex-1" onsubmit="return confirm('Hapus mentor ini?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" 
-                                    class="w-full py-2.5 bg-slate-50 text-red-400 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-red-500 hover:text-white transition-all">
-                                Hapus
-                            </button>
-                        </form>
+                    <div class="mb-4">
+                        @if($mentor->whatsapp)
+                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $mentor->whatsapp) }}" 
+                               target="_blank"
+                               class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-600 border border-green-100 text-[9px] font-black uppercase hover:bg-green-600 hover:text-white transition-all">
+                                <i class="fab fa-whatsapp text-xs"></i>
+                                {{ $mentor->whatsapp }}
+                            </a>
+                        @else
+                            <span class="text-[9px] font-bold text-slate-300 uppercase italic">No WhatsApp</span>
+                        @endif
                     </div>
+                </div>
+
+                {{-- Action Buttons --}}
+                <div class="flex gap-2 mt-auto w-full pt-4 border-t border-slate-50">
+                    <button @click="openEdit({{ json_encode($mentor) }})" 
+                            class="flex-1 py-2 bg-slate-50 text-slate-600 rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all">
+                        Edit
+                    </button>
+
+                    <form action="{{ route('admin.mentors.delete', $mentor->id) }}" method="POST" class="flex-1" onsubmit="return confirm('Hapus mentor ini?')">
+                        @csrf @method('DELETE')
+                        <button type="submit" 
+                                class="w-full py-2 bg-slate-50 text-red-400 rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-red-500 hover:text-white transition-all">
+                            Hapus
+                        </button>
+                    </form>
                 </div>
             </div>
         @endforeach

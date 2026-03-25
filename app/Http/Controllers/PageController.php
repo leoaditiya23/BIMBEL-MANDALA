@@ -317,42 +317,45 @@ public function login()
     // --- MANAJEMEN PROGRAM ---
 
     public function adminPrograms(Request $request, $type = null) {
-        $query = DB::table('programs')
-            ->leftJoin('users', 'programs.mentor_id', '=', 'users.id')
-            ->select('programs.*', 'users.name as mentor_name');
+    $query = DB::table('programs')
+        ->leftJoin('users', 'programs.mentor_id', '=', 'users.id')
+        ->select('programs.*', 'users.name as mentor_name');
 
-        if ($type) {
-            $query->where('programs.type', $type);
-            $title = "Manajemen Program " . ucfirst($type);
-        } else {
-            $title = "Katalog Semua Program";
-        }
-
-        $programs = $query->get()->map(function($program) {
-            $program->jumlah_peserta = DB::table('enrollments')
-                ->where('program_id', $program->id)
-                ->where('status_pembayaran', 'verified')
-                ->count();
-            
-            $program->mentor = (object) ['name' => $program->mentor_name ?? 'Belum Ada'];
-            return $program;
-        });
-
-        $mentors = User::where('role', 'mentor')->get();
-        $subjects = DB::table('subjects')->orderBy('name', 'asc')->get();
-        
-        return view('admin.programs', compact('programs', 'mentors', 'subjects', 'title', 'type'));
+    if ($type) {
+        $query->where('programs.type', $type);
+        $title = "Manajemen Program " . ucfirst($type);
+    } else {
+        $title = "Katalog Semua Program";
     }
 
+    $programs = $query->get()->map(function($program) {
+        $program->jumlah_peserta = DB::table('enrollments')
+            ->where('program_id', $program->id)
+            ->where('status_pembayaran', 'verified')
+            ->count();
+        
+        $program->mentor = (object) ['name' => $program->mentor_name ?? 'Belum Ada'];
+        return $program;
+    });
+
+    // REVISI: Tambahkan daftar jenjang untuk dikirim ke view
+    $list_jenjang = ['TK', 'SD', 'SMP', 'SMA', 'Umum'];
+    $mentors = User::where('role', 'mentor')->get();
+    $subjects = DB::table('subjects')->orderBy('name', 'asc')->get();
+
+    return view('admin.programs', compact('programs', 'mentors', 'subjects', 'title', 'type', 'list_jenjang'));
+}
+
     public function storeProgram(Request $request) {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'jenjang' => 'required',
-            'type' => 'required|in:reguler,intensif',
-            'price' => 'required|numeric|min:0',
-            'extra_meeting_price' => 'required|numeric|min:0',
-            'quran_price' => 'required|numeric|min:0',
-        ]);
+    $request->validate([
+        'name' => 'required|string|max:255',
+        // BAGIAN YANG DIREVISI: Menambahkan 'TK' ke dalam daftar yang diizinkan
+        'jenjang' => 'required|in:TK,SD,SMP,SMA,Umum', 
+        'type' => 'required|in:reguler,intensif',
+        'price' => 'required|numeric|min:0',
+        'extra_meeting_price' => 'required|numeric|min:0',
+        'quran_price' => 'required|numeric|min:0',
+    ]);
 
         DB::table('programs')->insert(array_merge($request->only([
             'name', 'jenjang', 'type', 'price', 'extra_meeting_price', 'quran_price', 'mentor_id', 'description'
@@ -571,106 +574,104 @@ public function login()
      * ==========================================
      */
    public function siswaOverview() {
-        $user = Auth::user();
+    $user = Auth::user();
 
-        $recent_programs = DB::table('enrollments')
-            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->leftJoin('users as mentors', 'enrollments.mentor_id', '=', 'mentors.id')
-            ->where('enrollments.user_id', $user->id)
-            ->where('enrollments.status_pembayaran', 'verified')
-            ->select(
-                'enrollments.id as enrollment_id',
-                'programs.name as base_program_name', 
-                'mentors.name as mentor_name',
-                'enrollments.lokasi_cabang', 
-                'enrollments.alamat_siswa',  
-                'enrollments.mapel as selected_mapel_raw', // Ambil data mapel mentah untuk diproses
-                'enrollments.jadwal_detail as sesi_jadwal',
-                'enrollments.jumlah_pertemuan', 
-                'enrollments.pertemuan_selesai',
-                'enrollments.program_id as original_program_id'
-            )
-            ->get()
-            ->map(function($program) use ($user) {
-                // PROSES NAMA MAPEL UNTUK PROGRAM AKTIF (Kiri)
+    $recent_programs = DB::table('enrollments')
+        ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+        ->leftJoin('users as mentors', 'enrollments.mentor_id', '=', 'mentors.id')
+        ->where('enrollments.user_id', $user->id)
+        ->where('enrollments.status_pembayaran', 'verified')
+        ->select(
+            'enrollments.id as enrollment_id',
+            'programs.name as base_program_name', 
+            'mentors.name as mentor_name',
+            'enrollments.lokasi_cabang', 
+            'enrollments.alamat_siswa',  
+            'enrollments.mapel as selected_mapel_raw',
+            'enrollments.tipe_paket',
+            'enrollments.jadwal_detail as sesi_jadwal',
+            'enrollments.jumlah_pertemuan', 
+            'enrollments.pertemuan_selesai',
+            'enrollments.program_id as original_program_id'
+        )
+        ->get()
+        ->map(function($program) use ($user) {
+            // PROSES NAMA MAPEL (Sync Intensif & Reguler)
+            if ($program->tipe_paket === 'intensif') {
+                $program->display_mapel = $program->selected_mapel_raw ?: $program->base_program_name;
+            } else {
                 $mapelIds = json_decode($program->selected_mapel_raw, true);
-                if (!is_array($mapelIds)) {
-                    $mapelIds = [$program->selected_mapel_raw];
-                }
-
-                $mapelNames = DB::table('programs')
-                    ->whereIn('id', $mapelIds)
-                    ->pluck('name')
-                    ->toArray();
-
-                // Menambahkan property baru 'display_mapel' untuk digunakan di View
+                if (!is_array($mapelIds)) { $mapelIds = array_filter(explode(',', $program->selected_mapel_raw)); }
+                $mapelNames = DB::table('programs')->whereIn('id', $mapelIds)->pluck('name')->toArray();
                 $program->display_mapel = count($mapelNames) > 0 ? implode(', ', $mapelNames) : $program->base_program_name;
+            }
 
-                $program->materials = DB::table('program_materials')
-                    ->where('program_id', $program->original_program_id)
-                    ->orderBy('session_number', 'asc')
-                    ->get();
-                
-                foreach($program->materials as $m) {
-                    $m->is_attended = DB::table('attendances')
-                        ->where('student_id', $user->id)
-                        ->where('program_id', $program->enrollment_id)
-                        ->where('date', date('Y-m-d')) 
-                        ->exists();
-                }
-                return $program;
-            });
+            $program->materials = DB::table('program_materials')
+                ->where('program_id', $program->original_program_id)
+                ->orderBy('session_number', 'asc')
+                ->get();
+            
+            foreach($program->materials as $m) {
+                $m->is_attended = DB::table('attendances')
+                    ->where('student_id', $user->id)
+                    ->where('program_id', $program->enrollment_id)
+                    ->where('date', date('Y-m-d')) 
+                    ->exists();
+            }
+            return $program;
+        });
 
-        $my_assignments = DB::table('assignments')
-            ->join('users as mentors', 'assignments.mentor_id', '=', 'mentors.id')
-            ->where('assignments.student_id', $user->id)
-            ->select('assignments.*', 'mentors.name as mentor_name')
-            ->orderBy('assignments.created_at', 'desc')
-            ->limit(5)->get();
+    $my_assignments = DB::table('assignments')
+        ->join('users as mentors', 'assignments.mentor_id', '=', 'mentors.id')
+        ->where('assignments.student_id', $user->id)
+        ->select('assignments.*', 'mentors.name as mentor_name')
+        ->orderBy('assignments.created_at', 'desc')
+        ->limit(5)->get();
 
-        $activities = DB::table('enrollments')
-            ->where('enrollments.user_id', $user->id)
-            ->select(
-                'enrollments.mapel', 
-                'enrollments.jadwal_detail', 
-                'enrollments.lokasi_cabang',
-                'enrollments.per_minggu',
-                'enrollments.status_pembayaran as status', 
-                'enrollments.created_at'
-            )
-            ->orderBy('enrollments.created_at', 'desc')
-            ->limit(5)->get()
-            ->map(function($item) {
-                // PROSES NAMA MAPEL UNTUK AKTIVITAS TERBARU (Kanan)
+    $activities = DB::table('enrollments')
+        ->where('enrollments.user_id', $user->id)
+        ->select(
+            'enrollments.mapel', 
+            'enrollments.tipe_paket',
+            'enrollments.jadwal_detail', 
+            'enrollments.lokasi_cabang',
+            'enrollments.per_minggu',
+            'enrollments.status_pembayaran as status', 
+            'enrollments.created_at'
+        )
+        ->orderBy('enrollments.created_at', 'desc')
+        ->limit(5)->get()
+        ->map(function($item) {
+            // SINKRONISASI TAMPILAN AKTIVITAS TERBARU
+            if ($item->tipe_paket === 'intensif') {
+                $namaTampil = $item->mapel ?: 'PROGRAM INTENSIF';
+                $item->title = "Pendaftaran Les: " . strtoupper($namaTampil);
+            } else {
                 $mapelIds = json_decode($item->mapel, true);
-                if (!is_array($mapelIds)) {
-                    $mapelIds = [$item->mapel];
-                }
+                if (!is_array($mapelIds)) { $mapelIds = array_filter(explode(',', $item->mapel)); }
+                $mapelNames = DB::table('programs')->whereIn('id', $mapelIds)->pluck('name')->toArray();
+                $namaTampil = count($mapelNames) > 0 ? implode(', ', $mapelNames) : 'Program Reguler';
+                $item->title = "Pendaftaran Les: " . strtoupper($namaTampil);
+            }
+            
+            // DETEKSI METODE ONLINE/OFFLINE
+            $isOnline = str_contains(strtolower($item->lokasi_cabang ?? ''), 'online');
+            $metode = $isOnline ? "Online (Zoom)" : "Offline (" . ($item->lokasi_cabang ?: 'Cabang') . ")";
+            
+            $item->description = "Jadwal: " . ($item->jadwal_detail ?: '-') . " | Lokasi: " . $metode . " | Frekuensi: " . ($item->per_minggu ?: '0') . "x Seminggu";
+            
+            return $item;
+        });
 
-                $mapelNames = DB::table('programs')
-                    ->whereIn('id', $mapelIds)
-                    ->pluck('name')
-                    ->toArray();
+    $stats = [
+        'completed_tasks' => DB::table('task_submissions')->where('user_id', $user->id)->count(),
+        'total_tasks'     => DB::table('assignments')->where('student_id', $user->id)->count(),
+        'average_score'   => DB::table('task_submissions')->where('user_id', $user->id)->avg('score') ?? 0,
+        'attendance'      => DB::table('attendances')->where('student_id', $user->id)->count(),
+    ];
 
-                $namaMapelTampil = count($mapelNames) > 0 ? implode(', ', $mapelNames) : 'Program Reguler';
-
-                $item->title = "Pendaftaran Les: " . strtoupper($namaMapelTampil);
-                
-                $metode = $item->lokasi_cabang ? "Offline (" . $item->lokasi_cabang . ")" : "Online";
-                $item->description = "Jadwal: " . ($item->jadwal_detail ?: '-') . " | Lokasi: " . $metode . " | Frekuensi: " . ($item->per_minggu ?: '0') . "x Seminggu";
-                
-                return $item;
-            });
-
-        $stats = [
-            'completed_tasks' => DB::table('task_submissions')->where('user_id', $user->id)->count(),
-            'total_tasks'     => DB::table('assignments')->where('student_id', $user->id)->count(),
-            'average_score'   => DB::table('task_submissions')->where('user_id', $user->id)->avg('score') ?? 0,
-            'attendance'      => DB::table('attendances')->where('student_id', $user->id)->count(),
-        ];
-
-        return view('siswa.overview', compact('recent_programs', 'my_assignments', 'activities', 'stats'));
-    }
+    return view('siswa.overview', compact('recent_programs', 'my_assignments', 'activities', 'stats'));
+}
 
     public function siswaPrograms() {
         $my_programs = DB::table('enrollments')
@@ -851,18 +852,26 @@ public function login()
         $path = $request->file('bukti_pembayaran')->store('pembayaran/reguler', 'public');
         $namaFile = basename($path);
 
-        // 5. Proses Nama Mapel (Konversi ID ke Nama untuk tampilan Dashboard)
-        $mapelIds = json_decode($request->selected_subjects ?? '[]', true);
-        if (!is_array($mapelIds)) {
-            $mapelIds = [$request->program_id];
-        }
-        
-        $mapelNames = DB::table('programs')
-            ->whereIn('id', $mapelIds)
-            ->pluck('name')
-            ->toArray();
+        // 5. Proses Nama Mapel (Sinkronisasi Reguler & Intensif)
+        if ($request->tipe_paket === 'intensif') {
+            // Gunakan input 'mapel' secara langsung untuk program intensif agar tidak tertulis "Program Reguler"
+            $mapelString = $request->mapel ?? 'Program Intensif';
+        } else {
+            $mapelIds = json_decode($request->selected_subjects ?? '[]', true);
+            if (!is_array($mapelIds)) {
+                $mapelIds = [$request->program_id];
+            }
+            
+            $mapelNames = DB::table('programs')
+                ->whereIn('id', $mapelIds)
+                ->pluck('name')
+                ->toArray();
 
-        $mapelString = count($mapelNames) > 0 ? implode(', ', $mapelNames) : 'Program Reguler';
+            $mapelString = count($mapelNames) > 0 ? implode(', ', $mapelNames) : 'Program Reguler';
+        }
+
+        // REVISI LOGIKA METODE: Memastikan kata 'ONLINE' dideteksi dengan benar dari input lokasi_cabang
+        $isOnline = str_contains(strtolower($request->lokasi_cabang ?? ''), 'online');
 
         // 6. Simpan ke Database
         DB::table('enrollments')->insert([
@@ -875,17 +884,13 @@ public function login()
             'is_mengaji' => $request->is_mengaji ?? 0,
             'jadwal_detail' => $request->jadwal_detail,
             'mapel' => $mapelString, 
-            'metode' => $request->lokasi_cabang ? 'offline' : 'online',
+            'metode' => $isOnline ? 'online' : 'offline',
             'lokasi_cabang' => $request->lokasi_cabang,
-            
-            // PENYAMBUNGAN KRUSIAL: Memastikan data input 'alamat_siswa' dari form
-            // masuk ke kolom 'alamat_semarang' sesuai struktur database Anda.
             'alamat_semarang' => $request->alamat_siswa ?? '-', 
-            
             'total_harga' => $finalAmount,
             'status_pembayaran' => 'pending',
             'bukti_pembayaran' => 'pembayaran/reguler/' . $namaFile,
-            'jumlah_pertemuan' => 8,
+            'jumlah_pertemuan' => ($request->tipe_paket === 'intensif') ? 12 : 8, 
             'pertemuan_selesai' => 0,
             'created_at' => now(),
             'updated_at' => now(),
@@ -893,7 +898,8 @@ public function login()
 
         DB::commit();
         
-        return redirect()->route('siswa.overview')->with('success', 'Pendaftaran Berhasil! Admin akan segera memverifikasi.');
+        // Otomatis lari ke overview siswa dengan pesan sukses agar SweetAlert muncul
+        return redirect()->route('siswa.overview')->with('success', 'Pendaftaran Berhasil! Admin akan segera memverifikasi pembayaran Anda.');
         
     } catch (\Exception $e) {
         DB::rollBack();

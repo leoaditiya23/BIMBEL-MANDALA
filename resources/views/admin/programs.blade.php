@@ -135,10 +135,10 @@
                             <div class="bg-white">
                                 <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1 px-1">Jenjang</label>
                                 <select name="jenjang" required class="w-full px-3 py-2.5 rounded-lg bg-[#f8fafc] border-2 border-slate-100 outline-none font-bold text-slate-800 text-xs focus:border-blue-500 transition">
-                                    <option value="SD">SD</option>
-                                    <option value="SMP">SMP</option>
-                                    <option value="SMA">SMA</option>
-                                    <option value="Umum">Umum</option>
+                                    {{-- REVISI: Menggunakan data looping list_jenjang dari Controller --}}
+                                    @foreach($list_jenjang as $j)
+                                        <option value="{{ $j }}">{{ $j }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                         </div>
@@ -214,10 +214,10 @@
                             <div class="bg-white">
                                 <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1 px-1">Jenjang</label>
                                 <select name="jenjang" x-model="editData.jenjang" required class="w-full px-3 py-2.5 rounded-lg bg-[#f8fafc] border-2 border-slate-100 outline-none font-bold text-slate-800 text-xs focus:border-blue-500 transition">
-                                    <option value="SD">SD</option>
-                                    <option value="SMP">SMP</option>
-                                    <option value="SMA">SMA</option>
-                                    <option value="Umum">Umum</option>
+                                    {{-- REVISI: Menggunakan data looping list_jenjang dari Controller --}}
+                                    @foreach($list_jenjang as $j)
+                                        <option value="{{ $j }}">{{ $j }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                         </div>

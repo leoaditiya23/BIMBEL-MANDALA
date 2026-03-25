@@ -88,19 +88,23 @@
                                 <p class="text-[10px] text-slate-500">Mentor: <span class="font-bold text-slate-700">{{ $program->mentor_name ?? 'Menunggu Mentor' }}</span></p>
                                 
                                 <div class="flex flex-col gap-0.5">
-                                    <p class="text-[10px] text-blue-600 font-bold uppercase italic tracking-tight">
-                                        <i class="fas fa-map-marker-alt mr-1 text-rose-500"></i> 
-                                        {{ !empty($program->lokasi_cabang) ? 'Offline (' . $program->lokasi_cabang . ')' : 'Online' }}
+                                    @php
+                                        // REVISI LOGIKA LOKASI: Mendeteksi kata ONLINE dalam lokasi_cabang
+                                        $isOnline = str_contains(strtolower($program->lokasi_cabang ?? ''), 'online');
+                                    @endphp
+
+                                    <p class="text-[10px] {{ $isOnline ? 'text-blue-600' : 'text-rose-600' }} font-bold uppercase italic tracking-tight">
+                                        <i class="fas {{ $isOnline ? 'fa-video' : 'fa-house-user' }} mr-1"></i> 
+                                        {{ $isOnline ? 'Online (Daring)' : 'Offline (' . ($program->lokasi_cabang ?: 'Rumah') . ')' }}
                                     </p>
                                     
-                                    {{-- REVISI: Menghapus Link Zoom mentah dan menggantinya dengan informasi metode --}}
-                                    @if(empty($program->lokasi_cabang))
-                                        <p class="text-[9px] text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded-lg w-fit mt-1 uppercase tracking-tighter">
-                                            <i class="fas fa-video mr-1"></i> Interactive Virtual Class
+                                    @if(!$isOnline)
+                                        <p class="text-[9px] text-slate-500 font-medium leading-tight">
+                                            <i class="fas fa-map-marker-alt mr-1 text-slate-400"></i> {{ $program->alamat_siswa ?: $program->lokasi_cabang }}
                                         </p>
                                     @else
-                                        <p class="text-[9px] text-slate-500 font-medium leading-tight">
-                                            <i class="fas fa-info-circle mr-1 text-slate-400"></i> {{ $program->alamat_siswa ?? 'Alamat belum disetel' }}
+                                        <p class="text-[9px] text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded-lg w-fit mt-1 uppercase tracking-tighter">
+                                            <i class="fas fa-laptop-code mr-1"></i> Interactive Virtual Class
                                         </p>
                                     @endif
                                 </div>
@@ -145,12 +149,13 @@
                 @forelse($activities as $activity)
                     <div class="flex items-start space-x-4 group">
                         <div class="relative">
-                            <div class="w-3 h-3 {{ strtolower($activity->status) == 'verified' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]' }} rounded-full mt-1.5 flex-shrink-0 z-10 relative"></div>
+                            <div class="w-3 h-3 {{ strtolower($activity->status) == 'verified' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]' }} rounded-full mt-1.5 flex-shrink-0 z-10 relative"></div>
                             @if(!$loop->last)
                                 <div class="absolute top-5 left-1.5 w-[1px] h-14 bg-slate-100"></div>
                             @endif
                         </div>
                         <div class="flex-1">
+                            {{-- REVISI: Menggunakan data title yang sudah diproses dari Controller agar tertulis Intensif --}}
                             <p class="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors uppercase tracking-tight">{{ $activity->title }}</p>
                             
                             @if(isset($activity->description))
@@ -160,8 +165,8 @@
                             @endif
 
                             <div class="flex items-center gap-2 mt-1.5">
-                                <span class="text-[9px] text-slate-400 uppercase font-black tracking-tighter">PENDAFTARAN PROGRAM</span>
-                                <span class="text-[9px] font-black uppercase {{ strtolower($activity->status) == 'verified' ? 'text-emerald-500' : 'text-orange-500' }} tracking-tighter italic">
+                                <span class="text-[9px] text-slate-400 uppercase font-black tracking-tighter italic">Status:</span>
+                                <span class="text-[9px] font-black uppercase {{ strtolower($activity->status) == 'verified' ? 'text-emerald-500' : 'text-amber-500' }} tracking-tighter">
                                     {{ $activity->status }}
                                 </span>
                             </div>
