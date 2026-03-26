@@ -2,9 +2,13 @@
 
 @section('siswa_content')
 <div x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
-    <div class="mb-8">
-        <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Gas Terus, {{ explode(' ', Auth::user()->name)[0] }}! 🔥</h2>
-        <p class="text-sm text-slate-500 mt-1 font-medium">Pantau progres belajarmu di sini</p>
+    <div class="mb-8 flex justify-between items-end">
+        <div>
+            <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Gas Terus, {{ explode(' ', Auth::user()->name)[0] }}! 🔥</h2>
+            <p class="text-sm text-slate-500 mt-1 font-medium">Pantau progres belajarmu di sini</p>
+        </div>
+        {{-- Link Cepat ke Semua Kelas --}}
+        <a href="{{ route('siswa.programs') }}" class="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-600 hover:text-white transition-all">Lihat Semua Kelas <i class="fas fa-arrow-right ml-1"></i></a>
     </div>
 
     {{-- Stat Cards Section --}}
@@ -76,7 +80,14 @@
             @if($recent_programs && count($recent_programs) > 0)
                 <div class="space-y-4">
                     @foreach($recent_programs as $program)
-                        <div class="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 hover:border-blue-200 transition-all group">
+                        <div class="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 hover:border-blue-200 transition-all group relative">
+                            {{-- Notifikasi Absen Dibuka --}}
+                            @if(isset($program->is_absen_active) && $program->is_absen_active)
+                                <div class="absolute -top-2 -right-2 bg-rose-600 text-white text-[8px] font-black px-3 py-1 rounded-full shadow-lg animate-bounce z-20 uppercase tracking-tighter">
+                                    Absensi Dibuka!
+                                </div>
+                            @endif
+
                             <div class="flex justify-between items-start mb-2">
                                 <p class="font-black text-slate-800 group-hover:text-blue-600 transition-colors uppercase text-sm tracking-tight">
                                     {{ $program->display_mapel ?? $program->base_program_name }}
@@ -89,7 +100,6 @@
                                 
                                 <div class="flex flex-col gap-0.5">
                                     @php
-                                        // REVISI LOGIKA LOKASI: Mendeteksi kata ONLINE dalam lokasi_cabang
                                         $isOnline = str_contains(strtolower($program->lokasi_cabang ?? ''), 'online');
                                     @endphp
 
@@ -97,16 +107,6 @@
                                         <i class="fas {{ $isOnline ? 'fa-video' : 'fa-house-user' }} mr-1"></i> 
                                         {{ $isOnline ? 'Online (Daring)' : 'Offline (' . ($program->lokasi_cabang ?: 'Rumah') . ')' }}
                                     </p>
-                                    
-                                    @if(!$isOnline)
-                                        <p class="text-[9px] text-slate-500 font-medium leading-tight">
-                                            <i class="fas fa-map-marker-alt mr-1 text-slate-400"></i> {{ $program->alamat_siswa ?: $program->lokasi_cabang }}
-                                        </p>
-                                    @else
-                                        <p class="text-[9px] text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded-lg w-fit mt-1 uppercase tracking-tighter">
-                                            <i class="fas fa-laptop-code mr-1"></i> Interactive Virtual Class
-                                        </p>
-                                    @endif
                                 </div>
 
                                 <p class="text-[10px] text-slate-400 font-medium italic mt-1">
@@ -123,9 +123,14 @@
                                 <span class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{{ $selesai }}/{{ $total_sesi }} SESI</span>
                                 <span class="text-[9px] font-black text-blue-600">{{ round($persen_progres) }}%</span>
                             </div>
-                            <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                            <div class="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mb-4">
                                 <div class="bg-blue-500 h-full rounded-full transition-all duration-1000" style="width: {{ min($persen_progres, 100) }}%"></div> 
                             </div>
+
+                            {{-- Tombol Akses Kelas (Pindah Absen ke Sini) --}}
+                            <a href="{{ route('siswa.programs') }}" class="w-full flex items-center justify-center py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all group-hover:shadow-md">
+                                Buka Ruang Kelas & Absen
+                            </a>
                         </div>
                     @endforeach
                 </div>
@@ -155,7 +160,6 @@
                             @endif
                         </div>
                         <div class="flex-1">
-                            {{-- REVISI: Menggunakan data title yang sudah diproses dari Controller agar tertulis Intensif --}}
                             <p class="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors uppercase tracking-tight">{{ $activity->title }}</p>
                             
                             @if(isset($activity->description))
