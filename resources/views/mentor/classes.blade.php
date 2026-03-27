@@ -56,9 +56,9 @@
             }
         }).catch(err => console.error('Error toggling attendance:', err));
     }
-}" x-transition:enter="transition ease-out duration-300" class="min-h-full flex flex-col pb-10">
+}" x-transition:enter="transition ease-out duration-300" class="min-h-[calc(100vh-40px)] flex flex-col pb-10">
     
-    {{-- AREA KONTEN UTAMA --}}
+    {{-- PEMBUNGKUS KONTEN UTAMA --}}
     <div class="flex-1">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             <div class="bg-white p-6 rounded-[25px] border border-slate-100 shadow-sm hover:shadow-md transition-all">
@@ -135,6 +135,7 @@
             </div>
         </div>
 
+        {{-- NOTIFIKASI MODE FOKUS --}}
         @if(request()->query('id'))
         <div class="mb-6 bg-indigo-600 p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-indigo-100 animate-in fade-in slide-in-from-top-4 duration-700">
             <div class="flex items-center gap-3 text-white">
@@ -147,7 +148,7 @@
         </div>
         @endif
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 flex-1">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
             @forelse($classes as $class)
                 @php 
                     $isFocused = request()->query('id') == $class->id; 
@@ -155,9 +156,9 @@
                 
                 @if(!request()->query('id') || $isFocused)
                     <div x-show="(activeTab === 'semua' || (activeTab === 'aktif' && {{ ($class->is_absen_active ?? false) ? 'true' : 'false' }})) && ('{{ strtolower($class->name) }}'.includes(searchQuery.toLowerCase()))"
-                         x-transition
-                         data-class-id="{{ $class->id }}"
-                         class="bg-white rounded-[25px] border {{ $isFocused ? 'border-indigo-500 ring-4 ring-indigo-50 shadow-2xl scale-[1.02]' : 'border-slate-100 shadow-sm' }} hover:shadow-xl transition-all duration-500 group overflow-hidden flex flex-col h-full">
+                        x-transition
+                        data-class-id="{{ $class->id }}"
+                        class="bg-white rounded-[25px] border {{ $isFocused ? 'border-indigo-500 ring-4 ring-indigo-50 shadow-2xl scale-[1.02]' : 'border-slate-100 shadow-sm' }} hover:shadow-xl transition-all duration-500 group overflow-hidden flex flex-col h-full">
                         
                         <div class="p-6 flex-1">
                             <div class="flex items-start justify-between mb-4">
@@ -177,12 +178,10 @@
                             
                             <div class="flex flex-col gap-2 mt-1 mb-4">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">• {{ $class->type ?? 'Reguler' }}</span>
-                                
                                 <div class="flex flex-wrap gap-1.5">
                                     @php
                                         $listJadwal = !empty($class->jadwal_detail) ? explode(',', $class->jadwal_detail) : [];
                                     @endphp
-
                                     @if(count($listJadwal) > 0)
                                         @foreach($listJadwal as $j)
                                             <div class="flex items-center gap-2 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100">
@@ -227,7 +226,6 @@
                                         <span class="text-[10px]">Pax</span>
                                     </p>
                                 </div>
-
                                 <div class="bg-slate-50 p-3 rounded-[20px] border border-transparent hover:border-indigo-100 transition-all">
                                     <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Sesi Selesai</p>
                                     <p class="font-black text-slate-700 text-sm">
@@ -359,46 +357,54 @@
              class="bg-white rounded-[40px] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col md:flex-row h-[85vh]">
             
             <div class="w-full md:w-5/12 bg-slate-50 border-r border-slate-100 flex flex-col h-full">
-                <div class="p-8 border-b border-slate-200 bg-white">
+                <div class="p-8 border-b border-slate-200 bg-white flex justify-between items-center">
                     <h3 class="text-xl font-black text-slate-800 tracking-tight">Kurikulum Sesi</h3>
-                    <p class="text-[10px] font-bold text-indigo-500 uppercase mt-1">Total: <span x-text="selectedClass.materials ? selectedClass.materials.length : 0"></span> Materi Terunggah</p>
+                    {{-- TOMBOL TAMBAH MATERI BARU --}}
+                    <button @click="editingMaterial = null; fileName = ''" 
+                            class="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center hover:bg-indigo-700 shadow-md transition-all">
+                        <i class="fas fa-plus text-xs"></i>
+                    </button>
                 </div>
                 
                 <div class="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
                     <template x-if="selectedClass.materials && selectedClass.materials.length > 0">
                         <template x-for="material in selectedClass.materials" :key="material.id">
-                            <button @click="editingMaterial = material; fileName = ''" 
-                                    :class="editingMaterial?.id === material.id ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100' : 'bg-white border-slate-200'"
-                                    class="w-full text-left p-4 rounded-[22px] border flex items-center justify-between group transition-all duration-300">
-                                <div class="flex items-center gap-4">
-                                    <div :class="editingMaterial?.id === material.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-800 group-hover:text-white'" 
-                                         class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs transition-colors" x-text="material.session_number"></div>
-                                    <div>
-                                        <h4 class="font-black text-slate-800 text-[13px] leading-tight" x-text="material.title"></h4>
-                                        <div class="flex items-center gap-2 mt-1">
-                                            <span x-show="material.video_url" class="text-[8px] font-black text-indigo-400 uppercase"><i class="fas fa-video mr-0.5"></i> Video</span>
-                                            <span x-show="material.file_path" class="text-[8px] font-black text-rose-400 uppercase"><i class="fas fa-file-pdf mr-0.5"></i> PDF</span>
+                            <div class="relative group">
+                                <button @click="editingMaterial = material; fileName = ''" 
+                                        :class="editingMaterial?.id === material.id ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100' : 'bg-white border-slate-200'"
+                                        class="w-full text-left p-4 rounded-[22px] border flex items-center justify-between transition-all duration-300 pr-12">
+                                    <div class="flex items-center gap-4">
+                                        <div :class="editingMaterial?.id === material.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'" 
+                                             class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs transition-colors" x-text="material.session_number"></div>
+                                        <div>
+                                            <h4 class="font-black text-slate-800 text-[13px] leading-tight" x-text="material.title"></h4>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                <span x-show="material.video_url" class="text-[8px] font-black text-indigo-400 uppercase">Video</span>
+                                                <span x-show="material.file_path" class="text-[8px] font-black text-rose-400 uppercase">PDF</span>
+                                                <span x-show="material.quiz_url" class="text-[8px] font-black text-emerald-400 uppercase">Kuis</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <i class="fas fa-chevron-right text-slate-200 group-hover:text-indigo-500 text-xs"></i>
-                            </button>
+                                </button>
+                                {{-- TOMBOL HAPUS MATERI --}}
+                                <form :action="`{{ url('mentor/materials/delete') }}/${material.id}`" method="POST" class="absolute right-4 top-1/2 -translate-y-1/2">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" onclick="return confirm('Apakah Anda yakin ingin menghapus materi ini?')" 
+                                            class="text-slate-300 hover:text-rose-500 transition-colors p-2">
+                                        <i class="fas fa-trash-alt text-xs"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </template>
                     </template>
                 </div>
             </div>
 
             <div class="w-full md:w-7/12 p-10 bg-white flex flex-col relative overflow-y-auto custom-scrollbar">
-                <div class="absolute top-8 right-8 flex items-center gap-3 z-50">
-                    <button x-show="editingMaterial" @click="editingMaterial = null; fileName = ''" 
-                            class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center hover:bg-indigo-100 transition-all shadow-sm">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                    <button @click="modalMateri = false" 
-                            class="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all shadow-sm border border-slate-100">
-                        <i class="fas fa-times text-lg"></i>
-                    </button>
-                </div>
+                <button @click="modalMateri = false" class="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors">
+                    <i class="fas fa-times-circle text-2xl"></i>
+                </button>
 
                 <div class="mb-10">
                     <h3 class="text-3xl font-black text-slate-800 leading-none" x-text="editingMaterial ? 'Update Sesi' : 'Buat Sesi Baru'"></h3>
@@ -422,26 +428,51 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">URL Video (Youtube/Lainnya)</label>
-                        <div class="relative mt-2">
-                            <input type="url" name="video_url" :value="editingMaterial ? editingMaterial.video_url : ''" 
-                                   placeholder="https://youtube.com/watch?v=..." 
-                                   class="w-full px-5 py-4 bg-slate-50 border-none rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-indigo-500 shadow-inner">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">URL Video (Youtube/Lainnya)</label>
+                            <div class="relative mt-2">
+                                <input type="url" name="video_url" :value="editingMaterial ? editingMaterial.video_url : ''" 
+                                       placeholder="https://youtube.com/watch?v=..." 
+                                       class="w-full px-5 py-4 bg-slate-50 border-none rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-indigo-500 shadow-inner">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Link Soal / Kuis (Form/External)</label>
+                            <div class="relative mt-2">
+                                <input type="url" name="quiz_url" :value="editingMaterial ? editingMaterial.quiz_url : ''" 
+                                       placeholder="https://forms.gle/..." 
+                                       class="w-full px-5 py-4 bg-slate-50 border-none rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-emerald-500 shadow-inner">
+                            </div>
                         </div>
                     </div>
 
                     <div>
                         <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Modul Dokumentasi (PDF/PPT)</label>
-                        <div class="mt-2 p-8 border-2 border-dashed border-slate-100 rounded-[30px] text-center hover:border-indigo-400 hover:bg-indigo-50 transition-all relative group cursor-pointer">
-                            <input type="file" name="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="fileName = $event.target.files[0].name">
-                            <div class="space-y-3">
+                        {{-- REVISI UTAMA: Melepaskan bungkus label agar klik tombol tidak memicu upload --}}
+                        <div class="mt-2 p-8 border-2 border-dashed border-slate-100 rounded-[30px] text-center relative group">
+                            {{-- Input file tetap ada secara absolut --}}
+                            <input type="file" id="file_input_materi" name="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="fileName = $event.target.files[0].name">
+                            
+                            <div class="space-y-3 pointer-events-none"> {{-- Pointer-events-none agar klik menembus ke input file di bawahnya --}}
                                 <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm group-hover:scale-110 transition-transform">
                                     <i class="fas fa-cloud-upload-alt text-indigo-500"></i>
                                 </div>
                                 <p class="text-xs font-black text-slate-500 uppercase tracking-tighter" x-text="fileName || 'Tarik file atau klik untuk telusuri'"></p>
-                                <p class="text-[9px] font-bold text-slate-300">Format: PDF, PPTX (Maks. 10MB)</p>
                             </div>
+
+                            {{-- TOMBOL FILE TERSEDIA: Ditaruh di luar pointer-events agar BISA DIKLIK --}}
+                            <template x-if="editingMaterial && editingMaterial.file_path && !fileName">
+                                <div class="mt-4 relative z-50 flex items-center justify-center gap-2 animate-in fade-in zoom-in duration-300">
+                                    {{-- TOMBOL LIHAT PDF ASLI --}}
+                                    <a :href="'/storage/' + editingMaterial.file_path" target="_blank" 
+                                       class="bg-emerald-500 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center gap-2 shadow-lg shadow-emerald-100 pointer-events-auto">
+                                        <i class="fas fa-eye"></i> LIHAT FILE TERSIMPAN
+                                    </a>
+                                </div>
+                            </template>
+                            
+                            <p class="text-[9px] font-bold text-slate-300 mt-2">Format: PDF, PPTX (Maks. 10MB)</p>
                         </div>
                     </div>
 

@@ -678,31 +678,22 @@ public function login()
         ->join('programs', 'enrollments.program_id', '=', 'programs.id')
         ->leftJoin('users as mentors', 'enrollments.mentor_id', '=', 'mentors.id')
         ->where('enrollments.user_id', Auth::id())
-        ->select(
-            'enrollments.id as enrollment_id',
-            'programs.name as base_name', 
-            'mentors.name as mentor_name', 
-            'enrollments.status_pembayaran', 
-            'enrollments.mapel', 
-            'enrollments.jumlah_pertemuan',
-            'enrollments.pertemuan_selesai',
-            'enrollments.is_absen_active'
-        )
+        ->select('enrollments.id as enrollment_id', 'programs.name as base_name', 'mentors.name as mentor_name', 'enrollments.status_pembayaran', 'enrollments.mapel', 'enrollments.jumlah_pertemuan', 'enrollments.pertemuan_selesai', 'enrollments.is_absen_active')
         ->get()
         ->map(function($item) {
-            // Ambil histori absen untuk pendaftaran ini
-            $item->attendance_history = DB::table('attendances')
-                ->where('program_id', $item->enrollment_id)
-                ->where('student_id', Auth::id())
-                ->orderBy('date', 'asc')
-                ->get();
-                
-            // Ambil materi
             $item->materials = DB::table('program_materials')
                 ->where('program_id', $item->enrollment_id)
                 ->orderBy('session_number', 'asc')
-                ->get();
-                
+                ->get()
+                ->map(function($mat) use ($item) {
+                    // AMBIL NILAI DARI MENTOR UNTUK SESI INI
+                    $mat->grade = DB::table('grades')
+                        ->where('program_id', $item->enrollment_id)
+                        ->where('student_id', Auth::id())
+                        ->where('title', 'like', '%' . $mat->title . '%') // Cocokkan judul materi
+                        ->first();
+                    return $mat;
+                });
             return $item;
         });
 
@@ -784,22 +775,33 @@ public function login()
     }
 
     public function submitTask(Request $request) {
-        $request->validate([
-            'material_id' => 'required',
-            'link' => 'required|url'
-        ]);
+    $request->validate([
+        'material_id' => 'required',
+        'link' => 'nullable|url',
+        'file' => 'nullable|file|mimes:pdf|max:5120'
+    ]);
 
-        DB::table('task_submissions')->updateOrInsert(
-            ['user_id' => Auth::id(), 'material_id' => $request->material_id],
-            [
-                'task_link' => $request->link,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]
-        );
+    $data = [
+        'user_id' => Auth::id(),
+        'material_id' => $request->material_id,
+        'updated_at' => now()
+    ];
 
-        return response()->json(['success' => true, 'message' => 'Tugas berhasil dikirim!']);
+    if ($request->filled('link')) {
+        $data['task_link'] = $request->link;
     }
+
+    if ($request->hasFile('file')) {
+        $data['file_path'] = $request->file('file')->store('task_submissions', 'public');
+    }
+
+    DB::table('task_submissions')->updateOrInsert(
+        ['user_id' => Auth::id(), 'material_id' => $request->material_id],
+        $data
+    );
+
+    return response()->json(['success' => true, 'message' => 'Tugas berhasil dikirim ke mentor!']);
+}
 
     public function siswaAbsen(Request $request) {
         $request->validate([
@@ -1110,6 +1112,8 @@ public function login()
             'session_number' => 'required|integer',
             'title' => 'required|string|max:255',
             'file' => 'nullable|file|max:10240',
+            'video_url' => 'nullable|url',
+            'quiz_url' => 'nullable|url', // REVISI: Validasi link kuis
         ]);
 
         $filePath = $request->hasFile('file') ? $request->file('file')->store('materials', 'public') : null;
@@ -1119,18 +1123,21 @@ public function login()
             'session_number' => $request->session_number,
             'title' => $request->title,
             'video_url' => $request->video_url,
+            'quiz_url' => $request->quiz_url, // REVISI: Simpan link kuis ke database
             'file_path' => $filePath,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'Materi diunggah!');
+        return back()->with('success', 'Materi & Kuis berhasil diunggah!');
     }
 
     public function updateMaterial(Request $request, $id) {
         $request->validate([
             'session_number' => 'required|integer',
             'title' => 'required|string|max:255',
+            'video_url' => 'nullable|url',
+            'quiz_url' => 'nullable|url', // REVISI: Validasi link kuis saat update
         ]);
 
         $material = DB::table('program_materials')->where('id', $id)->first();
@@ -1140,6 +1147,7 @@ public function login()
             'session_number' => $request->session_number,
             'title' => $request->title,
             'video_url' => $request->video_url,
+            'quiz_url' => $request->quiz_url, // REVISI: Update link kuis di database
             'updated_at' => now(),
         ];
 
@@ -1149,7 +1157,7 @@ public function login()
         }
 
         DB::table('program_materials')->where('id', $id)->update($data);
-        return back()->with('success', 'Materi diperbarui!');
+        return back()->with('success', 'Materi & Kuis berhasil diperbarui!');
     }
 
     public function storeAttendance(Request $request) {
@@ -1174,32 +1182,35 @@ public function login()
     }
 
     public function storeGrade(Request $request) {
-        $request->validate([
-            'program_id' => 'required',
-            'student_id' => 'required',
-            'title' => 'required',
-            'score' => 'required|integer|min:0|max:100',
-        ]);
+    $request->validate([
+        'program_id' => 'required',
+        'student_id' => 'required',
+        'title' => 'required',
+        'score' => 'required|integer|min:0|max:100',
+    ]);
 
-        DB::table('grades')->insert([
-            'program_id' => $request->program_id,
-            'student_id' => $request->student_id,
-            'title' => $request->title,
-            'score' => $request->score,
-            'note' => $request->note,
-            'created_at' => now(),
-        ]);
+    // 1. Simpan Nilai ke Tabel Grades (Ini Berhasil)
+    DB::table('grades')->insert([
+        'program_id' => $request->program_id,
+        'student_id' => $request->student_id,
+        'title' => $request->title,
+        'score' => $request->score,
+        'note' => $request->note,
+        'created_at' => now(),
+    ]);
 
-        DB::table('activities')->insert([
-            'user_id' => $request->student_id,
-            'title' => 'Nilai Baru: ' . $request->title . ' (' . $request->score . ')',
-            'type' => 'grade',
-            'status' => 'verified',
-            'created_at' => now(),
-        ]);
+    // 2. BAGIAN INI DIHAPUS/DIKOMENTAR agar tidak error karena tabelnya tidak ada
+    /* DB::table('activities')->insert([
+        'user_id' => $request->student_id,
+        'title' => 'Nilai Baru: ' . $request->title . ' (' . $request->score . ')',
+        'type' => 'grade',
+        'status' => 'verified',
+        'created_at' => now(),
+    ]);
+    */
 
-        return back()->with('success', 'Nilai dikirim!');
-    }
+    return back()->with('success', 'Nilai berhasil dikirim!');
+}
 
     public function deleteMaterial($id) {
         $material = DB::table('program_materials')->where('id', $id)->first();
