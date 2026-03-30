@@ -8,33 +8,43 @@
 
     {{-- Fungsi Kirim Tugas (Mendukung Link & PDF) --}}
     submitTask(materialId) {
-        const link = document.getElementById('task_link_' + materialId).value;
+        const linkInput = document.getElementById('task_link_' + materialId);
         const fileInput = document.getElementById('task_file_' + materialId);
+        
+        const linkValue = linkInput ? linkInput.value.trim() : '';
+        const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+        
+        if (!linkValue && !hasFile) {
+            return Swal.fire({title: 'Info', text: 'Mohon isi link atau lampirkan PDF', icon: 'warning'});
+        }
         
         let formData = new FormData();
         formData.append('material_id', materialId);
-        formData.append('link', link);
-        if(fileInput.files[0]) {
-            formData.append('file', fileInput.files[0]);
-        }
+        if (linkValue) formData.append('link', linkValue);
+        if (hasFile) formData.append('file', fileInput.files[0]);
 
-        if(!link && !fileInput.files[0]) {
-            return Swal.fire({title: 'Error', text: 'Mohon isi link tugas atau lampirkan file PDF', icon: 'error', customClass: {popup: 'rounded-[2rem]'}});
-        }
-        
+        // Berikan loading agar siswa tahu proses sedang berjalan
+        Swal.fire({title: 'Sedang Mengirim...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
         fetch('{{ route('siswa.submitTask') }}', {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
             body: formData
         })
-        .then(res => res.json())
+        .then(async res => {
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.message || 'Kesalahan Server');
+            return data;
+        })
         .then(data => {
-            if(data.success) {
-                Swal.fire({title: 'Berhasil', text: data.message, icon: 'success', customClass: {popup: 'rounded-[2rem]'}});
-                this.fileNameTask = '';
-                document.getElementById('task_link_' + materialId).value = '';
-                fileInput.value = '';
-            }
+            Swal.fire({title: 'Berhasil', text: data.message, icon: 'success', customClass: {popup: 'rounded-[2rem]'}});
+            this.fileNameTask = '';
+            if(linkInput) linkInput.value = '';
+            if(fileInput) fileInput.value = '';
+        })
+        .catch(err => {
+            // Sekarang error dari server akan muncul di sini (bukan lagi 'Gagal Hubungi Server' yang generik)
+            Swal.fire({title: 'Gagal', text: err.message, icon: 'error'});
         });
     },
 
@@ -244,9 +254,9 @@
                                         </div>
                                     </div>
 
-                                    {{-- HALAMAN FEEDBACK & NILAI DARI MENTOR --}}
+                                    {{-- BLOK REVIEW & NILAI DARI MENTOR --}}
                                     <template x-if="material.grade">
-                                        <div class="mt-5 p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 flex justify-between items-center group/grade hover:bg-indigo-50 transition-all animate-in fade-in slide-in-from-top-2">
+                                        <div class="mt-8 p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 flex justify-between items-center group/grade hover:bg-indigo-50 transition-all animate-in fade-in slide-in-from-top-2">
                                             <div class="flex items-center gap-4">
                                                 <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-50 group-hover/grade:scale-110 transition-transform">
                                                     <i class="fas fa-star text-lg"></i>
@@ -256,7 +266,7 @@
                                                         <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none">Feedback Mentor</p>
                                                         <span class="px-2 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-black rounded-full uppercase">Verified</span>
                                                     </div>
-                                                    <p class="text-xs font-bold text-slate-700 italic leading-relaxed" x-text="material.grade.note || 'Materi ini telah dinilai oleh mentor'"></p>
+                                                    <p class="text-xs font-bold text-slate-700 italic leading-relaxed" x-text="material.grade.note || 'Selesai dinilai'"></p>
                                                 </div>
                                             </div>
                                             <div class="flex flex-col items-end bg-white px-5 py-3 rounded-2xl border border-indigo-50 shadow-sm min-w-[80px]">
@@ -270,7 +280,7 @@
                                     <div class="mt-6 pt-6 border-t border-dashed border-slate-100">
                                         <label class="text-[9px] font-black text-slate-400 uppercase mb-3 block tracking-[0.1em]">Pengumpulan Tugas & Catatan :</label>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <input type="url" :id="'task_link_' + material.id" placeholder="Link G-Drive / Cloud..." class="bg-slate-50 border-none rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 px-4 py-3 placeholder:text-slate-300">
+                                            <input type="url" :id="'task_link_' + material.id" placeholder="Link G-Drive / Cloud..." class="bg-slate-50 border-none rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 px-4 py-3 placeholder:text-slate-300 shadow-inner">
                                             
                                             <div class="relative">
                                                 <input type="file" :id="'task_file_' + material.id" accept="application/pdf" class="hidden" @change="fileNameTask = $event.target.files[0].name">
@@ -280,7 +290,7 @@
                                                 </label>
                                             </div>
                                         </div>
-                                        <button @click="submitTask(material.id)" class="w-full mt-4 bg-slate-900 text-white py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition shadow-lg">KIRIM TUGAS KE MENTOR</button>
+                                        <button @click="submitTask(material.id)" class="w-full mt-4 bg-slate-900 text-white py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition shadow-lg active:scale-95">KIRIM TUGAS KE MENTOR</button>
                                     </div>
                                 </div>
                             </template>

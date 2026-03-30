@@ -674,31 +674,52 @@ public function login()
 }
 
     public function siswaPrograms() {
-    $my_programs = DB::table('enrollments')
-        ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-        ->leftJoin('users as mentors', 'enrollments.mentor_id', '=', 'mentors.id')
-        ->where('enrollments.user_id', Auth::id())
-        ->select('enrollments.id as enrollment_id', 'programs.name as base_name', 'mentors.name as mentor_name', 'enrollments.status_pembayaran', 'enrollments.mapel', 'enrollments.jumlah_pertemuan', 'enrollments.pertemuan_selesai', 'enrollments.is_absen_active')
-        ->get()
-        ->map(function($item) {
-            $item->materials = DB::table('program_materials')
-                ->where('program_id', $item->enrollment_id)
-                ->orderBy('session_number', 'asc')
-                ->get()
-                ->map(function($mat) use ($item) {
-                    // AMBIL NILAI DARI MENTOR UNTUK SESI INI
-                    $mat->grade = DB::table('grades')
-                        ->where('program_id', $item->enrollment_id)
-                        ->where('student_id', Auth::id())
-                        ->where('title', 'like', '%' . $mat->title . '%') // Cocokkan judul materi
-                        ->first();
-                    return $mat;
-                });
-            return $item;
-        });
+        $userId = Auth::id();
 
-    return view('siswa.programs', ['my_programs' => $my_programs]);
-}
+        $my_programs = DB::table('enrollments')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->leftJoin('users as mentors', 'enrollments.mentor_id', '=', 'mentors.id')
+            ->where('enrollments.user_id', $userId)
+            ->select(
+                'enrollments.id as enrollment_id', 
+                'programs.name as base_name', 
+                'mentors.name as mentor_name', 
+                'enrollments.status_pembayaran', 
+                'enrollments.mapel', 
+                'enrollments.tipe_paket',
+                'enrollments.jumlah_pertemuan', 
+                'enrollments.pertemuan_selesai', 
+                'enrollments.is_absen_active',
+                'enrollments.program_id as base_program_id'
+            )
+            ->get()
+            ->map(function($item) use ($userId) {
+                // 1. Judul Modal
+                $item->display_mapel = $item->mapel ?: ($item->tipe_paket === 'intensif' ? $item->base_name : "Program Reguler");
+
+                // 2. AMBIL MATERI (Menyesuaikan input database Anda yang menggunakan ID Enrollment)
+                $item->materials = DB::table('program_materials')
+                    ->where('program_id', $item->enrollment_id) // Mengikuti Screenshot (1268) di mana isinya angka 10
+                    ->orderBy('session_number', 'asc')
+                    ->get()
+                    ->map(function($mat) use ($item, $userId) {
+                        // 3. AMBIL NILAI & REVIEW (Mengikuti Screenshot (1269) di mana isinya angka 10)
+                        $mat->grade = DB::table('grades')
+                            ->where('program_id', $item->enrollment_id) 
+                            ->where('student_id', $userId)
+                            ->where(function($q) use ($mat) {
+                                // Mencocokkan berdasarkan angka sesi atau judul
+                                $q->where('title', 'like', '%' . $mat->session_number . '%')
+                                  ->orWhere('title', 'like', '%' . $mat->title . '%');
+                            })
+                            ->first();
+                        return $mat;
+                    });
+                return $item;
+            });
+
+        return view('siswa.programs', ['my_programs' => $my_programs]);
+    }
 
     public function siswaSchedule() {
     $schedules = DB::table('enrollments')
@@ -775,33 +796,52 @@ public function login()
     }
 
     public function submitTask(Request $request) {
-    $request->validate([
-        'material_id' => 'required',
-        'link' => 'nullable|url',
-        'file' => 'nullable|file|mimes:pdf|max:5120'
-    ]);
+        // Validasi diperlonggar agar tidak terlalu sensitif terhadap link
+        $request->validate([
+            'material_id' => 'required',
+            'link' => 'nullable', 
+            'file' => 'nullable|file|mimes:pdf|max:10240'
+        ]);
 
-    $data = [
-        'user_id' => Auth::id(),
-        'material_id' => $request->material_id,
-        'updated_at' => now()
-    ];
+        try {
+            $userId = Auth::id();
+            
+            // Cari data lama
+            $submission = DB::table('task_submissions')
+                ->where('user_id', $userId)
+                ->where('material_id', $request->material_id)
+                ->first();
 
-    if ($request->filled('link')) {
-        $data['task_link'] = $request->link;
+            $data = [
+                'user_id' => $userId,
+                'material_id' => $request->material_id,
+                'updated_at' => now()
+            ];
+
+            if ($request->filled('link')) {
+                $data['task_link'] = $request->link;
+            }
+
+            if ($request->hasFile('file')) {
+                if ($submission && $submission->file_path) {
+                    Storage::disk('public')->delete($submission->file_path);
+                }
+                $data['file_path'] = $request->file('file')->store('task_submissions', 'public');
+            }
+
+            if ($submission) {
+                DB::table('task_submissions')->where('id', $submission->id)->update($data);
+            } else {
+                $data['created_at'] = now();
+                DB::table('task_submissions')->insert($data);
+            }
+
+            return response()->json(['success' => true, 'message' => 'Tugas berhasil dikirim!']);
+        } catch (\Exception $e) {
+            // Tangkap error database dan kirimkan ke depan sebagai JSON agar tidak muncul 'Server Error'
+            return response()->json(['success' => false, 'message' => 'Gagal simpan: ' . $e->getMessage()], 500);
+        }
     }
-
-    if ($request->hasFile('file')) {
-        $data['file_path'] = $request->file('file')->store('task_submissions', 'public');
-    }
-
-    DB::table('task_submissions')->updateOrInsert(
-        ['user_id' => Auth::id(), 'material_id' => $request->material_id],
-        $data
-    );
-
-    return response()->json(['success' => true, 'message' => 'Tugas berhasil dikirim ke mentor!']);
-}
 
     public function siswaAbsen(Request $request) {
         $request->validate([
@@ -946,7 +986,6 @@ public function login()
         $today_schedule = DB::table('enrollments')
             ->join('users', 'enrollments.user_id', '=', 'users.id')
             ->where('enrollments.mentor_id', $user->id)
-            // REVISI: Menggunakan where standar agar lebih kompatibel dengan berbagai format data
             ->where('enrollments.status_pembayaran', 'verified')
             ->select(
                 'enrollments.id', 
@@ -955,17 +994,17 @@ public function login()
                 'users.name as student_name', 
                 'enrollments.lokasi_cabang',
                 'enrollments.hari',
-                'enrollments.jadwal_detail'
+                'enrollments.jadwal_detail',
+                'enrollments.alamat_semarang as alamat_siswa' // REVISI: Tambahkan kolom ini agar tidak error
             )
             ->get()
             ->filter(function($item) use ($hari_ini) {
-                // REVISI: Cek ketersediaan jadwal hari ini di kolom 'hari' atau 'jadwal_detail'
                 $search = strtolower($hari_ini);
                 return str_contains(strtolower($item->hari ?? ''), $search) || 
                        str_contains(strtolower($item->jadwal_detail ?? ''), $search);
             })
             ->map(function($item) {
-                $item->jam_tampil = $item->jam_mulai ? Carbon::parse($item->jam_mulai)->format('H:i') : '--:--';
+                $item->jam_tampil = $item->jam_mulai ? Carbon::parse($item->jam_mulai)->format('H:i') : null;
                 return $item;
             });
 
@@ -1080,10 +1119,19 @@ public function login()
                 
                 $class->student_count = $class->students->count(); 
                 
+                // REVISI: Ambil materi sekaligus cek apakah ada tugas (PDF/Link) yang sudah dikirim siswa
                 $class->materials = DB::table('program_materials')
                     ->where('program_id', $class->id)
                     ->orderBy('session_number', 'asc')
-                    ->get();
+                    ->get()
+                    ->map(function($mat) use ($class) {
+                        // Cek pengumpulan tugas siswa untuk materi ini di tabel task_submissions
+                        $mat->submission = DB::table('task_submissions')
+                            ->where('material_id', $mat->id)
+                            ->where('user_id', $class->user_id)
+                            ->first();
+                        return $mat;
+                    });
 
                 return $class;
             });

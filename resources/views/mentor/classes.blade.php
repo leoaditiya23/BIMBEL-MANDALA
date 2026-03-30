@@ -351,204 +351,154 @@
         </div>
     </div>
 
-    {{-- MODAL MATERI --}}
-    <div x-show="modalMateri" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto" x-cloak x-transition>
-        <div @click.away="modalMateri = false" 
-             class="bg-white rounded-[40px] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col md:flex-row h-[85vh]">
+    {{-- MODAL MATERI - REVISI POSISI AGAR TIDAK TERPOTONG --}}
+<div x-show="modalMateri" 
+     class="fixed inset-0 z-[70] flex items-start justify-center p-4 pt-12 bg-slate-900/60 backdrop-blur-md overflow-y-auto" 
+     x-cloak 
+     x-transition>
+    
+    <div @click.away="modalMateri = false" 
+         class="bg-white rounded-[40px] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col md:flex-row h-auto max-h-[88vh] my-6">
+        
+        <div class="w-full md:w-5/12 bg-slate-50 border-r border-slate-100 flex flex-col h-full overflow-y-auto">
+            <div class="p-8 border-b border-slate-200 bg-white flex justify-between items-center sticky top-0 z-10">
+                <h3 class="text-xl font-black text-slate-800 tracking-tight">Kurikulum Sesi</h3>
+                <button @click="editingMaterial = null; fileName = ''" 
+                        class="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center hover:bg-indigo-700 shadow-md transition-all">
+                    <i class="fas fa-plus text-xs"></i>
+                </button>
+            </div>
             
-            <div class="w-full md:w-5/12 bg-slate-50 border-r border-slate-100 flex flex-col h-full">
-                <div class="p-8 border-b border-slate-200 bg-white flex justify-between items-center">
-                    <h3 class="text-xl font-black text-slate-800 tracking-tight">Kurikulum Sesi</h3>
-                    {{-- TOMBOL TAMBAH MATERI BARU --}}
-                    <button @click="editingMaterial = null; fileName = ''" 
-                            class="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center hover:bg-indigo-700 shadow-md transition-all">
-                        <i class="fas fa-plus text-xs"></i>
-                    </button>
-                </div>
-                
-                <div class="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
-                    <template x-if="selectedClass.materials && selectedClass.materials.length > 0">
-                        <template x-for="material in selectedClass.materials" :key="material.id">
-                            <div class="relative group">
-                                <button @click="editingMaterial = material; fileName = ''" 
-                                        :class="editingMaterial?.id === material.id ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100' : 'bg-white border-slate-200'"
-                                        class="w-full text-left p-4 rounded-[22px] border flex items-center justify-between transition-all duration-300 pr-12">
-                                    <div class="flex items-center gap-4">
-                                        <div :class="editingMaterial?.id === material.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'" 
-                                             class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs transition-colors" x-text="material.session_number"></div>
-                                        <div>
-                                            <h4 class="font-black text-slate-800 text-[13px] leading-tight" x-text="material.title"></h4>
-                                            <div class="flex items-center gap-2 mt-1">
-                                                <span x-show="material.video_url" class="text-[8px] font-black text-indigo-400 uppercase">Video</span>
-                                                <span x-show="material.file_path" class="text-[8px] font-black text-rose-400 uppercase">PDF</span>
-                                                <span x-show="material.quiz_url" class="text-[8px] font-black text-emerald-400 uppercase">Kuis</span>
-                                            </div>
+            <div class="flex-1 p-6 space-y-3 custom-scrollbar">
+                <template x-if="selectedClass.materials && selectedClass.materials.length > 0">
+                    <template x-for="material in selectedClass.materials" :key="material.id">
+                        <div class="relative group">
+                            <button @click="editingMaterial = material; fileName = ''" 
+                                    :class="editingMaterial?.id === material.id ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100' : 'bg-white border-slate-200'"
+                                    class="w-full text-left p-4 rounded-[22px] border flex items-center justify-between transition-all duration-300 pr-12">
+                                <div class="flex items-center gap-4">
+                                    <div :class="editingMaterial?.id === material.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'" 
+                                         class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs transition-colors" x-text="material.session_number"></div>
+                                    <div>
+                                        <h4 class="font-black text-slate-800 text-[13px] leading-tight" x-text="material.title"></h4>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span x-show="material.video_url" class="text-[8px] font-black text-indigo-400 uppercase">Video</span>
+                                            <span x-show="material.file_path" class="text-[8px] font-black text-rose-400 uppercase">PDF</span>
+                                            <template x-if="material.submission">
+                                                <span class="text-[8px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded uppercase animate-pulse">Tugas Masuk</span>
+                                            </template>
                                         </div>
                                     </div>
+                                </div>
+                            </button>
+                            <form :action="`{{ url('mentor/materials/delete') }}/${material.id}`" method="POST" class="absolute right-4 top-1/2 -translate-y-1/2">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" onclick="return confirm('Apakah Anda yakin ingin menghapus materi ini?')" class="text-slate-300 hover:text-rose-500 transition-colors p-2">
+                                    <i class="fas fa-trash-alt text-xs"></i>
                                 </button>
-                                {{-- TOMBOL HAPUS MATERI --}}
-                                <form :action="`{{ url('mentor/materials/delete') }}/${material.id}`" method="POST" class="absolute right-4 top-1/2 -translate-y-1/2">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" onclick="return confirm('Apakah Anda yakin ingin menghapus materi ini?')" 
-                                            class="text-slate-300 hover:text-rose-500 transition-colors p-2">
-                                        <i class="fas fa-trash-alt text-xs"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </template>
+                            </form>
+                        </div>
                     </template>
-                </div>
-            </div>
-
-            <div class="w-full md:w-7/12 p-10 bg-white flex flex-col relative overflow-y-auto custom-scrollbar">
-                <button @click="modalMateri = false" class="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors">
-                    <i class="fas fa-times-circle text-2xl"></i>
-                </button>
-
-                <div class="mb-10">
-                    <h3 class="text-3xl font-black text-slate-800 leading-none" x-text="editingMaterial ? 'Update Sesi' : 'Buat Sesi Baru'"></h3>
-                    <p class="text-sm font-bold text-slate-400 mt-3" x-text="'Kelas: ' + selectedClass.name"></p>
-                </div>
-                
-                <form :action="editingMaterial ? `{{ url('mentor/materials/update') }}/${editingMaterial.id}` : '{{ route('mentor.storeMaterial') }}'" 
-                      method="POST" enctype="multipart/form-data" class="space-y-6">
-                    @csrf
-                    <template x-if="editingMaterial"><input type="hidden" name="_method" value="PUT"></template>
-                    <input type="hidden" name="program_id" :value="selectedClass.id">
-                    
-                    <div class="grid grid-cols-5 gap-4">
-                        <div class="col-span-1">
-                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">No. Sesi</label>
-                            <input type="number" name="session_number" required :value="editingMaterial ? editingMaterial.session_number : (selectedClass.materials ? selectedClass.materials.length + 1 : 1)" class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black focus:ring-2 focus:ring-indigo-500 p-4">
-                        </div>
-                        <div class="col-span-4">
-                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Judul Materi Pembelajaran</label>
-                            <input type="text" name="title" required :value="editingMaterial ? editingMaterial.title : ''" placeholder="Contoh: Dasar-dasar Pemrograman" class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black focus:ring-2 focus:ring-indigo-500 p-4">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">URL Video (Youtube/Lainnya)</label>
-                            <div class="relative mt-2">
-                                <input type="url" name="video_url" :value="editingMaterial ? editingMaterial.video_url : ''" 
-                                       placeholder="https://youtube.com/watch?v=..." 
-                                       class="w-full px-5 py-4 bg-slate-50 border-none rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-indigo-500 shadow-inner">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Link Soal / Kuis (Form/External)</label>
-                            <div class="relative mt-2">
-                                <input type="url" name="quiz_url" :value="editingMaterial ? editingMaterial.quiz_url : ''" 
-                                       placeholder="https://forms.gle/..." 
-                                       class="w-full px-5 py-4 bg-slate-50 border-none rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-emerald-500 shadow-inner">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Modul Dokumentasi (PDF/PPT)</label>
-                        {{-- REVISI UTAMA: Melepaskan bungkus label agar klik tombol tidak memicu upload --}}
-                        <div class="mt-2 p-8 border-2 border-dashed border-slate-100 rounded-[30px] text-center relative group">
-                            {{-- Input file tetap ada secara absolut --}}
-                            <input type="file" id="file_input_materi" name="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="fileName = $event.target.files[0].name">
-                            
-                            <div class="space-y-3 pointer-events-none"> {{-- Pointer-events-none agar klik menembus ke input file di bawahnya --}}
-                                <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm group-hover:scale-110 transition-transform">
-                                    <i class="fas fa-cloud-upload-alt text-indigo-500"></i>
-                                </div>
-                                <p class="text-xs font-black text-slate-500 uppercase tracking-tighter" x-text="fileName || 'Tarik file atau klik untuk telusuri'"></p>
-                            </div>
-
-                            {{-- TOMBOL FILE TERSEDIA: Ditaruh di luar pointer-events agar BISA DIKLIK --}}
-                            <template x-if="editingMaterial && editingMaterial.file_path && !fileName">
-                                <div class="mt-4 relative z-50 flex items-center justify-center gap-2 animate-in fade-in zoom-in duration-300">
-                                    {{-- TOMBOL LIHAT PDF ASLI --}}
-                                    <a :href="'/storage/' + editingMaterial.file_path" target="_blank" 
-                                       class="bg-emerald-500 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center gap-2 shadow-lg shadow-emerald-100 pointer-events-auto">
-                                        <i class="fas fa-eye"></i> LIHAT FILE TERSIMPAN
-                                    </a>
-                                </div>
-                            </template>
-                            
-                            <p class="text-[9px] font-bold text-slate-300 mt-2">Format: PDF, PPTX (Maks. 10MB)</p>
-                        </div>
-                    </div>
-
-                    <div class="pt-4">
-                        <button type="submit" class="w-full py-5 bg-slate-900 text-white rounded-[22px] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-indigo-600 transition-all active:scale-95">
-                            <i class="fas fa-save mr-2"></i> Konfirmasi Sesi
-                        </button>
-                    </div>
-                </form>
+                </template>
             </div>
         </div>
-    </div>
 
-    {{-- MODAL NILAI --}}
-    <div x-show="modalTugas" class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" x-cloak x-transition>
-        <div @click.away="modalTugas = false" class="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl overflow-hidden border border-white flex flex-col h-[85vh]">
-            <div class="p-10 pb-6">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="text-3xl font-black text-slate-800 leading-tight">Penilaian Siswa</h3>
-                        <p class="text-sm font-bold text-indigo-500 mt-2" x-text="selectedClass.name"></p>
+        <div class="w-full md:w-7/12 p-10 bg-white flex flex-col relative overflow-y-auto custom-scrollbar">
+            <button @click="modalMateri = false" class="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors z-20">
+                <i class="fas fa-times-circle text-2xl"></i>
+            </button>
+
+            <div class="mb-10">
+                <h3 class="text-3xl font-black text-slate-800 leading-none" x-text="editingMaterial ? 'Update Sesi' : 'Buat Sesi Baru'"></h3>
+                <p class="text-sm font-bold text-slate-400 mt-3" x-text="'Kelas: ' + selectedClass.name"></p>
+                
+                {{-- DOWNLOAD TUGAS SISWA - REVISI WARNA TEKS MENJADI HITAM --}}
+                <template x-if="editingMaterial && editingMaterial.submission">
+                    <div class="mt-8 p-5 bg-amber-50 rounded-[25px] border border-amber-100 flex flex-col gap-3 shadow-sm">
+                        <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest">Tugas Siswa (<span x-text="selectedClass.student_name"></span>) :</p>
+                        <div class="flex flex-wrap gap-3">
+                            <template x-if="editingMaterial.submission.task_link">
+                                <a :href="editingMaterial.submission.task_link" target="_blank" class="px-4 py-2.5 bg-white border border-amber-200 text-black rounded-xl text-[10px] font-black uppercase hover:bg-amber-100 transition-all flex items-center gap-2 shadow-sm">
+                                    <i class="fas fa-external-link-alt text-black"></i> Buka Link Tugas
+                                </a>
+                            </template>
+                            <template x-if="editingMaterial.submission.file_path">
+                                <a :href="'/storage/' + editingMaterial.submission.file_path" 
+                                   target="_blank" 
+                                   class="px-5 py-2.5 bg-amber-600 text-black rounded-xl text-[10px] font-black uppercase hover:bg-amber-700 transition-all flex items-center gap-2 shadow-lg shadow-amber-100">
+                                    <i class="fas fa-file-pdf text-black"></i> Download PDF Tugas
+                                </a>
+                            </template>
+                        </div>
                     </div>
-                    <button @click="modalTugas = false" class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 hover:text-rose-500 transition-colors">
-                        <i class="fas fa-times"></i>
+                </template>
+            </div>
+            
+            <form :action="editingMaterial ? `{{ url('mentor/materials/update') }}/${editingMaterial.id}` : '{{ route('mentor.storeMaterial') }}'" 
+                  method="POST" enctype="multipart/form-data" class="space-y-6">
+                @csrf
+                <template x-if="editingMaterial"><input type="hidden" name="_method" value="PUT"></template>
+                <input type="hidden" name="program_id" :value="selectedClass.id">
+                
+                <div class="grid grid-cols-5 gap-4">
+                    <div class="col-span-1">
+                        <label class="text-[10px] font-black uppercase text-slate-400 ml-1">No. Sesi</label>
+                        <input type="number" name="session_number" required :value="editingMaterial ? editingMaterial.session_number : (selectedClass.materials ? selectedClass.materials.length + 1 : 1)" class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black focus:ring-2 focus:ring-indigo-500 p-4">
+                    </div>
+                    <div class="col-span-4">
+                        <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Judul Materi Pembelajaran</label>
+                        <input type="text" name="title" required :value="editingMaterial ? editingMaterial.title : ''" placeholder="Contoh: Dasar-dasar Pemrograman" class="w-full mt-2 bg-slate-50 border-none rounded-[18px] text-sm font-black focus:ring-2 focus:ring-indigo-500 p-4">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">URL Video (Youtube/Lainnya)</label>
+                        <div class="relative mt-2">
+                            <input type="url" name="video_url" :value="editingMaterial ? editingMaterial.video_url : ''" 
+                                   placeholder="https://youtube.com/watch?v=..." 
+                                   class="w-full px-5 py-4 bg-slate-50 border-none rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-indigo-500 shadow-inner">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Link Soal / Kuis (Form/External)</label>
+                        <div class="relative mt-2">
+                            <input type="url" name="quiz_url" :value="editingMaterial ? editingMaterial.quiz_url : ''" 
+                                   placeholder="https://forms.gle/..." 
+                                   class="w-full px-5 py-4 bg-slate-50 border-none rounded-[18px] text-xs font-bold focus:ring-2 focus:ring-emerald-500 shadow-inner">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-black uppercase text-slate-400 ml-1 tracking-widest">Modul Dokumentasi (PDF/PPT)</label>
+                    <div class="mt-2 p-8 border-2 border-dashed border-slate-100 rounded-[30px] text-center relative group">
+                        <input type="file" id="file_input_materi" name="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="fileName = $event.target.files[0].name">
+                        <div class="space-y-3 pointer-events-none">
+                            <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm group-hover:scale-110 transition-transform">
+                                <i class="fas fa-cloud-upload-alt text-indigo-500"></i>
+                            </div>
+                            <p class="text-xs font-black text-slate-500 uppercase tracking-tighter" x-text="fileName || 'Tarik file atau klik untuk telusuri'"></p>
+                        </div>
+                        <template x-if="editingMaterial && editingMaterial.file_path && !fileName">
+                            <div class="mt-4 relative z-50 flex items-center justify-center gap-2 animate-in fade-in zoom-in duration-300">
+                                <a :href="'/storage/' + editingMaterial.file_path" target="_blank" 
+                                   class="bg-emerald-500 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center gap-2 shadow-lg shadow-emerald-100 pointer-events-auto">
+                                    <i class="fas fa-eye"></i> LIHAT FILE TERSIMPAN
+                                </a>
+                            </div>
+                        </template>
+                        <p class="text-[9px] font-bold text-slate-300 mt-2">Format: PDF, PPTX (Maks. 10MB)</p>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-5 bg-slate-900 text-white rounded-[22px] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-indigo-600 transition-all active:scale-95">
+                        <i class="fas fa-save mr-2"></i> Konfirmasi Sesi
                     </button>
                 </div>
-            </div>
-
-            <div class="flex-1 overflow-y-auto px-10 pb-10 space-y-6 custom-scrollbar">
-                <template x-for="student in selectedClass.students" :key="student.id">
-                    <div class="bg-white rounded-[30px] border-2 border-slate-100 shadow-sm overflow-hidden hover:border-indigo-200 transition-all">
-                        <div class="bg-slate-50 p-5 flex items-center gap-4 border-b border-slate-100">
-                            <div class="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-                                <span class="font-black text-sm" x-text="student.name.substring(0,2).toUpperCase()"></span>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-black text-slate-800 leading-tight" x-text="student.name"></h4>
-                                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Student ID: #<span x-text="student.id"></span></p>
-                            </div>
-                        </div>
-
-                        <form action="{{ route('mentor.storeGrade') }}" method="POST" class="p-6 space-y-4">
-                            @csrf
-                            <input type="hidden" name="program_id" :value="selectedClass.id">
-                            <input type="hidden" name="student_id" :value="student.id">
-                            
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Kategori Tugas</label>
-                                    <input type="text" name="title" placeholder="Misal: Kuis 1" required class="w-full mt-2 bg-slate-50 border-none rounded-[15px] text-[11px] font-black p-3 focus:ring-2 focus:ring-indigo-500">
-                                </div>
-                                <div>
-                                    <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Skor (0-100)</label>
-                                    <input type="number" name="score" min="0" max="100" placeholder="0" required class="w-full mt-2 bg-slate-50 border-none rounded-[15px] text-[11px] font-black p-3 focus:ring-2 focus:ring-indigo-500">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="text-[10px] font-black uppercase text-slate-400 ml-1">Feedback Mentor</label>
-                                <textarea name="note" rows="2" placeholder="Tulis catatan perkembangan..." class="w-full mt-2 bg-slate-50 border-none rounded-[15px] text-[11px] font-black p-3 focus:ring-2 focus:ring-indigo-500"></textarea>
-                            </div>
-
-                            <button type="submit" class="w-full py-3.5 bg-slate-900 text-white rounded-[18px] text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-slate-100 active:scale-95">
-                                <i class="fas fa-paper-plane mr-2"></i> Simpan Nilai <span x-text="student.name.split(' ')[0]"></span>
-                            </button>
-                        </form>
-                    </div>
-                </template>
-                
-                <template x-if="!selectedClass.students || selectedClass.students.length === 0">
-                    <div class="text-center py-10">
-                        <i class="fas fa-user-slash text-4xl text-slate-200 mb-4"></i>
-                        <p class="text-slate-400 font-bold text-sm">Belum ada siswa di kelas ini.</p>
-                    </div>
-                </template>
-            </div>
+            </form>
         </div>
     </div>
 </div>

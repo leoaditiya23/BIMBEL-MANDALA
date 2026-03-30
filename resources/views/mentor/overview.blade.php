@@ -45,8 +45,20 @@
             <div class="space-y-4">
                 @forelse($today_schedule as $jadwal)
                     @php
-                        $jam_jadwal = $jadwal->jam_tampil ?? '--:--';
-                        $is_now = (date('H:i') >= $jam_jadwal && date('H:i') <= \Carbon\Carbon::parse($jam_jadwal)->addHour()->format('H:i'));
+                        $jam_jadwal = $jadwal->jam_tampil;
+                        $is_now = false;
+                        
+                        // Validasi jam agar tidak error saat memproses '--:--' atau null
+                        if ($jam_jadwal && $jam_jadwal !== '--:--') {
+                            try {
+                                $now = date('H:i');
+                                $start = $jam_jadwal;
+                                $end = \Carbon\Carbon::parse($jam_jadwal)->addHour()->format('H:i');
+                                $is_now = ($now >= $start && $now <= $end);
+                            } catch (\Exception $e) {
+                                $is_now = false;
+                            }
+                        }
                     @endphp
                     <div class="group relative p-4 {{ $is_now ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-transparent' }} border-2 rounded-2xl transition-all">
                         @if($is_now)
@@ -59,7 +71,7 @@
                                 <p class="text-[10px] text-slate-500 font-bold uppercase tracking-tighter italic">Siswa: {{ $jadwal->student_name }}</p>
                             </div>
                             <div class="text-right">
-                                <p class="text-sm font-black {{ $is_now ? 'text-indigo-600' : 'text-slate-400' }}">{{ $jam_jadwal }}</p>
+                                <p class="text-sm font-black {{ $is_now ? 'text-indigo-600' : 'text-slate-400' }}">{{ $jam_jadwal ?? '--:--' }}</p>
                                 <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-full {{ $is_now ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-200 text-slate-500' }}">
                                     {{ $is_now ? 'Sesi Aktif' : 'Terjadwal' }}
                                 </span>
@@ -72,8 +84,9 @@
                                     <i class="fas fa-map-marker-alt text-[10px] text-indigo-500"></i>
                                     <span class="text-[9px] font-black text-slate-600 uppercase tracking-widest">{{ $jadwal->lokasi_cabang ?? 'Wilayah Belum Diatur' }}</span>
                                 </div>
-                                @if($jadwal->alamat_siswa)
-                                    <a href="https://www.google.com/maps/search/?api=1&query={{ urlencode($jadwal->alamat_siswa) }}" target="_blank" class="text-[8px] font-black bg-white text-indigo-600 px-2 py-1 rounded-md border border-indigo-100 hover:bg-indigo-500 hover:text-white transition shadow-sm">
+                                {{-- REVISI: Menggunakan isset untuk mengecek properti alamat_siswa --}}
+                                @if(isset($jadwal->alamat_siswa) && $jadwal->alamat_siswa && $jadwal->alamat_siswa !== '-')
+                                    <a href="https://www.google.com/maps/search/{{ urlencode($jadwal->alamat_siswa) }}" target="_blank" class="text-[8px] font-black bg-white text-indigo-600 px-2 py-1 rounded-md border border-indigo-100 hover:bg-indigo-500 hover:text-white transition shadow-sm">
                                         BUKA MAPS
                                     </a>
                                 @endif
@@ -147,7 +160,6 @@
                                 style="color: #1e293b !important; background-color: #f8fafc !important; border: 1px solid #e2e8f0 !important;"
                                 class="w-full px-6 py-4 rounded-2xl font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 appearance-none">
                             <option value="">-- Klik untuk memilih siswa --</option>
-                            {{-- REVISI: Menggunakan list siswa dari semua jadwal agar semua penugasan muncul --}}
                             @php
                                 $all_students = DB::table('enrollments')
                                     ->join('users', 'enrollments.user_id', '=', 'users.id')
@@ -185,7 +197,7 @@
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-2 italic">Upload PDF (Opsional)</label>
                         <div class="relative">
                             <input type="file" name="file" accept="application/pdf" 
-                                   class="w-full px-6 py-4 bg-slate-50 rounded-2xl font-bold text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 cursor-pointer">
+                                    class="w-full px-6 py-4 bg-slate-50 rounded-2xl font-bold text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 cursor-pointer">
                         </div>
                     </div>
 
