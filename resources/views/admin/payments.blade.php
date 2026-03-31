@@ -41,12 +41,14 @@
                                 </div>
                                 <div class="flex flex-col gap-0.5 mt-0.5">
                                     <div class="flex items-center gap-2">
+                                        {{-- REVISI: MENAMPILKAN PROGRAM & KELAS --}}
                                         <span class="text-[10px] font-black text-blue-500 uppercase">{{ $payment->program_name_ref ?? 'Program' }}</span>
+                                        <span class="px-1.5 py-0.5 bg-blue-50 border border-blue-100 text-[9px] font-black text-blue-600 rounded">KELAS: {{ $payment->kelas ?? '-' }}</span>
                                         <span class="text-slate-300">•</span>
                                         <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">WA: {{ $payment->user_wa ?? '-' }}</span>
                                     </div>
                                     
-                                    {{-- REVISI: Tambahan Detail Lokasi --}}
+                                    {{-- REVISI: MENAMPILKAN ALAMAT LENGKAP SISWA --}}
                                     <div class="flex items-center gap-1 mt-0.5">
                                         <i class="fas fa-map-marker-alt text-[9px] text-rose-500"></i>
                                         <span class="text-[9px] font-black text-slate-600 uppercase">LOKASI: {{ $payment->lokasi_info ?? 'Tidak Terdeteksi' }}</span>
@@ -70,7 +72,6 @@
                                 <p class="font-black text-slate-800 text-xl tracking-tighter">
                                     Rp {{ number_format($payment->total_harga ?? 0, 0, ',', '.') }}
                                 </p>
-                                {{-- REVISI: Kode Unik Dinamis --}}
                                 <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest">Unik: #{{ $payment->kode_unik_tampil ?? '000' }}</p>
                             </div>
                         </div>

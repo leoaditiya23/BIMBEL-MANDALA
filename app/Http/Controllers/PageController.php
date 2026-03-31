@@ -203,20 +203,16 @@ public function login()
         // TRANSFORMASI DATA UNTUK TAMPILAN DASHBOARD
         $recent_enrollments->getCollection()->transform(function($item) {
             // 1. REVISI LOGIKA LOKASI: Menyesuaikan dengan kolom 'alamat_semarang' di database
-            // Gunakan trim untuk memastikan data kosong/null ditangani dengan benar
             $alamatSemarang = trim($item->alamat_semarang ?? '');
             $cabang = trim($item->lokasi_cabang ?? '');
             
-            // Cek apakah kolom berisi alamat nyata (bukan kosong, null, atau strip '-')
             $hasRealAlamat = !empty($alamatSemarang) && $alamatSemarang !== '-';
             $hasRealCabang = !empty($cabang) && $cabang !== '-';
 
             if ($hasRealAlamat || $hasRealCabang) {
-                // Tampilkan alamat_semarang jika ada, jika tidak gunakan lokasi cabang
                 $item->display_lokasi = $hasRealAlamat ? $item->alamat_semarang : $item->lokasi_cabang;
                 $item->is_online = false;
             } else {
-                // Fallback jika benar-benar tidak ada data alamat offline
                 $item->display_lokasi = "VIA ZOOM (ONLINE)";
                 $item->is_online = true;
             }
@@ -229,16 +225,17 @@ public function login()
                 $mapelIds = array_filter(explode(',', $mapelRaw));
             }
 
-            // Ambil nama-nama mata pelajaran dari database berdasarkan ID
             $mapelNames = DB::table('programs')
                 ->whereIn('id', $mapelIds)
                 ->pluck('name')
                 ->toArray();
 
-            // Tampilkan daftar nama mapel yang dipisah koma, atau fallback ke program_name
             $item->display_program = count($mapelNames) > 0 
                 ? implode(', ', $mapelNames) 
                 : ( (!empty($mapelRaw) && $mapelRaw !== '0') ? $mapelRaw : $item->program_name );
+            
+            // 3. REVISI LOGIKA KELAS: Memastikan data dari kolom 'kelas' ter-passing ke view
+            $item->display_kelas = $item->kelas ?: '-';
             
             return $item;
         });
@@ -587,6 +584,7 @@ public function login()
             'mentors.name as mentor_name',
             'enrollments.lokasi_cabang', 
             'enrollments.alamat_siswa',  
+            'enrollments.kelas', // REVISI: Tambahkan kolom kelas
             'enrollments.mapel as selected_mapel_raw',
             'enrollments.tipe_paket',
             'enrollments.jadwal_detail as sesi_jadwal',
@@ -633,6 +631,7 @@ public function login()
         ->select(
             'enrollments.mapel', 
             'enrollments.tipe_paket',
+            'enrollments.kelas', // REVISI: Tambahkan kolom kelas di aktivitas
             'enrollments.jadwal_detail', 
             'enrollments.lokasi_cabang',
             'enrollments.per_minggu',
@@ -645,13 +644,13 @@ public function login()
             // SINKRONISASI TAMPILAN AKTIVITAS TERBARU
             if ($item->tipe_paket === 'intensif') {
                 $namaTampil = $item->mapel ?: 'PROGRAM INTENSIF';
-                $item->title = "Pendaftaran Les: " . strtoupper($namaTampil);
+                $item->title = "Pendaftaran Les (" . ($item->kelas ?? '-') . "): " . strtoupper($namaTampil);
             } else {
                 $mapelIds = json_decode($item->mapel, true);
                 if (!is_array($mapelIds)) { $mapelIds = array_filter(explode(',', $item->mapel)); }
                 $mapelNames = DB::table('programs')->whereIn('id', $mapelIds)->pluck('name')->toArray();
                 $namaTampil = count($mapelNames) > 0 ? implode(', ', $mapelNames) : 'Program Reguler';
-                $item->title = "Pendaftaran Les: " . strtoupper($namaTampil);
+                $item->title = "Pendaftaran Les (" . ($item->kelas ?? '-') . "): " . strtoupper($namaTampil);
             }
             
             // DETEKSI METODE ONLINE/OFFLINE
@@ -674,52 +673,55 @@ public function login()
 }
 
     public function siswaPrograms() {
-        $userId = Auth::id();
+    $userId = Auth::id();
 
-        $my_programs = DB::table('enrollments')
-            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->leftJoin('users as mentors', 'enrollments.mentor_id', '=', 'mentors.id')
-            ->where('enrollments.user_id', $userId)
-            ->select(
-                'enrollments.id as enrollment_id', 
-                'programs.name as base_name', 
-                'mentors.name as mentor_name', 
-                'enrollments.status_pembayaran', 
-                'enrollments.mapel', 
-                'enrollments.tipe_paket',
-                'enrollments.jumlah_pertemuan', 
-                'enrollments.pertemuan_selesai', 
-                'enrollments.is_absen_active',
-                'enrollments.program_id as base_program_id'
-            )
-            ->get()
-            ->map(function($item) use ($userId) {
-                // 1. Judul Modal
-                $item->display_mapel = $item->mapel ?: ($item->tipe_paket === 'intensif' ? $item->base_name : "Program Reguler");
+    $my_programs = DB::table('enrollments')
+        ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+        ->leftJoin('users as mentors', 'enrollments.mentor_id', '=', 'mentors.id')
+        ->where('enrollments.user_id', $userId)
+        ->select(
+            'enrollments.id as enrollment_id', 
+            'programs.name as base_name', 
+            'mentors.name as mentor_name', 
+            'enrollments.status_pembayaran', 
+            'enrollments.mapel', 
+            'enrollments.tipe_paket',
+            'enrollments.kelas', // Kolom kelas untuk tingkatan siswa
+            'enrollments.lokasi_cabang', // REVISI: Tambahkan kolom ini agar bisa diakses View
+            'enrollments.alamat_siswa',  // REVISI: Tambahkan kolom ini untuk detail lokasi offline
+            'enrollments.jumlah_pertemuan', 
+            'enrollments.pertemuan_selesai', 
+            'enrollments.is_absen_active',
+            'enrollments.program_id as base_program_id'
+        )
+        ->get()
+        ->map(function($item) use ($userId) {
+            // 1. Judul Modal
+            $item->display_mapel = $item->mapel ?: ($item->tipe_paket === 'intensif' ? $item->base_name : "Program Reguler");
 
-                // 2. AMBIL MATERI (Menyesuaikan input database Anda yang menggunakan ID Enrollment)
-                $item->materials = DB::table('program_materials')
-                    ->where('program_id', $item->enrollment_id) // Mengikuti Screenshot (1268) di mana isinya angka 10
-                    ->orderBy('session_number', 'asc')
-                    ->get()
-                    ->map(function($mat) use ($item, $userId) {
-                        // 3. AMBIL NILAI & REVIEW (Mengikuti Screenshot (1269) di mana isinya angka 10)
-                        $mat->grade = DB::table('grades')
-                            ->where('program_id', $item->enrollment_id) 
-                            ->where('student_id', $userId)
-                            ->where(function($q) use ($mat) {
-                                // Mencocokkan berdasarkan angka sesi atau judul
-                                $q->where('title', 'like', '%' . $mat->session_number . '%')
-                                  ->orWhere('title', 'like', '%' . $mat->title . '%');
-                            })
-                            ->first();
-                        return $mat;
-                    });
-                return $item;
-            });
+            // 2. AMBIL MATERI (Menyesuaikan input database Anda yang menggunakan ID Enrollment)
+            $item->materials = DB::table('program_materials')
+                ->where('program_id', $item->enrollment_id) // Mengikuti Screenshot (1268) di mana isinya angka 10
+                ->orderBy('session_number', 'asc')
+                ->get()
+                ->map(function($mat) use ($item, $userId) {
+                    // 3. AMBIL NILAI & REVIEW (Mengikuti Screenshot (1269) di mana isinya angka 10)
+                    $mat->grade = DB::table('grades')
+                        ->where('program_id', $item->enrollment_id) 
+                        ->where('student_id', $userId)
+                        ->where(function($q) use ($mat) {
+                            // Mencocokkan berdasarkan angka sesi atau judul
+                            $q->where('title', 'like', '%' . $mat->session_number . '%')
+                              ->orWhere('title', 'like', '%' . $mat->title . '%');
+                        })
+                        ->first();
+                    return $mat;
+                });
+            return $item;
+        });
 
-        return view('siswa.programs', ['my_programs' => $my_programs]);
-    }
+    return view('siswa.programs', ['my_programs' => $my_programs]);
+}
 
     public function siswaSchedule() {
     $schedules = DB::table('enrollments')
@@ -888,10 +890,11 @@ public function login()
     }
 
    public function enrollProgram(Request $request) {
-    // 1. Validasi Input (Pastikan data minimal tersedia)
+    // 1. Validasi Input (Menambahkan field 'kelas' ke dalam validasi)
     $request->validate([
         'program_id' => 'required',
         'jenjang' => 'required',
+        'kelas' => 'required', // REVISI: Tambahkan validasi kelas
         'tipe_paket' => 'required',
         'per_minggu' => 'required',
         'jadwal_detail' => 'required',
@@ -921,7 +924,6 @@ public function login()
 
         // 5. Proses Nama Mapel (Sinkronisasi Reguler & Intensif)
         if ($request->tipe_paket === 'intensif') {
-            // Gunakan input 'mapel' secara langsung untuk program intensif agar tidak tertulis "Program Reguler"
             $mapelString = $request->mapel ?? 'Program Intensif';
         } else {
             $mapelIds = json_decode($request->selected_subjects ?? '[]', true);
@@ -937,14 +939,14 @@ public function login()
             $mapelString = count($mapelNames) > 0 ? implode(', ', $mapelNames) : 'Program Reguler';
         }
 
-        // REVISI LOGIKA METODE: Memastikan kata 'ONLINE' dideteksi dengan benar dari input lokasi_cabang
         $isOnline = str_contains(strtolower($request->lokasi_cabang ?? ''), 'online');
 
-        // 6. Simpan ke Database
+        // 6. Simpan ke Database (Menambahkan kolom 'kelas' ke query insert)
         DB::table('enrollments')->insert([
             'user_id' => $user->id,
             'program_id' => $request->program_id,
             'jenjang' => $request->jenjang,
+            'kelas' => $request->kelas, // REVISI: Simpan data tingkat kelas (misal: 1 SD, 7 SMP)
             'tipe_paket' => $request->tipe_paket,
             'per_minggu' => $request->per_minggu,
             'extra_hours' => $request->extra_hours ?? 0,
@@ -965,7 +967,6 @@ public function login()
 
         DB::commit();
         
-        // Otomatis lari ke overview siswa dengan pesan sukses agar SweetAlert muncul
         return redirect()->route('siswa.overview')->with('success', 'Pendaftaran Berhasil! Admin akan segera memverifikasi pembayaran Anda.');
         
     } catch (\Exception $e) {

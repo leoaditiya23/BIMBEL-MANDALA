@@ -89,9 +89,15 @@
                             @endif
 
                             <div class="flex justify-between items-start mb-2">
-                                <p class="font-black text-slate-800 group-hover:text-blue-600 transition-colors uppercase text-sm tracking-tight">
-                                    {{ $program->display_mapel ?? $program->base_program_name }}
-                                </p>
+                                <div class="flex flex-col">
+                                    <p class="font-black text-slate-800 group-hover:text-blue-600 transition-colors uppercase text-sm tracking-tight">
+                                        {{ $program->display_mapel ?? $program->base_program_name }}
+                                    </p>
+                                    {{-- REVISI: MENAMPILKAN INFORMASI KELAS --}}
+                                    <span class="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-0.5">
+                                        TINGKAT: {{ $program->kelas ?? '-' }}
+                                    </span>
+                                </div>
                                 <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-[8px] font-black text-emerald-600 uppercase italic">Verified</span>
                             </div>
                             
@@ -127,7 +133,7 @@
                                 <div class="bg-blue-500 h-full rounded-full transition-all duration-1000" style="width: {{ min($persen_progres, 100) }}%"></div> 
                             </div>
 
-                            {{-- Tombol Akses Kelas (Pindah Absen ke Sini) --}}
+                            {{-- Tombol Akses Kelas --}}
                             <a href="{{ route('siswa.programs') }}" class="w-full flex items-center justify-center py-3 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all group-hover:shadow-md">
                                 Buka Ruang Kelas & Absen
                             </a>

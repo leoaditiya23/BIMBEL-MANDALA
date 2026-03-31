@@ -43,7 +43,6 @@
             if(fileInput) fileInput.value = '';
         })
         .catch(err => {
-            // Sekarang error dari server akan muncul di sini (bukan lagi 'Gagal Hubungi Server' yang generik)
             Swal.fire({title: 'Gagal', text: err.message, icon: 'error'});
         });
     },
@@ -85,7 +84,8 @@
                             <p class="font-black text-slate-800 text-lg uppercase tracking-tight group-hover:text-blue-600 transition-colors">
                                 {{ $program->display_mapel ?? $program->base_name }}
                             </p>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">PROGRAM {{ $program->jenjang ?? 'PILIHAN' }}</p>
+                            {{-- REVISI: MENAMPILKAN KELAS PADA KARTU --}}
+                            <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">PROGRAM {{ $program->kelas ?? '-' }}</p>
                         </div>
                         <div class="{{ $program->status_pembayaran === 'verified' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600' }} px-3 py-1 rounded-lg text-[9px] font-black uppercase italic">
                             {{ $program->status_pembayaran === 'verified' ? 'Aktif' : 'Pending' }}
@@ -106,10 +106,11 @@
                             </div>
                             <div class="flex flex-col">
                                 <p class="text-[10px] text-blue-600 font-black uppercase leading-tight">
-                                    {{ $program->lokasi_style ?? 'ONLINE' }}
+                                    {{ str_contains(strtolower($program->lokasi_cabang ?? ''), 'online') ? 'ONLINE' : 'OFFLINE' }}
                                 </p>
+                                {{-- REVISI: Penambahan Null Coalescing agar tidak error 500 jika property kosong --}}
                                 <p class="text-[9px] text-slate-500 font-medium italic leading-tight">
-                                    {{ $program->detail_lokasi ?? 'Interactive Virtual Class' }}
+                                    {{ ($program->alamat_siswa ?? '') ?: 'Interactive Virtual Class' }}
                                 </p>
                             </div>
                         </div>
@@ -119,7 +120,7 @@
                         @php
                             $selesai = $program->pertemuan_selesai ?? 0;
                             $total = ($program->jumlah_pertemuan > 0) ? $program->jumlah_pertemuan : 8;
-                            $percent = ($selesai / $total) * 100;
+                            $percent = ($total > 0) ? ($selesai / $total) * 100 : 0;
                         @endphp
                         <div class="flex justify-between mb-2">
                             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Sesi</p>
@@ -158,7 +159,8 @@
                     <div class="bg-white px-8 py-6 border-b border-slate-100 flex justify-between items-center">
                         <div>
                             <h3 class="text-2xl font-black text-slate-800 uppercase tracking-tight" x-text="selectedProgram.display_mapel || selectedProgram.base_name"></h3>
-                            <p class="text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em]">Kurikulum & Presensi Siswa</p>
+                            {{-- REVISI: MENAMPILKAN KELAS DI HEADER MODAL --}}
+                            <p class="text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em]" x-text="'Tingkat: ' + (selectedProgram.kelas || '-') + ' | Kurikulum & Presensi'"></p>
                         </div>
                         <button @click="openModal = false" class="text-slate-300 hover:text-rose-500 transition-colors">
                             <i class="fas fa-times-circle text-2xl"></i>
@@ -203,11 +205,6 @@
                                         <div :class="index < selectedProgram.pertemuan_selesai ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-100 shadow-sm'" 
                                              class="aspect-square rounded-2xl border-2 flex flex-col items-center justify-center transition-all duration-500 relative group">
                                             <span :class="index < selectedProgram.pertemuan_selesai ? 'text-white' : 'text-slate-300'" class="text-[10px] font-black" x-text="index + 1"></span>
-                                            <template x-if="selectedProgram.attendance_history && selectedProgram.attendance_history[index]">
-                                                <span class="text-[7px] text-white font-bold opacity-90 mt-1" 
-                                                      x-text="new Date(selectedProgram.attendance_history[index].date).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})">
-                                                </span>
-                                            </template>
                                         </div>
                                     </template>
                                 </div>
@@ -239,13 +236,11 @@
                                                     <i class="fas fa-play mr-1"></i> Video
                                                 </a>
                                             </template>
-                                            
                                             <template x-if="material.file_path">
                                                 <a :href="'/storage/' + material.file_path" target="_blank" class="flex-1 md:flex-none bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-center shadow-md shadow-blue-50 hover:bg-slate-900 transition-all">
                                                     <i class="fas fa-file-pdf mr-1"></i> Modul
                                                 </a>
                                             </template>
-
                                             <template x-if="material.quiz_url">
                                                 <a :href="material.quiz_url" target="_blank" class="flex-1 md:flex-none bg-emerald-100 text-emerald-600 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-center hover:bg-emerald-500 hover:text-white transition-all border border-emerald-200">
                                                     <i class="fas fa-tasks mr-1"></i> Kuis
@@ -254,34 +249,32 @@
                                         </div>
                                     </div>
 
-                                    {{-- BLOK REVIEW & NILAI DARI MENTOR --}}
+                                    {{-- BLOK REVIEW & NILAI --}}
                                     <template x-if="material.grade">
-                                        <div class="mt-8 p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 flex justify-between items-center group/grade hover:bg-indigo-50 transition-all animate-in fade-in slide-in-from-top-2">
+                                        <div class="mt-8 p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 flex justify-between items-center group/grade hover:bg-indigo-50 transition-all">
                                             <div class="flex items-center gap-4">
-                                                <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-50 group-hover/grade:scale-110 transition-transform">
+                                                <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-50">
                                                     <i class="fas fa-star text-lg"></i>
                                                 </div>
                                                 <div>
                                                     <div class="flex items-center gap-2 mb-1">
                                                         <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none">Feedback Mentor</p>
-                                                        <span class="px-2 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] font-black rounded-full uppercase">Verified</span>
                                                     </div>
                                                     <p class="text-xs font-bold text-slate-700 italic leading-relaxed" x-text="material.grade.note || 'Selesai dinilai'"></p>
                                                 </div>
                                             </div>
                                             <div class="flex flex-col items-end bg-white px-5 py-3 rounded-2xl border border-indigo-50 shadow-sm min-w-[80px]">
                                                 <span class="text-2xl font-black text-indigo-600 leading-none mb-0.5" x-text="material.grade.score"></span>
-                                                <span class="text-[8px] font-black text-indigo-300 uppercase block tracking-tighter">Sesi Score</span>
+                                                <span class="text-[8px] font-black text-indigo-300 uppercase block tracking-tighter">Score</span>
                                             </div>
                                         </div>
                                     </template>
 
-                                    {{-- PENGUMPULAN TUGAS (LINK & PDF) --}}
+                                    {{-- PENGUMPULAN TUGAS --}}
                                     <div class="mt-6 pt-6 border-t border-dashed border-slate-100">
-                                        <label class="text-[9px] font-black text-slate-400 uppercase mb-3 block tracking-[0.1em]">Pengumpulan Tugas & Catatan :</label>
+                                        <label class="text-[9px] font-black text-slate-400 uppercase mb-3 block tracking-[0.1em]">Pengumpulan Tugas :</label>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <input type="url" :id="'task_link_' + material.id" placeholder="Link G-Drive / Cloud..." class="bg-slate-50 border-none rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 px-4 py-3 placeholder:text-slate-300 shadow-inner">
-                                            
                                             <div class="relative">
                                                 <input type="file" :id="'task_file_' + material.id" accept="application/pdf" class="hidden" @change="fileNameTask = $event.target.files[0].name">
                                                 <label :for="'task_file_' + material.id" class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 cursor-pointer hover:bg-slate-100 transition border border-dashed border-slate-200">

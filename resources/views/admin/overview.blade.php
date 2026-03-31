@@ -96,7 +96,7 @@
                     <thead class="sticky top-0 z-10 bg-white">
                         <tr class="bg-slate-50/50">
                             <th class="py-4 px-8 text-[11px] font-black text-slate-400 uppercase tracking-widest">Siswa & Lokasi</th>
-                            <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Program</th>
+                            <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Kelas & Program</th>
                             <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Detail Pertemuan</th>
                             <th class="py-4 px-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                             <th class="py-4 px-8 text-right text-[11px] font-black text-slate-400 uppercase tracking-widest">Penugasan</th>
@@ -112,13 +112,10 @@
                                     </div>
                                     <div>
                                         <p class="text-xs font-bold text-slate-700 leading-tight">{{ $enrollment->user_name }}</p>
-                                        
-                                        {{-- REVISI LOKASI: Menggunakan display_lokasi yang sudah diolah di Controller --}}
                                         <p class="text-[10px] font-bold mt-0.5 uppercase {{ ($enrollment->is_online ?? false) ? 'text-indigo-600' : 'text-rose-600' }}">
                                             <i class="fas {{ ($enrollment->is_online ?? false) ? 'fa-video' : 'fa-house-user' }} text-[9px] mr-1"></i>
                                             {{ $enrollment->display_lokasi ?? 'VIA ZOOM (ONLINE)' }}
                                         </p>
-
                                         @if(!($enrollment->is_online ?? false) && !empty($enrollment->lokasi_cabang) && $enrollment->lokasi_cabang != '-')
                                             <p class="text-[8px] text-slate-400 font-black uppercase tracking-tighter italic">Cabang: {{ $enrollment->lokasi_cabang }}</p>
                                         @endif
@@ -127,11 +124,19 @@
                             </td>
 
                             <td class="py-4 px-6">
-                                <span class="px-2 py-0.5 rounded-md bg-slate-900 text-[8px] font-black text-white uppercase tracking-tighter">{{ $enrollment->program_jenjang }}</span>
-                                <p class="text-xs font-bold text-slate-800 mt-1 uppercase tracking-tight">{{ $enrollment->display_program ?? ($enrollment->mapel ?? $enrollment->program_name) }}</p>
-                                @if(($enrollment->is_mengaji ?? 0) == 1)
-                                    <span class="text-[8px] font-black text-emerald-600 uppercase italic">+ Ambil Ngaji</span>
-                                @endif
+                                <div class="flex flex-col">
+                                    <div class="flex items-center gap-1.5 mb-1">
+                                        <span class="px-2 py-0.5 rounded-md bg-slate-900 text-[8px] font-black text-white uppercase tracking-tighter">{{ $enrollment->program_jenjang }}</span>
+                                        {{-- PERBAIKAN: Memanggil properti 'kelas' langsung dari objek database agar muncul di tampilan --}}
+                                        <span class="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 text-[8px] font-black text-blue-600 uppercase tracking-tighter">
+                                            KELAS: {{ $enrollment->kelas ?? ($enrollment->display_kelas ?? '-') }}
+                                        </span>
+                                    </div>
+                                    <p class="text-xs font-bold text-slate-800 uppercase tracking-tight">{{ $enrollment->display_program ?? ($enrollment->mapel ?? $enrollment->program_name) }}</p>
+                                    @if(($enrollment->is_mengaji ?? 0) == 1)
+                                        <span class="text-[8px] font-black text-emerald-600 uppercase italic">+ Ambil Ngaji</span>
+                                    @endif
+                                </div>
                             </td>
 
                             <td class="py-4 px-6 text-center">

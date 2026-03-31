@@ -9,6 +9,8 @@
     // 2. LOGIKA DATA
     metode: sessionStorage.getItem('reg_metode') || 'online', 
     jenjang: sessionStorage.getItem('reg_jenjang') || '', 
+    kelas: sessionStorage.getItem('reg_kelas') || '', 
+    showKelasOptions: false,
     tipePaket: sessionStorage.getItem('reg_tipePaket') || 'eceran',
     selectedMapel: JSON.parse(sessionStorage.getItem('reg_selectedMapel')) || [],
     mauMengaji: sessionStorage.getItem('reg_mauMengaji') === 'true',
@@ -32,6 +34,7 @@
         sessionStorage.setItem('reg_step', this.step);
         sessionStorage.setItem('reg_metode', this.metode);
         sessionStorage.setItem('reg_jenjang', this.jenjang);
+        sessionStorage.setItem('reg_kelas', this.kelas);
         sessionStorage.setItem('reg_tipePaket', this.tipePaket);
         sessionStorage.setItem('reg_selectedMapel', JSON.stringify(this.selectedMapel));
         sessionStorage.setItem('reg_mauMengaji', this.mauMengaji);
@@ -170,6 +173,7 @@ class="relative">
     <input type="hidden" name="program_id" :value="selectedMapel[0]"> 
     <input type="hidden" name="total_harga" :value="totalPrice">
     <input type="hidden" name="jenjang" :value="jenjang">
+    <input type="hidden" name="kelas" :value="kelas">
     <input type="hidden" name="tipe_paket" :value="tipePaket">
     <input type="hidden" name="per_minggu" :value="perMinggu">
     <input type="hidden" name="extra_hours" :value="extraHours">
@@ -257,6 +261,55 @@ class="relative">
                     <button type="button" @click="jenjang = j; pilihPaket(tipePaket)" 
                             :class="jenjang === j ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-slate-500 border-slate-200'"
                             class="py-5 border-2 rounded-2xl font-black uppercase text-sm transition-all" x-text="j"></button>
+                </template>
+            </div>
+        </section>
+
+        {{-- 2. PILIH TINGKAT KELAS (DROPDOWN) --}}
+        <section x-show="jenjang" x-transition class="mt-8">
+            <button type="button" @click="showKelasOptions = !showKelasOptions" class="w-full flex items-center justify-between p-5 bg-gradient-to-r from-blue-50 to-slate-50 border-2 border-slate-200 rounded-2xl mb-4 hover:border-blue-300 transition-all">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-graduation-cap text-blue-600 text-sm"></i>
+                    <span class="text-sm font-bold text-slate-700 uppercase tracking-tight">PILIH TINGKAT KELAS</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <template x-if="kelas">
+                        <span class="text-xs font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded-lg" x-text="kelas"></span>
+                    </template>
+                    <i class="fas fa-chevron-down text-slate-400 transition-transform" :class="showKelasOptions ? 'rotate-180' : ''"></i>
+                </div>
+            </button>
+            <div x-show="showKelasOptions" x-transition class="grid grid-cols-3 md:grid-cols-6 gap-3 p-5 bg-white border-2 border-slate-200 rounded-2xl">
+                <template x-if="jenjang === 'SD'">
+                    <template x-for="n in [1,2,3,4,5,6]">
+                        <button type="button" @click="kelas = n + ' SD'; saveToSession(); showKelasOptions = false" 
+                                :class="kelas === n + ' SD' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'"
+                                class="py-3 border-2 rounded-xl font-bold text-xs transition-all" x-text="n"></button>
+                    </template>
+                </template>
+
+                <template x-if="jenjang === 'SMP'">
+                    <template x-for="n in [7,8,9]">
+                        <button type="button" @click="kelas = n + ' SMP'; saveToSession(); showKelasOptions = false" 
+                                :class="kelas === n + ' SMP' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'"
+                                class="py-3 border-2 rounded-xl font-bold text-xs transition-all" x-text="n"></button>
+                    </template>
+                </template>
+
+                <template x-if="jenjang === 'SMA'">
+                    <template x-for="n in [10,11,12]">
+                        <button type="button" @click="kelas = n + ' SMA'; saveToSession(); showKelasOptions = false" 
+                                :class="kelas === n + ' SMA' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'"
+                                class="py-3 border-2 rounded-xl font-bold text-xs transition-all" x-text="n"></button>
+                    </template>
+                </template>
+
+                <template x-if="jenjang === 'TK'">
+                    <template x-for="t in ['TK A', 'TK B']">
+                        <button type="button" @click="kelas = t; saveToSession(); showKelasOptions = false" 
+                                :class="kelas === t ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'"
+                                class="py-3 border-2 rounded-xl font-bold text-xs transition-all" x-text="t"></button>
+                    </template>
                 </template>
             </div>
         </section>
@@ -487,7 +540,7 @@ class="relative">
                     
                     @auth
                         <button type="button" @click="goToStep(3)"
-                                :disabled="selectedMapel.length === 0" 
+                                :disabled="!jenjang || !kelas || selectedMapel.length === 0" 
                                 class="flex-[2] md:px-12 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold uppercase text-[10px] tracking-widest shadow-lg disabled:opacity-50 transition-all">
                             LANJUT BAYAR
                         </button>
