@@ -8,7 +8,7 @@
     modalAbsen: false,
     modalTugas: false,
     isAbsenOpen: false, 
-    selectedClass: {id: '', name: '', students: [], materials: [], total_sessions: 0},
+    selectedClass: {id: '', name: '', students: [], materials: [], total_sessions: 0, kelas: ''},
     fileName: '',
     editingMaterial: null,
 
@@ -174,7 +174,9 @@
                                 @endif
                             </div>
                             
-                            <h3 class="font-black text-slate-800 text-lg leading-tight mb-1 group-hover:text-indigo-600 transition-colors">{{ $class->name }}</h3>
+                            <h3 class="font-black text-slate-800 text-lg leading-tight mb-1 group-hover:text-indigo-600 transition-colors uppercase">{{ $class->name }}</h3>
+                            {{-- REVISI: MENAMPILKAN KELAS --}}
+                            <p class="text-[10px] font-black text-indigo-500 uppercase tracking-[0.15em] mb-4">TINGKAT: {{ $class->kelas ?? '-' }}</p>
                             
                             <div class="flex flex-col gap-2 mt-1 mb-4">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">• {{ $class->type ?? 'Reguler' }}</span>
@@ -291,7 +293,7 @@
                 <div class="flex justify-between items-center mb-8">
                     <div>
                         <h3 class="text-2xl font-black text-slate-800 leading-tight">Sesi Presensi</h3>
-                        <p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1" x-text="selectedClass.name"></p>
+                        <p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1" x-text="selectedClass.name + ' (' + (selectedClass.kelas || '-') + ')'"></p>
                     </div>
                     <button @click="modalAbsen = false" class="text-slate-300 hover:text-rose-500 transition-colors"><i class="fas fa-times-circle text-2xl"></i></button>
                 </div>
@@ -322,7 +324,7 @@
                                     <div>
                                         <span class="text-xs font-black text-slate-700 block" x-text="student.name"></span>
                                         <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest" 
-                                              x-text="'Pertemuan Ke-' + (selectedClass.pertemuan_selesai || 0)"></span>
+                                              x-text="'Tingkat: ' + (selectedClass.kelas || '-')"></span>
                                     </div>
                                 </div>
                                 
@@ -351,7 +353,7 @@
         </div>
     </div>
 
-    {{-- MODAL MATERI - REVISI POSISI AGAR TIDAK TERPOTONG --}}
+    {{-- MODAL MATERI --}}
 <div x-show="modalMateri" 
      class="fixed inset-0 z-[70] flex items-start justify-center p-4 pt-12 bg-slate-900/60 backdrop-blur-md overflow-y-auto" 
      x-cloak 
@@ -411,9 +413,9 @@
 
             <div class="mb-10">
                 <h3 class="text-3xl font-black text-slate-800 leading-none" x-text="editingMaterial ? 'Update Sesi' : 'Buat Sesi Baru'"></h3>
-                <p class="text-sm font-bold text-slate-400 mt-3" x-text="'Kelas: ' + selectedClass.name"></p>
+                <p class="text-sm font-bold text-slate-400 mt-3" x-text="'Kelas: ' + selectedClass.name + ' (' + (selectedClass.kelas || '-') + ')'"></p>
                 
-                {{-- DOWNLOAD TUGAS SISWA - REVISI WARNA TEKS MENJADI HITAM --}}
+                {{-- DOWNLOAD TUGAS SISWA --}}
                 <template x-if="editingMaterial && editingMaterial.submission">
                     <div class="mt-8 p-5 bg-amber-50 rounded-[25px] border border-amber-100 flex flex-col gap-3 shadow-sm">
                         <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest">Tugas Siswa (<span x-text="selectedClass.student_name"></span>) :</p>
@@ -501,6 +503,7 @@
             </form>
         </div>
     </div>
+</div>
 </div>
 
 <style>

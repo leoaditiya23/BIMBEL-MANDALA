@@ -24,7 +24,7 @@
                 </svg>
             </div>
         </div>
-    </div> {{-- Penutup header yang benar --}}
+    </div>
 
     <div class="mb-10 w-full flex justify-center overflow-x-auto no-scrollbar">
         <div class="inline-flex bg-slate-100/80 p-2 rounded-[3.5rem] border border-slate-200/50 shadow-inner">
@@ -40,7 +40,7 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 flex-1"> {{-- Tambah flex-1 di sini --}}
+    <div class="grid grid-cols-1 gap-6 flex-1">
         @php
             $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
         @endphp
@@ -64,9 +64,11 @@
                         
                         $isLive = false;
                         if($isToday && $item->jam_mulai != '--:--') {
-                            $startTime = \Carbon\Carbon::createFromFormat('H:i', $item->jam_mulai);
-                            $endTime = (clone $startTime)->addMinutes(90);
-                            $isLive = $now->between($startTime, $endTime);
+                            try {
+                                $startTime = \Carbon\Carbon::createFromFormat('H:i', $item->jam_mulai);
+                                $endTime = (clone $startTime)->addMinutes(90);
+                                $isLive = $now->between($startTime, $endTime);
+                            } catch (\Exception $e) { $isLive = false; }
                         }
                     @endphp
 
@@ -95,9 +97,15 @@
                                 <h3 class="text-xl font-black text-slate-800 transition-colors mb-1 {{ $isLive ? 'text-green-700' : 'group-hover:text-indigo-600' }}">
                                     {{ $item->program_name }}
                                 </h3>
-                                <div class="flex items-center gap-2 text-slate-500">
-                                    <i class="fas fa-user-graduate text-xs {{ $isLive ? 'text-green-500' : 'text-indigo-500' }}"></i>
-                                    <span class="text-sm font-bold text-slate-600">{{ $item->student_name }}</span>
+                                {{-- REVISI: MENAMPILKAN KELAS DAN NAMA SISWA --}}
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <div class="flex items-center gap-1.5 text-slate-500">
+                                        <i class="fas fa-user-graduate text-xs {{ $isLive ? 'text-green-500' : 'text-indigo-500' }}"></i>
+                                        <span class="text-sm font-bold text-slate-600">{{ $item->student_name }}</span>
+                                    </div>
+                                    <span class="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded uppercase border border-blue-100">
+                                        KELAS: {{ $item->kelas ?? '-' }}
+                                    </span>
                                 </div>
                             </div>
 
