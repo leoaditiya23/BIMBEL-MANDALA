@@ -50,13 +50,19 @@
                         @foreach($payments as $payment)
                             <tr class="group hover:bg-slate-50/50 transition-all">
                                 <td class="py-5 px-4">
-                                    {{-- REVISI: Menggunakan nama_program hasil konversi di Controller --}}
-                                    <p class="font-bold text-slate-800 uppercase text-xs tracking-tight">{{ $payment->nama_program ?? ($payment->nama_program ?? 'Program Pilihan') }}</p>
+                                    {{-- REVISI: Menampilkan nama program dan informasi KELAS --}}
+                                    <p class="font-bold text-slate-800 uppercase text-xs tracking-tight">{{ $payment->nama_program ?? 'Program Pilihan' }}</p>
                                     <div class="flex flex-col gap-1 mt-1">
-                                        <p class="text-[9px] font-black uppercase tracking-tight {{ ($payment->is_online ?? false) ? 'text-indigo-600' : 'text-rose-600' }}">
-                                            <i class="fas {{ ($payment->is_online ?? false) ? 'fa-video' : 'fa-map-marker-alt' }}"></i> 
-                                            {{ ($payment->is_online ?? false) ? 'Online / Virtual' : ($payment->lokasi_cabang ?? 'Privat Rumah') }}
-                                        </p>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-[9px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                                                TINGKAT: {{ $payment->kelas ?? '-' }}
+                                            </span>
+                                            <span class="text-slate-200">|</span>
+                                            <p class="text-[9px] font-black uppercase tracking-tight {{ ($payment->is_online ?? false) ? 'text-indigo-600' : 'text-rose-600' }}">
+                                                <i class="fas {{ ($payment->is_online ?? false) ? 'fa-video' : 'fa-map-marker-alt' }}"></i> 
+                                                {{ ($payment->is_online ?? false) ? 'Online / Virtual' : ($payment->lokasi_cabang ?? 'Privat Rumah') }}
+                                            </p>
+                                        </div>
                                         <p class="text-[9px] text-slate-500 italic">
                                             <i class="fas fa-clock"></i> {{ $payment->jadwal_detail }}
                                         </p>

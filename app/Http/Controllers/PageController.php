@@ -763,39 +763,40 @@ public function login()
 }
 
     public function siswaBilling() {
-        $payments = DB::table('enrollments')
-            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
-            ->where('enrollments.user_id', Auth::id())
-            ->select(
-                'enrollments.*', 
-                'programs.name as base_program',
-                'enrollments.mapel as mapel_raw'
-            )
-            ->orderBy('enrollments.created_at', 'desc')
-            ->get()
-            ->map(function($item) {
-                // 1. KONVERSI ID MAPEL KE NAMA ASLI
-                $mapelIds = json_decode($item->mapel_raw, true);
-                if (!is_array($mapelIds)) {
-                    $mapelIds = [$item->mapel_raw];
-                }
+    $payments = DB::table('enrollments')
+        ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+        ->where('enrollments.user_id', Auth::id())
+        ->select(
+            'enrollments.*', 
+            'programs.name as base_program',
+            'enrollments.mapel as mapel_raw',
+            'enrollments.kelas' // REVISI: Tambahkan kolom kelas agar bisa muncul di riwayat pembayaran
+        )
+        ->orderBy('enrollments.created_at', 'desc')
+        ->get()
+        ->map(function($item) {
+            // 1. KONVERSI ID MAPEL KE NAMA ASLI
+            $mapelIds = json_decode($item->mapel_raw, true);
+            if (!is_array($mapelIds)) {
+                $mapelIds = [$item->mapel_raw];
+            }
 
-                $mapelNames = DB::table('programs')
-                    ->whereIn('id', $mapelIds)
-                    ->pluck('name')
-                    ->toArray();
+            $mapelNames = DB::table('programs')
+                ->whereIn('id', $mapelIds)
+                ->pluck('name')
+                ->toArray();
 
-                // Properti untuk nama program yang akan ditampilkan
-                $item->nama_program = count($mapelNames) > 0 ? implode(', ', $mapelNames) : $item->base_program;
+            // Properti untuk nama program yang akan ditampilkan
+            $item->nama_program = count($mapelNames) > 0 ? implode(', ', $mapelNames) : $item->base_program;
 
-                // 2. FLAG LOKASI UNTUK UI
-                $item->is_online = empty($item->lokasi_cabang) && (empty($item->alamat_siswa) || $item->alamat_siswa == '-');
-                
-                return $item;
-            });
+            // 2. FLAG LOKASI UNTUK UI
+            $item->is_online = empty($item->lokasi_cabang) && (empty($item->alamat_siswa) || $item->alamat_siswa == '-');
+            
+            return $item;
+        });
 
-        return view('siswa.billing', compact('payments'));
-    }
+    return view('siswa.billing', compact('payments'));
+}
 
     public function submitTask(Request $request) {
         // Validasi diperlonggar agar tidak terlalu sensitif terhadap link
