@@ -1111,12 +1111,12 @@ public function login()
             'enrollments.id', 
             'enrollments.mapel as name', 
             'enrollments.jenjang', 
-            'enrollments.kelas', // REVISI: Tambahkan kolom kelas agar muncul di view
+            'enrollments.kelas', // REVISI: Tetap pastikan kolom kelas ada
             'enrollments.hari',
             'enrollments.jam_mulai as jam',
             'enrollments.jadwal_detail',
             'enrollments.tipe_paket',
-            'enrollments.user_id',
+            'users.id as user_id', // REVISI: Gunakan alias yang jelas agar tidak bentrok dengan enrollment id
             'enrollments.is_absen_active',
             'enrollments.pertemuan_selesai',
             'enrollments.jumlah_pertemuan',
@@ -1258,17 +1258,23 @@ public function login()
         'score' => 'required|integer|min:0|max:100',
     ]);
 
-    // 1. Simpan Nilai ke Tabel Grades (Ini Berhasil)
-    DB::table('grades')->insert([
-        'program_id' => $request->program_id,
-        'student_id' => $request->student_id,
-        'title' => $request->title,
-        'score' => $request->score,
-        'note' => $request->note,
-        'created_at' => now(),
-    ]);
+    // 1. Simpan atau Perbarui Nilai ke Tabel Grades
+    // Menggunakan updateOrInsert agar jika sesi yang sama dinilai ulang, data akan terupdate (tidak double)
+    DB::table('grades')->updateOrInsert(
+        [
+            'program_id' => $request->program_id,
+            'student_id' => $request->student_id,
+            'title'      => $request->title,
+        ],
+        [
+            'score'      => $request->score,
+            'note'       => $request->note,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]
+    );
 
-    // 2. BAGIAN INI DIHAPUS/DIKOMENTAR agar tidak error karena tabelnya tidak ada
+    // 2. BAGIAN INI TETAP DIHAPUS/DIKOMENTAR agar tidak error karena tabelnya tidak ada
     /* DB::table('activities')->insert([
         'user_id' => $request->student_id,
         'title' => 'Nilai Baru: ' . $request->title . ' (' . $request->score . ')',

@@ -118,7 +118,10 @@ Route::middleware(['auth'])->group(function () {
         
         Route::post('/assignments/store', [PageController::class, 'storeAssignment'])->name('mentor.assignments.store');
         Route::post('/materials/store', [PageController::class, 'storeMaterial'])->name('mentor.storeMaterial');
-        Route::post('/grades/store', [PageController::class, 'storeGrade'])->name('mentor.storeGrade');
+        
+        // REVISI: Samakan nama rute dengan yang dipanggil di View (mentor.grades.store)
+        Route::post('/grades/store', [PageController::class, 'storeGrade'])->name('mentor.grades.store');
+        
         Route::post('/attendance/store', [PageController::class, 'storeAttendance'])->name('mentor.storeAttendance');
 
         Route::put('/materials/update/{id}', [PageController::class, 'updateMaterial'])->name('mentor.updateMaterial');
