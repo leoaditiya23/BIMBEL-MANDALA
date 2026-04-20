@@ -51,9 +51,17 @@ public function reguler(Request $request) {
         return $items->pluck('name');
     });
 
-    $step = $request->query('step', 1);
+    $requestedStep = (int) $request->query('step', 1);
+    if (!in_array($requestedStep, [1, 2, 3], true)) {
+        $requestedStep = 1;
+    }
+
+    // Draft hanya boleh dipulihkan untuk alur resume pembayaran/login
+    // atau ketika backend mengembalikan error setelah submit.
+    $restoreFromSession = $request->boolean('resume') || $request->session()->has('preserve_reguler_state');
+    $step = $restoreFromSession ? $requestedStep : 1;
     
-    return view('pages.program.reguler', compact('programs', 'subjects', 'mapelByJenjang', 'step'));
+    return view('pages.program.reguler', compact('programs', 'subjects', 'mapelByJenjang', 'step', 'restoreFromSession'));
 }
 
     public function intensif(Request $request) {
@@ -142,8 +150,8 @@ public function login()
     public function pendaftaranLanjut(Request $request) {
         $type = $request->query('type', 'intensif');
         $targetUrl = ($type === 'reguler') 
-            ? route('program.reguler', ['step' => 3]) 
-            : route('program.intensif', ['step' => 3]);
+            ? route('program.reguler', ['step' => 3, 'resume' => 1]) 
+            : route('program.intensif', ['step' => 3, 'resume' => 1]);
         
         session(['url.intended' => $targetUrl]);
         return redirect()->route('login');
@@ -1407,7 +1415,9 @@ public function adminOverview(Request $request) {
             ? $e->getMessage()
             : 'Pendaftaran belum berhasil diproses. Silakan coba lagi.';
 
-        return redirect()->back()->with('error', $userMessage);
+        return redirect()->back()
+            ->with('error', $userMessage)
+            ->with('preserve_reguler_state', true);
     }
 }
 

@@ -2,9 +2,58 @@
 @section('title', 'Pendaftaran Program Reguler - Mandala')
 
 @section('content')
+@php
+    $initialStep = (int) ($step ?? 1);
+    $restoreFromSession = (bool) ($restoreFromSession ?? false);
+@endphp
+
+<script>
+    (() => {
+        const restoreFromSession = @json($restoreFromSession);
+        const requestedStep = {{ $initialStep }};
+
+        const clearRegulerState = () => {
+            Object.keys(sessionStorage).forEach((key) => {
+                if (key.startsWith('reg_')) {
+                    sessionStorage.removeItem(key);
+                }
+            });
+        };
+
+        const getSelectedMapelCount = () => {
+            const raw = sessionStorage.getItem('reg_selectedMapel');
+            if (!raw) return 0;
+
+            try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed.length : 0;
+            } catch (error) {
+                return 0;
+            }
+        };
+
+        const hasDraft = Boolean(sessionStorage.getItem('reg_jenjang'))
+            || Boolean(sessionStorage.getItem('reg_kelas'))
+            || getSelectedMapelCount() > 0;
+
+        window.__regStepOverride = null;
+
+        if (!restoreFromSession) {
+            clearRegulerState();
+            return;
+        }
+
+        // Lindungi URL step=3 lama agar tidak membuka pembayaran tanpa draft.
+        if (requestedStep === 3 && !hasDraft) {
+            clearRegulerState();
+            window.__regStepOverride = 1;
+        }
+    })();
+</script>
+
 <div class="min-h-screen bg-slate-50 pb-20" x-data="{ 
     // 1. LOGIKA POSISI STEP
-    step: parseInt(sessionStorage.getItem('reg_step')) || {{ request('step') ?? 1 }}, 
+    step: window.__regStepOverride !== null ? window.__regStepOverride : {{ $initialStep }}, 
     
     // 2. LOGIKA DATA
     metode: sessionStorage.getItem('reg_metode') || 'online', 
@@ -780,7 +829,11 @@ class="relative">
     @endif
 
     @if(session('success'))
-        sessionStorage.clear(); 
+        Object.keys(sessionStorage).forEach((key) => {
+            if (key.startsWith('reg_')) {
+                sessionStorage.removeItem(key);
+            }
+        });
         Swal.fire({
             title: 'PENDAFTARAN TERKIRIM!',
             text: "{{ session('success') }}",
