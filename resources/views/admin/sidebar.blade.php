@@ -95,6 +95,17 @@
             @endif
         </a>
 
+        <a href="{{ route('admin.mentor_placements') }}" 
+           class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.mentor_placements') ? 'bg-white text-slate-900 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+            <div class="w-8 flex justify-center items-center">
+                <i class="fas fa-user-check text-lg"></i>
+            </div>
+            <span x-show="sidebarOpen" class="ml-3 font-bold text-sm whitespace-nowrap">Penempatan Mentor</span>
+            @if(request()->routeIs('admin.mentor_placements'))
+                <i x-show="sidebarOpen" class="fas fa-circle ml-auto text-[6px] text-orange-500"></i>
+            @endif
+        </a>
+
         {{-- Verifikasi Bayar --}}
         <a href="{{ route('admin.payments') }}" 
            class="w-full flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.payments') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">

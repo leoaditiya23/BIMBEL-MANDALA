@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,6 +30,14 @@ Route::prefix('program')->group(function () {
     Route::get('/reguler', [PageController::class, 'reguler'])->name('program.reguler');
     Route::get('/intensif', [PageController::class, 'intensif'])->name('program.intensif');
 });
+
+// Midtrans Sandbox Callback & Redirect Endpoints
+Route::post('/payments/midtrans/callback', [PageController::class, 'midtransCallback'])
+    ->withoutMiddleware([VerifyCsrfToken::class])
+    ->name('midtrans.callback');
+Route::get('/payments/midtrans/finish', [PageController::class, 'midtransFinish'])->name('midtrans.finish');
+Route::get('/payments/midtrans/unfinish', [PageController::class, 'midtransUnfinish'])->name('midtrans.unfinish');
+Route::get('/payments/midtrans/error', [PageController::class, 'midtransError'])->name('midtrans.error');
 
 /**
  * 2. RUTE GUEST (Belum Login)
@@ -68,6 +77,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/programs/{type?}', [PageController::class, 'adminPrograms'])->name('admin.programs'); 
         
         Route::get('/mentors', [PageController::class, 'adminMentors'])->name('admin.mentors');
+        Route::get('/mentor-placements', [PageController::class, 'adminMentorPlacements'])->name('admin.mentor_placements');
         Route::get('/payments', [PageController::class, 'adminPayments'])->name('admin.payments');
         Route::get('/settings', [PageController::class, 'adminSettings'])->name('admin.settings');
         
@@ -91,9 +101,11 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/verify-payment/{id}', [PageController::class, 'verifyEnrollment'])->name('admin.payments.verify');
         Route::delete('/reject-payment/{id}', [PageController::class, 'rejectPayment'])->name('admin.payments.reject');
+        Route::get('/payments/midtrans/sync', [PageController::class, 'adminSyncMidtrans'])->name('admin.payments.midtrans.sync');
 
         // --- REVISI: RUTE UNTUK SET JADWAL DARI DASHBOARD ADMIN ---
         Route::put('/enrollment/update-jadwal/{id}', [PageController::class, 'updateJadwal'])->name('admin.enrollment.update_jadwal');
+        Route::post('/mentor-placements/assign/{id}', [PageController::class, 'assignMentorToEnrollment'])->name('admin.mentor_placements.assign');
 
         // CRUD Program
         Route::post('/programs-action/store', [PageController::class, 'storeProgram'])->name('admin.programs.store');
@@ -123,6 +135,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/grades/store', [PageController::class, 'storeGrade'])->name('mentor.grades.store');
         
         Route::post('/attendance/store', [PageController::class, 'storeAttendance'])->name('mentor.storeAttendance');
+        Route::post('/placement/approve/{id}', [PageController::class, 'mentorApprovePlacement'])->name('mentor.placement.approve');
+        Route::post('/placement/reject/{id}', [PageController::class, 'mentorRejectPlacement'])->name('mentor.placement.reject');
 
         Route::put('/materials/update/{id}', [PageController::class, 'updateMaterial'])->name('mentor.updateMaterial');
         Route::post('/toggle-absen', [PageController::class, 'toggleAbsen'])->name('mentor.toggleAbsen');

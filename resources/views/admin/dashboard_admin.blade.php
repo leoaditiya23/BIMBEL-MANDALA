@@ -6,12 +6,26 @@
     REVISI STRUKTUR:
     1. Menggunakan fixed wrapper untuk background biru agar tidak gantung.
     2. Memisahkan Sidebar dan Content secara visual agar tidak saling menindih (Z-Index).
+    3. PENAMBAHAN: Script Chart.js & Filter Pendapatan (Revisi Mentor).
 --}}
-<div x-data="{ sidebarOpen: true }" 
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div x-data="{
+        sidebarOpen: true,
+        monthFilter: '{{ request('bulan', $filterBulan ?? 'semua') }}',
+        yearFilter: '{{ request('tahun', $filterTahun ?? now()->year) }}',
+        applyDateFilter() {
+            const params = new URLSearchParams(window.location.search);
+            params.set('bulan', this.monthFilter);
+            params.set('tahun', this.yearFilter);
+            window.location.href = '{{ route('admin.overview') }}?' + params.toString();
+        }
+    }" 
      class="bg-slate-50 font-jakarta overflow-hidden" 
      style="transform: scale(0.90); transform-origin: top left; width: 111.111%; height: 111.111%; position: fixed; top: 0; left: 0;">
     
-    {{-- 1. BACKGROUND BIRU STATIS (Mencegah tembok putih menutupi area kiri) --}}
+    {{-- 1. BACKGROUND BIRU STATIS --}}
     <div :class="sidebarOpen ? 'w-72' : 'w-20'" 
          class="absolute top-0 left-0 bottom-0 bg-blue-700 transition-all duration-300 z-0"></div>
 
@@ -21,14 +35,12 @@
             :class="sidebarOpen ? 'w-72' : 'w-20'" 
             class="h-full text-white flex flex-col transition-all duration-300 relative z-50 flex-shrink-0">
             
-            {{-- Tombol Toggle --}}
             <button 
                 @click="sidebarOpen = !sidebarOpen" 
                 class="absolute -right-4 top-10 bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:bg-orange-600 transition-all z-[60] border-2 border-white focus:outline-none cursor-pointer">
                 <i class="fas text-xs transition-transform duration-300" :class="sidebarOpen ? 'fa-angle-left' : 'fa-angle-right'"></i>
             </button>
 
-            {{-- Logo --}}
             <div class="p-6 flex items-center h-20 mb-4 flex-shrink-0 relative z-10">
                 <div class="w-10 h-10 bg-white rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg">
                     <i class="fas fa-shield-alt text-blue-700 text-xl"></i>
@@ -38,60 +50,57 @@
                 </span>
             </div>
 
-            {{-- Navigasi --}}
             <nav class="flex-grow px-4 space-y-2 overflow-y-auto overflow-x-hidden custom-scrollbar relative z-10">
                 <p x-show="sidebarOpen" class="px-3 text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-4 opacity-40">Navigasi Utama</p>
                 
-                {{-- Link Dashboard --}}
                 <a href="{{ route('admin.overview') }}" 
                    class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.overview') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
                     <div class="w-8 flex justify-center items-center"><i class="fas fa-th-large text-lg"></i></div>
                     <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Dashboard</span>
                 </a>
 
-                {{-- Link Programs --}}
                 <a href="{{ route('admin.programs') }}" 
                    class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.programs') && !request()->route('type') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
                     <div class="w-8 flex justify-center items-center"><i class="fas fa-layer-group text-lg"></i></div>
                     <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Paket Bimbel</span>
                 </a>
 
-                {{-- REVISI: Tambahan Master Mapel --}}
                 <a href="{{ route('admin.subjects') }}" 
                    class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.subjects') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
                     <div class="w-8 flex justify-center items-center"><i class="fas fa-book-open text-lg"></i></div>
                     <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Master Mapel</span>
                 </a>
 
-                {{-- Link Reguler --}}
                 <a href="{{ route('admin.programs', ['type' => 'reguler']) }}" 
                    class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->fullUrlIs(route('admin.programs', ['type' => 'reguler'])) ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
                     <div class="w-8 flex justify-center items-center"><i class="fas fa-tags text-lg"></i></div>
                     <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Harga Reguler</span>
                 </a>
 
-                {{-- Link Intensif --}}
                 <a href="{{ route('admin.programs', ['type' => 'intensif']) }}" 
                    class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->fullUrlIs(route('admin.programs', ['type' => 'intensif'])) ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
                     <div class="w-8 flex justify-center items-center"><i class="fas fa-bolt text-lg"></i></div>
                     <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Harga Intensif</span>
                 </a>
 
-                {{-- Link Mentors --}}
                 <a href="{{ route('admin.mentors') }}" 
                    class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.mentors') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
                     <div class="w-8 flex justify-center items-center"><i class="fas fa-user-tie text-lg"></i></div>
                     <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Manajemen Mentor</span>
                 </a>
 
-                {{-- Link Payments --}}
+                     <a href="{{ route('admin.mentor_placements') }}" 
+                         class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.mentor_placements') ? 'bg-white text-slate-900 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
+                        <div class="w-8 flex justify-center items-center"><i class="fas fa-user-check text-lg"></i></div>
+                          <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Penempatan Mentor</span>
+                     </a>
+
                 <a href="{{ route('admin.payments') }}" 
                    class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.payments') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
                     <div class="w-8 flex justify-center items-center"><i class="fas fa-check-double text-lg"></i></div>
                     <span x-show="sidebarOpen" class="ml-3 font-bold text-sm">Verifikasi Bayar</span>
                 </a>
 
-                {{-- Link Pesan --}}
                 <a href="{{ route('admin.messages') }}" 
                    class="flex items-center p-3.5 rounded-2xl transition-all duration-200 group {{ request()->routeIs('admin.messages') ? 'bg-white text-blue-700 shadow-xl' : 'hover:bg-blue-600 text-white' }}">
                     <div class="w-8 flex justify-center items-center"><i class="fas fa-envelope text-lg"></i></div>
@@ -99,7 +108,6 @@
                 </a>
             </nav>
 
-            {{-- Logout --}}
             <div class="p-4 border-t border-blue-600/50 flex-shrink-0 relative z-10">
                 <form action="{{ route('logout') }}" method="POST">
                     @csrf
@@ -120,6 +128,23 @@
                 </div>
 
                 <div class="flex items-center space-x-6">
+                    @if(request()->routeIs('admin.overview'))
+                    <div class="hidden lg:flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                        <i class="fas fa-filter text-blue-700 text-[10px]"></i>
+                        <select x-model="monthFilter" @change="applyDateFilter" class="bg-transparent border-none text-[10px] font-black uppercase tracking-widest focus:ring-0 text-slate-600 cursor-pointer">
+                            <option value="semua">Semua Bulan</option>
+                            @for($bulan = 1; $bulan <= 12; $bulan++)
+                                <option value="{{ $bulan }}">{{ \Carbon\Carbon::createFromDate($filterTahun ?? now()->year, $bulan, 1)->translatedFormat('F') }}</option>
+                            @endfor
+                        </select>
+                        <select x-model="yearFilter" @change="applyDateFilter" class="bg-transparent border-none text-[10px] font-black uppercase tracking-widest focus:ring-0 text-slate-600 cursor-pointer">
+                            @foreach(($availableYears ?? [now()->year]) as $year)
+                                <option value="{{ $year }}">{{ $year }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+
                     <div class="hidden md:flex flex-col text-right border-r border-slate-200 pr-6">
                         <p class="text-sm font-black text-slate-800 leading-none">{{ Auth::user()->name ?? 'Administrator' }}</p>
                         <p class="text-[10px] text-orange-500 font-bold uppercase mt-1 tracking-tighter">Super Admin</p>
@@ -134,11 +159,47 @@
 
             <main class="flex-1 overflow-y-auto custom-main-scroll px-8 py-10">
                 <div class="w-full pb-20">
+                    {{-- REVISI: Area Grafik Pendapatan --}}
+                    @if(request()->routeIs('admin.overview'))
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-10">
+                        <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                            <div class="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 class="text-lg font-black text-slate-800 tracking-tight">{{ $grafikPendapatan['title'] ?? 'Tren Pendapatan' }}</h3>
+                                    <p class="text-xs text-slate-400 font-medium italic">Visualisasi pemasukan pada periode terpilih</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-3 h-3 bg-blue-600 rounded-full"></span>
+                                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Pemasukan (IDR)</span>
+                                </div>
+                            </div>
+                            <div class="h-[300px] w-full">
+                                <canvas id="incomeChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                            <div class="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 class="text-lg font-black text-slate-800 tracking-tight">{{ $grafikPerbandingan['title'] ?? 'Perbandingan Pendapatan' }}</h3>
+                                    <p class="text-xs text-slate-400 font-medium italic">Bandingkan performa periode aktif dengan periode sebelumnya</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-3 h-3 bg-orange-500 rounded-full"></span>
+                                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Perbandingan</span>
+                                </div>
+                            </div>
+                            <div class="h-[300px] w-full">
+                                <canvas id="comparisonChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     @yield('admin_content')
                 </div>
             </main>
 
-            {{-- FOOTER --}}
             <footer class="py-6 px-8 border-t border-slate-200 bg-slate-50 text-slate-500 text-[11px] font-medium flex flex-col md:flex-row justify-between items-center gap-4 flex-shrink-0">
                 <div class="flex items-center space-x-2">
                     <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -155,22 +216,106 @@
     </div>
 </div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('incomeChart')) {
+            const ctx = document.getElementById('incomeChart').getContext('2d');
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(29, 78, 216, 0.2)');
+            gradient.addColorStop(1, 'rgba(29, 78, 216, 0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: {!! json_encode($grafikPendapatan['labels'] ?? ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun']) !!},
+                    datasets: [{
+                        label: 'Pendapatan',
+                        data: {!! json_encode($grafikPendapatan['data'] ?? [0, 0, 0, 0, 0, 0]) !!},
+                        borderColor: '#1d4ed8',
+                        borderWidth: 4,
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#1d4ed8',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { borderDash: [5, 5], color: '#f1f5f9' },
+                            ticks: {
+                                font: { size: 10, weight: 'bold' },
+                                callback: function(value) { return 'Rp ' + value.toLocaleString('id-ID'); }
+                            }
+                        },
+                        x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        if (document.getElementById('comparisonChart')) {
+            const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+            const comparisonDatasets = {!! json_encode($grafikPerbandingan['datasets'] ?? []) !!};
+
+            new Chart(comparisonCtx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($grafikPerbandingan['labels'] ?? ['Jan', 'Feb', 'Mar']) !!},
+                    datasets: comparisonDatasets.map(dataset => ({
+                        ...dataset,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        barPercentage: 0.8,
+                        categoryPercentage: 0.6
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { boxWidth: 12, boxHeight: 12, font: { size: 10, weight: 'bold' } }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { borderDash: [5, 5], color: '#f1f5f9' },
+                            ticks: {
+                                font: { size: 10, weight: 'bold' },
+                                callback: function(value) { return 'Rp ' + Number(value).toLocaleString('id-ID'); }
+                            }
+                        },
+                        x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+    });
+</script>
+
 <style>
-    /* Hilangkan elemen app.blade yang tidak perlu */
     body > nav, body > footer { display: none !important; }
     body { overflow: hidden !important; height: 100vh; background-color: #f8fafc; margin: 0; }
-    
     .font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif; }
-    
-    /* Scrollbar Styling */
     .custom-main-scroll::-webkit-scrollbar { width: 8px; }
     .custom-main-scroll::-webkit-scrollbar-track { background: #f8fafc; }
     .custom-main-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    
-    /* Scrollbar Aside */
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-
     [x-cloak] { display: none !important; }
 </style>
 @endsection

@@ -20,9 +20,11 @@
     extraHours: parseInt(sessionStorage.getItem('reg_extraHours')) || 0,
     perMinggu: parseInt(sessionStorage.getItem('reg_perMinggu')) || 1,
     jadwalDetail: sessionStorage.getItem('reg_jadwalDetail') || '',
+    scheduleSlots: JSON.parse(sessionStorage.getItem('reg_scheduleSlots') || '[]'),
+    dayOptions: ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'],
+    selectedDay: sessionStorage.getItem('reg_selectedDay') || 'Senin',
+    selectedTime: sessionStorage.getItem('reg_selectedTime') || '16:00',
     scheduleNote: sessionStorage.getItem('reg_scheduleNote') || '',
-    
-    buktiTransfer: null,
     
     goToStep(target) {
         this.step = target;
@@ -43,7 +45,73 @@
         sessionStorage.setItem('reg_extraHours', this.extraHours);
         sessionStorage.setItem('reg_perMinggu', this.perMinggu);
         sessionStorage.setItem('reg_jadwalDetail', this.jadwalDetail);
+        sessionStorage.setItem('reg_scheduleSlots', JSON.stringify(this.scheduleSlots));
+        sessionStorage.setItem('reg_selectedDay', this.selectedDay);
+        sessionStorage.setItem('reg_selectedTime', this.selectedTime);
         sessionStorage.setItem('reg_scheduleNote', this.scheduleNote);
+    },
+
+    initScheduleBuilder() {
+        if (!Array.isArray(this.scheduleSlots)) {
+            this.scheduleSlots = [];
+        }
+
+        if (this.scheduleSlots.length === 0 && this.jadwalDetail) {
+            const found = [...this.jadwalDetail.matchAll(/([A-Za-z]+)\s*\((\d{1,2}[:.]\d{2})\)/g)];
+            this.scheduleSlots = found
+                .map(match => {
+                    const day = this.dayOptions.find(option => option.toLowerCase() === match[1].toLowerCase());
+                    const time = (match[2] || '').replace('.', ':');
+                    return day && /^\d{2}:\d{2}$/.test(time) ? { day, time } : null;
+                })
+                .filter(Boolean);
+        }
+
+        this.sortScheduleSlots();
+        this.syncScheduleDetail();
+    },
+
+    sortScheduleSlots() {
+        this.scheduleSlots.sort((a, b) => {
+            const dayDiff = this.dayOptions.indexOf(a.day) - this.dayOptions.indexOf(b.day);
+            if (dayDiff !== 0) return dayDiff;
+            return a.time.localeCompare(b.time);
+        });
+    },
+
+    syncScheduleDetail() {
+        this.jadwalDetail = this.scheduleSlots.map(slot => `${slot.day} (${slot.time})`).join(', ');
+        this.saveToSession();
+    },
+
+    addScheduleSlot() {
+        if (!this.selectedDay || !this.selectedTime) return;
+
+        if (this.scheduleSlots.length >= this.perMinggu) {
+            return;
+        }
+
+        const normalizedTime = this.selectedTime.slice(0, 5);
+        const exists = this.scheduleSlots.some(slot => slot.day === this.selectedDay && slot.time === normalizedTime);
+        if (exists) {
+            return;
+        }
+
+        this.scheduleSlots.push({ day: this.selectedDay, time: normalizedTime });
+        this.sortScheduleSlots();
+        this.syncScheduleDetail();
+    },
+
+    removeScheduleSlot(index) {
+        this.scheduleSlots.splice(index, 1);
+        this.syncScheduleDetail();
+    },
+
+    autoGenerateSchedule() {
+        const count = Math.max(1, Math.min(this.perMinggu, this.dayOptions.length));
+        const time = (this.selectedTime || '16:00').slice(0, 5);
+        this.scheduleSlots = this.dayOptions.slice(0, count).map(day => ({ day, time }));
+        this.syncScheduleDetail();
     },
 
     pilihPaket(tipe) {
@@ -99,17 +167,6 @@
         this.saveToSession();
     },
 
-    handleFileUpload(event) {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                this.buktiTransfer = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-    },
-
     get totalPrice() {
         if (!this.jenjang || this.selectedMapel.length === 0) return 0;
         let subtotalMapel = 0;
@@ -130,7 +187,7 @@
         return Math.round(total);
     }
 }"
-x-init="$watch('step', () => saveToSession()); $watch('metode', () => saveToSession()); $watch('jenjang', () => saveToSession()); $watch('mauMengaji', () => saveToSession()); $watch('lokasi', () => saveToSession()); $watch('selectedMapel', () => saveToSession()); $watch('extraHours', () => saveToSession());"
+x-init="initScheduleBuilder(); $watch('step', () => saveToSession()); $watch('metode', () => saveToSession()); $watch('jenjang', () => saveToSession()); $watch('mauMengaji', () => saveToSession()); $watch('lokasi', () => saveToSession()); $watch('selectedMapel', () => saveToSession()); $watch('extraHours', () => saveToSession()); $watch('perMinggu', () => { if (scheduleSlots.length > perMinggu) { scheduleSlots = scheduleSlots.slice(0, perMinggu); syncScheduleDetail(); } saveToSession(); });"
 class="relative">
 
     {{-- Header Section --}}
@@ -182,6 +239,7 @@ class="relative">
     <input type="hidden" name="selected_subjects" :value="JSON.stringify(selectedMapel)">
     <input type="hidden" name="lokasi_cabang" :value="lokasi">
     <input type="hidden" name="alamat_siswa" :value="alamatSiswa">
+        <input type="hidden" name="payment_method" value="midtrans">
                     
                     <template x-for="mapel in selectedMapel">
                         <input type="hidden" name="selected_mapel[]" :value="mapel">
@@ -402,13 +460,53 @@ class="relative">
             </h3>
             <div class="bg-white border-2 border-slate-100 rounded-[2.5rem] p-8 shadow-sm space-y-4">
                 <div class="flex items-center gap-3 ml-2">
-                    <i class="fas fa-pen-to-square text-blue-600 text-xs"></i>
-                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Detail Hari & Jam Belajar</label>
+                    <i class="fas fa-calendar-check text-blue-600 text-xs"></i>
+                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Pilih Hari & Jam (Format Otomatis)</label>
                 </div>
+
+                <div class="grid md:grid-cols-[1fr_1fr_auto_auto] gap-3 items-end">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Hari</label>
+                        <select x-model="selectedDay" @change="saveToSession()" class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none">
+                            <template x-for="day in dayOptions" :key="day">
+                                <option :value="day" x-text="day"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Jam Belajar</label>
+                        <input type="time" x-model="selectedTime" @change="saveToSession()" class="w-full bg-slate-50 border-2 border-slate-100 focus:border-blue-500 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none">
+                    </div>
+                    <button type="button" @click="addScheduleSlot()"
+                            :class="scheduleSlots.length >= perMinggu ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'"
+                            class="h-[52px] px-5 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">
+                        Tambah
+                    </button>
+                    <button type="button" @click="autoGenerateSchedule()" class="h-[52px] px-5 bg-slate-900 hover:bg-slate-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">
+                        Auto Isi
+                    </button>
+                </div>
+
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-1">
+                    Jadwal dipilih <span x-text="scheduleSlots.length"></span> dari <span x-text="perMinggu"></span> pertemuan per minggu.
+                </p>
+
+                <div class="flex flex-wrap gap-2 min-h-[38px]">
+                    <template x-for="(slot, index) in scheduleSlots" :key="slot.day + '-' + slot.time">
+                        <span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 text-[11px] font-bold">
+                            <span x-text="slot.day + ' (' + slot.time + ')' "></span>
+                            <button type="button" @click="removeScheduleSlot(index)" class="text-blue-400 hover:text-rose-500">
+                                <i class="fas fa-times text-[10px]"></i>
+                            </button>
+                        </span>
+                    </template>
+                </div>
+
                 <div class="relative">
-                    <textarea x-model="jadwalDetail" @input="saveToSession()"
-                              placeholder="Contoh: Senin (16:00), Rabu (16:00), dan Jumat (19:00)..."
-                              class="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-[1.5rem] p-5 text-sm transition-all min-h-[100px] outline-none placeholder:text-slate-300"></textarea>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Format Terkirim ke Admin</label>
+                    <textarea x-model="jadwalDetail" readonly
+                              placeholder="Jadwal akan dibuat otomatis..."
+                              class="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] p-5 text-sm text-slate-600 font-medium transition-all min-h-[90px] outline-none placeholder:text-slate-300"></textarea>
                 </div>
             </div>
         </section>
@@ -540,7 +638,7 @@ class="relative">
                     
                     @auth
                         <button type="button" @click="goToStep(3)"
-                                :disabled="!jenjang || !kelas || selectedMapel.length === 0" 
+                                :disabled="!jenjang || !kelas || selectedMapel.length === 0 || scheduleSlots.length === 0" 
                                 class="flex-[2] md:px-12 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold uppercase text-[10px] tracking-widest shadow-lg disabled:opacity-50 transition-all">
                             LANJUT BAYAR
                         </button>
@@ -571,48 +669,57 @@ class="relative">
                     </div>
                     
                     <div class="pt-4 bg-white/5 p-6 rounded-2xl border border-white/10">
-                        <p class="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-1">TOTAL TRANSFER (+ KODE UNIK)</p>
+                        <p class="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-1">TOTAL PEMBAYARAN</p>
                         <h3 class="text-4xl font-black tracking-tighter text-orange-500" 
-                            x-text="'Rp ' + (totalPrice + parseInt('{{ substr(preg_replace('/[^0-9]/', '', Auth::user()->whatsapp ?? '000'), -3) }}')).toLocaleString('id-ID')">
+                            x-text="'Rp ' + totalPrice.toLocaleString('id-ID')">
                         </h3>
-                        <p class="text-[9px] text-white/60 mt-2 italic">*3 digit terakhir adalah kode unik verifikasi.</p>
+                        <p class="text-[9px] text-white/60 mt-2 italic">*Nominal final dibayarkan sesuai yang tertera saat checkout.</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- TRANSFER --}}
+        {{-- PAYMENT GATEWAY --}}
         <div class="space-y-6">
-            <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">TRANSFER PEMBAYARAN</h3>
-            <div class="bg-blue-50 border-2 border-blue-100 rounded-[2rem] p-6 text-center">
-                <span class="text-blue-600 font-black text-[10px] px-3 py-1 bg-white rounded-lg border border-blue-200 uppercase">BCA - Mandala Group</span>
-                <div class="text-3xl font-black text-slate-800 tracking-wider py-2">8901 2233 44</div>
-                <p class="text-[10px] font-bold text-slate-400 uppercase">A.N MANDALA ACADEMY</p>
+            <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">PEMBAYARAN ONLINE AMAN</h3>
+            <div class="bg-blue-50 border-2 border-blue-100 rounded-[2rem] p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-blue-600 font-black text-[10px] px-3 py-1 bg-white rounded-lg border border-blue-200 uppercase">Secure Checkout</span>
+                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">Encrypted</span>
+                </div>
+                <p class="text-sm text-slate-700 font-bold leading-relaxed">Lanjutkan ke halaman pembayaran aman untuk menyelesaikan transaksi secara otomatis.</p>
+                <div class="mt-4 grid grid-cols-1 gap-2">
+                    <div class="flex items-center gap-2 text-[11px] text-slate-600 font-medium">
+                        <i class="fas fa-check-circle text-emerald-500"></i>
+                        <span>Status pembayaran akan update otomatis setelah transaksi sukses.</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-[11px] text-slate-600 font-medium">
+                        <i class="fas fa-check-circle text-emerald-500"></i>
+                        <span>Tidak perlu upload bukti transfer manual.</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-[11px] text-slate-600 font-medium">
+                        <i class="fas fa-info-circle text-blue-500"></i>
+                        <span>Anda dapat memilih metode pembayaran digital yang tersedia saat checkout.</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="space-y-3">
-                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">UPLOAD BUKTI TRANSFER</span>
-                <label class="block border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center cursor-pointer hover:bg-slate-50 relative h-40 flex items-center justify-center overflow-hidden">
-                    <input type="file" name="bukti_pembayaran" id="file_bukti" @change="handleFileUpload" class="hidden" accept="image/*" required>
-                    <template x-if="!buktiTransfer">
-                        <div class="text-slate-400">
-                            <i class="fas fa-camera text-2xl mb-2"></i>
-                            <p class="text-[10px] font-bold uppercase">KLIK UNTUK UPLOAD</p>
-                        </div>
-                    </template>
-                    <template x-if="buktiTransfer">
-                        <img :src="buktiTransfer" class="absolute inset-0 w-full h-full object-cover rounded-[1.5rem]">
-                    </template>
-                </label>
+            <div class="bg-slate-50 border border-slate-200 rounded-[2rem] p-6">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Alur Pembayaran</p>
+                <ol class="space-y-2 text-sm text-slate-600 font-medium list-decimal pl-4">
+                    <li>Klik tombol konfirmasi pembayaran.</li>
+                    <li>Selesaikan pembayaran di halaman checkout.</li>
+                    <li>Kembali ke dashboard, status transaksi akan sinkron otomatis.</li>
+                </ol>
             </div>
         </div>
     </div>
 
     <div class="mt-12 flex flex-col md:flex-row gap-4">
         <button type="button" @click="goToStep(2)" class="flex-1 bg-slate-100 text-slate-500 py-6 rounded-2xl font-bold uppercase">KEMBALI</button>
-        <button type="button" @click="konfirmasiKirim()" :disabled="!buktiTransfer" 
-                class="flex-[2] bg-orange-500 text-white py-6 rounded-2xl font-bold uppercase tracking-[0.2em] shadow-xl disabled:opacity-50">
-            KONFIRMASI SEKARANG
+        <button type="button" @click="konfirmasiKirim()"
+                class="flex-[2] bg-orange-500 hover:bg-orange-400 text-white py-6 rounded-2xl font-bold uppercase tracking-[0.2em] shadow-xl transition-all">
+            BAYAR SEKARANG
         </button>
     </div>
 </div>
@@ -627,43 +734,50 @@ class="relative">
 <script>
     window.konfirmasiKirim = function() {
         const theForm = document.getElementById('formPendaftaran');
-        const fileInput = document.getElementById('file_bukti');
-
-        if (!fileInput.files || fileInput.files.length === 0) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Bukti Belum Diupload',
-                text: 'Silakan pilih foto bukti transfer terlebih dahulu.',
-                confirmButtonColor: '#ef4444',
-                customClass: { popup: 'rounded-[2rem]' }
-            });
-            return;
-        }
 
         Swal.fire({
-            title: 'Kirim Pendaftaran?',
-            text: "Pastikan bukti transfer sudah sesuai nominal!",
+            title: 'Lanjutkan Pembayaran?',
+            text: 'Anda akan diarahkan ke halaman checkout aman untuk menyelesaikan pembayaran.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#2563eb',
             cancelButtonColor: '#64748b',
-            confirmButtonText: 'YA, KIRIM!',
+            confirmButtonText: 'YA, LANJUTKAN!',
             cancelButtonText: 'CEK LAGI',
             customClass: { popup: 'rounded-[2rem]' }
         }).then((result) => {
             if (result.isConfirmed) {
                 Swal.fire({
                     title: 'Memproses...',
-                    text: 'Sedang mengirim data ke admin',
+                    text: 'Menyiapkan transaksi pembayaran',
                     allowOutsideClick: false,
                     showConfirmButton: false,
                     didOpen: () => { Swal.showLoading() }
                 });
-                sessionStorage.clear();
                 theForm.submit();
             }
         });
     }
+
+    @if(session('error'))
+        Swal.fire({
+            title: 'Pembayaran Belum Berhasil',
+            text: "{{ session('error') }}",
+            icon: 'error',
+            confirmButtonColor: '#2563eb',
+            customClass: { popup: 'rounded-[2rem]' }
+        });
+    @endif
+
+    @if($errors->any())
+        Swal.fire({
+            title: 'Data Belum Lengkap',
+            text: "{{ $errors->first() }}",
+            icon: 'error',
+            confirmButtonColor: '#2563eb',
+            customClass: { popup: 'rounded-[2rem]' }
+        });
+    @endif
 
     @if(session('success'))
         sessionStorage.clear(); 

@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\Mentor; 
 use App\Models\Program;
@@ -178,15 +180,184 @@ public function login()
      */
 
     // --- DASHBOARD & PEMBAYARAN ---
-
-  public function adminOverview() {
+public function adminOverview(Request $request) { 
     try {
+        $currentYear = (int) now()->year;
+
+        $availableYears = DB::table('enrollments')
+            ->where('status_pembayaran', 'verified')
+            ->whereNotNull('created_at')
+            ->selectRaw('YEAR(created_at) as year')
+            ->distinct()
+            ->orderByDesc('year')
+            ->pluck('year')
+            ->filter()
+            ->map(fn ($year) => (int) $year)
+            ->values()
+            ->all();
+
+        if (!in_array($currentYear, $availableYears, true)) {
+            $availableYears[] = $currentYear;
+            rsort($availableYears);
+        }
+
+        if (empty($availableYears)) {
+            $availableYears = [$currentYear];
+        }
+
+        $filterTahun = (int) $request->query('tahun', $currentYear);
+        if (!in_array($filterTahun, $availableYears, true)) {
+            $filterTahun = (int) $availableYears[0];
+        }
+
+        $filterBulanInput = $request->query('bulan', 'semua');
+        $filterBulan = $filterBulanInput === 'semua' ? 'semua' : (int) $filterBulanInput;
+        if ($filterBulan !== 'semua' && ($filterBulan < 1 || $filterBulan > 12)) {
+            $filterBulan = 'semua';
+        }
+
+        $queryPendapatan = DB::table('enrollments')
+            ->where('status_pembayaran', 'verified')
+            ->whereYear('created_at', $filterTahun);
+
+        if ($filterBulan !== 'semua') {
+            $queryPendapatan->whereMonth('created_at', $filterBulan);
+        }
+
         $stats = [
-            'total_pendapatan' => DB::table('enrollments')->where('status_pembayaran', 'verified')->sum('total_harga'),
+            'total_pendapatan' => (clone $queryPendapatan)->sum('total_harga'),
             'total_siswa'     => DB::table('enrollments')->where('status_pembayaran', 'verified')->distinct('user_id')->count(), 
             'total_mentor'    => User::where('role', 'mentor')->count(),
             'total_program'   => DB::table('programs')->count(),
         ];
+
+        if ($filterBulan === 'semua') {
+            $trenRaw = (clone $queryPendapatan)
+                ->selectRaw('MONTH(created_at) as label_num, SUM(total_harga) as total')
+                ->groupBy('label_num')
+                ->orderBy('label_num')
+                ->get()
+                ->keyBy('label_num');
+
+            $trenLabels = [];
+            $trenData = [];
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $trenLabels[] = Carbon::createFromDate($filterTahun, $bulan, 1)->translatedFormat('M');
+                $trenData[] = (float) ($trenRaw[$bulan]->total ?? 0);
+            }
+
+            $grafikPendapatan = [
+                'title' => "Tren Pendapatan Tahun {$filterTahun}",
+                'labels' => $trenLabels,
+                'data' => $trenData,
+            ];
+
+            $tahunSebelumnya = $filterTahun - 1;
+            $perbandinganTahunIni = DB::table('enrollments')
+                ->where('status_pembayaran', 'verified')
+                ->whereYear('created_at', $filterTahun)
+                ->selectRaw('MONTH(created_at) as label_num, SUM(total_harga) as total')
+                ->groupBy('label_num')
+                ->orderBy('label_num')
+                ->get()
+                ->keyBy('label_num');
+
+            $perbandinganTahunLalu = DB::table('enrollments')
+                ->where('status_pembayaran', 'verified')
+                ->whereYear('created_at', $tahunSebelumnya)
+                ->selectRaw('MONTH(created_at) as label_num, SUM(total_harga) as total')
+                ->groupBy('label_num')
+                ->orderBy('label_num')
+                ->get()
+                ->keyBy('label_num');
+
+            $labelsPerbandingan = [];
+            $dataTahunIni = [];
+            $dataTahunLalu = [];
+
+            for ($bulan = 1; $bulan <= 12; $bulan++) {
+                $labelsPerbandingan[] = Carbon::createFromDate($filterTahun, $bulan, 1)->translatedFormat('M');
+                $dataTahunIni[] = (float) ($perbandinganTahunIni[$bulan]->total ?? 0);
+                $dataTahunLalu[] = (float) ($perbandinganTahunLalu[$bulan]->total ?? 0);
+            }
+
+            $grafikPerbandingan = [
+                'title' => "Perbandingan {$filterTahun} vs {$tahunSebelumnya}",
+                'labels' => $labelsPerbandingan,
+                'datasets' => [
+                    [
+                        'label' => "Tahun {$filterTahun}",
+                        'data' => $dataTahunIni,
+                        'backgroundColor' => 'rgba(37, 99, 235, 0.55)',
+                        'borderColor' => '#2563eb',
+                    ],
+                    [
+                        'label' => "Tahun {$tahunSebelumnya}",
+                        'data' => $dataTahunLalu,
+                        'backgroundColor' => 'rgba(249, 115, 22, 0.55)',
+                        'borderColor' => '#f97316',
+                    ],
+                ],
+            ];
+        } else {
+            $periodeSaatIni = Carbon::createFromDate($filterTahun, $filterBulan, 1);
+            $periodeSebelumnya = (clone $periodeSaatIni)->subMonthNoOverflow();
+            $maxHari = max($periodeSaatIni->daysInMonth, $periodeSebelumnya->daysInMonth);
+
+            $trenRaw = (clone $queryPendapatan)
+                ->selectRaw('DAY(created_at) as label_num, SUM(total_harga) as total')
+                ->groupBy('label_num')
+                ->orderBy('label_num')
+                ->get()
+                ->keyBy('label_num');
+
+            $perbandinganSebelumnya = DB::table('enrollments')
+                ->where('status_pembayaran', 'verified')
+                ->whereYear('created_at', $periodeSebelumnya->year)
+                ->whereMonth('created_at', $periodeSebelumnya->month)
+                ->selectRaw('DAY(created_at) as label_num, SUM(total_harga) as total')
+                ->groupBy('label_num')
+                ->orderBy('label_num')
+                ->get()
+                ->keyBy('label_num');
+
+            $trenLabels = [];
+            $trenData = [];
+            $dataSaatIni = [];
+            $dataSebelumnya = [];
+
+            for ($hari = 1; $hari <= $maxHari; $hari++) {
+                $trenLabels[] = (string) $hari;
+                $trenData[] = (float) ($trenRaw[$hari]->total ?? 0);
+                $dataSaatIni[] = (float) ($trenRaw[$hari]->total ?? 0);
+                $dataSebelumnya[] = (float) ($perbandinganSebelumnya[$hari]->total ?? 0);
+            }
+
+            $grafikPendapatan = [
+                'title' => 'Tren Pendapatan ' . $periodeSaatIni->translatedFormat('F Y'),
+                'labels' => $trenLabels,
+                'data' => $trenData,
+            ];
+
+            $grafikPerbandingan = [
+                'title' => 'Perbandingan ' . $periodeSaatIni->translatedFormat('F Y') . ' vs ' . $periodeSebelumnya->translatedFormat('F Y'),
+                'labels' => $trenLabels,
+                'datasets' => [
+                    [
+                        'label' => $periodeSaatIni->translatedFormat('F Y'),
+                        'data' => $dataSaatIni,
+                        'backgroundColor' => 'rgba(37, 99, 235, 0.55)',
+                        'borderColor' => '#2563eb',
+                    ],
+                    [
+                        'label' => $periodeSebelumnya->translatedFormat('F Y'),
+                        'data' => $dataSebelumnya,
+                        'backgroundColor' => 'rgba(249, 115, 22, 0.55)',
+                        'borderColor' => '#f97316',
+                    ],
+                ],
+            ];
+        }
 
         $recent_enrollments = DB::table('enrollments')
             ->join('users', 'enrollments.user_id', '=', 'users.id')
@@ -198,11 +369,12 @@ public function login()
                 'programs.name as program_name'
             )
             ->orderBy('enrollments.created_at', 'desc')
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
-        // TRANSFORMASI DATA UNTUK TAMPILAN DASHBOARD
+        // TRANSFORMASI DATA UNTUK TAMPILAN DASHBOARD & POP-UP RINCI
         $recent_enrollments->getCollection()->transform(function($item) {
-            // 1. REVISI LOGIKA LOKASI: Menyesuaikan dengan kolom 'alamat_semarang' di database
+            // 1. Logika Lokasi
             $alamatSemarang = trim($item->alamat_semarang ?? '');
             $cabang = trim($item->lokasi_cabang ?? '');
             
@@ -217,7 +389,7 @@ public function login()
                 $item->is_online = true;
             }
             
-            // 2. Logika Program: Mengubah ID menjadi Nama Mata Pelajaran asli
+            // 2. Logika Nama Program/Mapel (Untuk Detail di Pop-up)
             $mapelRaw = $item->mapel;
             $mapelIds = json_decode($mapelRaw, true);
             
@@ -234,15 +406,23 @@ public function login()
                 ? implode(', ', $mapelNames) 
                 : ( (!empty($mapelRaw) && $mapelRaw !== '0') ? $mapelRaw : $item->program_name );
             
-            // 3. REVISI LOGIKA KELAS: Memastikan data dari kolom 'kelas' ter-passing ke view
+            // 3. Detail Tambahan untuk Pop-up
             $item->display_kelas = $item->kelas ?: '-';
+            $item->format_harga = 'Rp ' . number_format($item->total_harga, 0, ',', '.');
             
             return $item;
         });
 
-        $mentors = User::where('role', 'mentor')->get();
-
-        return view('admin.overview', compact('stats', 'recent_enrollments', 'mentors'));
+        // Mengirimkan semua variabel yang dibutuhkan ke View
+        return view('admin.overview', compact(
+            'stats', 
+            'recent_enrollments', 
+            'grafikPendapatan', 
+            'grafikPerbandingan',
+            'filterBulan',
+            'filterTahun',
+            'availableYears'
+        ));
         
     } catch (\Exception $e) {
         return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
@@ -262,9 +442,15 @@ public function login()
         ->orderBy('enrollments.created_at', 'desc')
         ->get()
         ->map(function($item) {
-            // Ambil 3 digit terakhir dari WA untuk ditampilkan sebagai kode unik
-            $cleanPhone = preg_replace('/[^0-9]/', '', $item->user_wa ?? '000');
-            $item->kode_unik_tampil = substr($cleanPhone, -3);
+            $item->is_midtrans_payment = ($item->payment_method ?? 'manual') === 'midtrans';
+
+            // Kode unik hanya dipakai untuk transfer manual.
+            if ($item->is_midtrans_payment) {
+                $item->kode_unik_tampil = null;
+            } else {
+                $cleanPhone = preg_replace('/[^0-9]/', '', $item->user_wa ?? '000');
+                $item->kode_unik_tampil = substr($cleanPhone, -3);
+            }
             
             // Format Lokasi
             if (str_contains(strtolower($item->metode), 'online')) {
@@ -280,10 +466,26 @@ public function login()
 }
 
     public function verifyEnrollment($id) {
-        DB::table('enrollments')->where('id', $id)->update([
+        $enrollment = DB::table('enrollments')->where('id', $id)->first();
+        if (!$enrollment) {
+            return back()->with('error', 'Data pembayaran tidak ditemukan.');
+        }
+
+        $updatePayload = [
             'status_pembayaran' => 'verified',
-            'updated_at' => now()
-        ]);
+            'paid_at' => $enrollment->paid_at ?? now(),
+            'updated_at' => now(),
+        ];
+
+        // Untuk Midtrans, izinkan admin override saat status gateway belum settlement.
+        if (($enrollment->payment_method ?? 'manual') === 'midtrans') {
+            $gatewayStatus = strtolower((string) ($enrollment->midtrans_transaction_status ?? ''));
+            if (!in_array($gatewayStatus, ['capture', 'settlement'], true)) {
+                $updatePayload['midtrans_transaction_status'] = 'manual_verified';
+            }
+        }
+
+        DB::table('enrollments')->where('id', $id)->update($updatePayload);
         return back()->with('success', 'Pembayaran berhasil diverifikasi!');
     }
 
@@ -297,18 +499,121 @@ public function login()
     }
 
     public function updateJadwal(Request $request, $id) {
+        return $this->assignMentorToEnrollment($request, $id);
+    }
+
+    public function adminMentorPlacements(Request $request) {
+        $statusFilter = $request->query('status', 'butuh_aksi');
+
+        $placementsQuery = DB::table('enrollments')
+            ->join('users as students', 'enrollments.user_id', '=', 'students.id')
+            ->join('programs', 'enrollments.program_id', '=', 'programs.id')
+            ->leftJoin('users as mentors', 'enrollments.mentor_id', '=', 'mentors.id')
+            ->where('enrollments.status_pembayaran', 'verified')
+            ->select(
+                'enrollments.id',
+                'enrollments.user_id',
+                'enrollments.mentor_id',
+                'enrollments.jadwal_detail',
+                'enrollments.kelas',
+                'enrollments.lokasi_cabang',
+                'enrollments.metode',
+                'enrollments.mentor_assignment_status',
+                'enrollments.mentor_assignment_note',
+                'enrollments.mentor_requested_at',
+                'enrollments.mentor_responded_at',
+                'students.name as student_name',
+                'programs.name as program_name',
+                'programs.jenjang as program_jenjang',
+                'mentors.name as mentor_name'
+            );
+
+        if ($statusFilter === 'butuh_aksi') {
+            $placementsQuery->where(function ($query) {
+                $query->whereNull('enrollments.mentor_id')
+                    ->orWhereIn('enrollments.mentor_assignment_status', ['pending', 'rejected']);
+            });
+        } elseif ($statusFilter === 'unassigned') {
+            $placementsQuery->whereNull('enrollments.mentor_id');
+        } elseif ($statusFilter === 'approved') {
+            $placementsQuery->where('enrollments.mentor_assignment_status', 'approved')
+                ->whereNotNull('enrollments.mentor_id');
+        } elseif (in_array($statusFilter, ['pending', 'rejected'], true)) {
+            $placementsQuery->where('enrollments.mentor_assignment_status', $statusFilter);
+        }
+
+        $placements = $placementsQuery
+            ->orderByRaw("CASE WHEN enrollments.mentor_assignment_status = 'pending' THEN 0 WHEN enrollments.mentor_assignment_status = 'rejected' THEN 1 ELSE 2 END")
+            ->orderByDesc('enrollments.created_at')
+            ->paginate(12)
+            ->withQueryString();
+
+        $placements->getCollection()->transform(function ($item) {
+            $item->mentor_assignment_status = $item->mentor_assignment_status
+                ?: ($item->mentor_id ? 'approved' : 'unassigned');
+
+            $item->potential_conflicts = [];
+            if ($item->mentor_id && !empty($item->jadwal_detail)) {
+                $item->potential_conflicts = $this->getMentorScheduleConflicts((int) $item->mentor_id, $item->jadwal_detail, (int) $item->id);
+            }
+
+            return $item;
+        });
+
+        $placementStats = [
+            'pending' => DB::table('enrollments')->where('status_pembayaran', 'verified')->where('mentor_assignment_status', 'pending')->count(),
+            'unassigned' => DB::table('enrollments')->where('status_pembayaran', 'verified')->whereNull('mentor_id')->count(),
+            'approved' => DB::table('enrollments')->where('status_pembayaran', 'verified')->where('mentor_assignment_status', 'approved')->whereNotNull('mentor_id')->count(),
+            'rejected' => DB::table('enrollments')->where('status_pembayaran', 'verified')->where('mentor_assignment_status', 'rejected')->count(),
+        ];
+
+        $mentors = User::where('role', 'mentor')
+            ->select('id', 'name', 'specialization')
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.mentor_placements', compact('placements', 'mentors', 'placementStats', 'statusFilter'));
+    }
+
+    public function assignMentorToEnrollment(Request $request, $id) {
         $request->validate([
             'mentor_id' => 'required|exists:users,id',
-            'jadwal_pertemuan' => 'nullable|string',
         ]);
 
+        $mentor = User::where('id', $request->mentor_id)->where('role', 'mentor')->first();
+        if (!$mentor) {
+            return back()->with('error', 'Mentor tidak valid.');
+        }
+
+        $enrollment = DB::table('enrollments')
+            ->where('id', $id)
+            ->where('status_pembayaran', 'verified')
+            ->first();
+
+        if (!$enrollment) {
+            return back()->with('error', 'Data siswa tidak ditemukan atau belum diverifikasi.');
+        }
+
+        $jadwalDetail = trim((string) ($enrollment->jadwal_detail ?? ''));
+        if ($jadwalDetail !== '') {
+            $conflicts = $this->getMentorScheduleConflicts((int) $mentor->id, $jadwalDetail, (int) $enrollment->id);
+            if (!empty($conflicts)) {
+                $firstConflict = $conflicts[0];
+                return back()->with('error', 'Penempatan ditolak. Jadwal tabrakan dengan siswa ' . $firstConflict['student_name'] . ' (' . $firstConflict['day'] . ' ' . $firstConflict['time_range'] . ').');
+            }
+        }
+
         DB::table('enrollments')->where('id', $id)->update([
-            'mentor_id' => $request->mentor_id,
-            'jadwal_pertemuan' => $request->jadwal_pertemuan, 
+            'mentor_id' => $mentor->id,
+            'mentor_assignment_status' => 'pending',
+            'mentor_assignment_note' => null,
+            'mentor_requested_at' => now(),
+            'mentor_responded_at' => null,
+            'assigned_by_admin_id' => Auth::id(),
             'updated_at' => now(),
         ]);
 
-        return back()->with('success', 'Jadwal dan Mentor berhasil ditetapkan!');
+        return back()->with('success', 'Penempatan mentor dikirim. Menunggu persetujuan mentor.');
     }
 
     // --- MANAJEMEN PROGRAM ---
@@ -891,39 +1196,51 @@ public function login()
     }
 
    public function enrollProgram(Request $request) {
-    // 1. Validasi Input (Menambahkan field 'kelas' ke dalam validasi)
+    $paymentMethod = $request->input('payment_method', 'manual');
+    if (!in_array($paymentMethod, ['manual', 'midtrans'], true)) {
+        $paymentMethod = 'manual';
+    }
+    $request->merge(['payment_method' => $paymentMethod]);
+
     $request->validate([
         'program_id' => 'required',
         'jenjang' => 'required',
-        'kelas' => 'required', // REVISI: Tambahkan validasi kelas
+        'kelas' => 'required',
         'tipe_paket' => 'required',
         'per_minggu' => 'required',
         'jadwal_detail' => 'required',
-        'bukti_pembayaran' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        'bukti_pembayaran' => $paymentMethod === 'manual'
+            ? 'required|image|mimes:jpg,jpeg,png,webp|max:2048'
+            : 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         'total_harga' => 'required',
+        'payment_method' => 'required|in:manual,midtrans',
     ]);
 
     try {
         DB::beginTransaction();
         $user = Auth::user();
 
-        // 2. CEK VALIDASI PROGRAM ID
-        $programExists = DB::table('programs')->where('id', $request->program_id)->exists();
-        if (!$programExists) {
+        $program = DB::table('programs')->where('id', $request->program_id)->first();
+        if (!$program) {
             return redirect()->back()->with('error', 'Gagal: Program ID ('.$request->program_id.') tidak ditemukan di database.');
         }
-        
-        // 3. Logika Kode Unik (3 digit WA)
-        $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp ?? '000');
-        $uniqueCode = (int) substr($cleanPhone, -3); 
+
         $baseAmount = (int) preg_replace('/[^0-9]/', '', $request->total_harga);
-        $finalAmount = $baseAmount + $uniqueCode;
+        $finalAmount = $baseAmount;
 
-        // 4. Simpan File Bukti
-        $path = $request->file('bukti_pembayaran')->store('pembayaran/reguler', 'public');
-        $namaFile = basename($path);
+        if ($paymentMethod === 'manual') {
+            // Kode unik dipakai untuk transfer manual agar rekonsiliasi lebih mudah.
+            $cleanPhone = preg_replace('/[^0-9]/', '', $user->whatsapp ?? '000');
+            $uniqueCode = (int) substr($cleanPhone, -3);
+            $finalAmount += $uniqueCode;
+        }
 
-        // 5. Proses Nama Mapel (Sinkronisasi Reguler & Intensif)
+        $buktiPembayaranPath = null;
+        if ($paymentMethod === 'manual') {
+            $path = $request->file('bukti_pembayaran')->store('pembayaran/reguler', 'public');
+            $buktiPembayaranPath = 'pembayaran/reguler/' . basename($path);
+        }
+
         if ($request->tipe_paket === 'intensif') {
             $mapelString = $request->mapel ?? 'Program Intensif';
         } else {
@@ -931,7 +1248,7 @@ public function login()
             if (!is_array($mapelIds)) {
                 $mapelIds = [$request->program_id];
             }
-            
+
             $mapelNames = DB::table('programs')
                 ->whereIn('id', $mapelIds)
                 ->pluck('name')
@@ -942,39 +1259,327 @@ public function login()
 
         $isOnline = str_contains(strtolower($request->lokasi_cabang ?? ''), 'online');
 
-        // 6. Simpan ke Database (Menambahkan kolom 'kelas' ke query insert)
-        DB::table('enrollments')->insert([
+        $enrollmentId = DB::table('enrollments')->insertGetId([
             'user_id' => $user->id,
             'program_id' => $request->program_id,
             'jenjang' => $request->jenjang,
-            'kelas' => $request->kelas, // REVISI: Simpan data tingkat kelas (misal: 1 SD, 7 SMP)
+            'kelas' => $request->kelas,
             'tipe_paket' => $request->tipe_paket,
             'per_minggu' => $request->per_minggu,
             'extra_hours' => $request->extra_hours ?? 0,
             'is_mengaji' => $request->is_mengaji ?? 0,
             'jadwal_detail' => $request->jadwal_detail,
-            'mapel' => $mapelString, 
+            'mapel' => $mapelString,
             'metode' => $isOnline ? 'online' : 'offline',
             'lokasi_cabang' => $request->lokasi_cabang,
-            'alamat_semarang' => $request->alamat_siswa ?? '-', 
+            'alamat_semarang' => $request->alamat_siswa ?? '-',
             'total_harga' => $finalAmount,
             'status_pembayaran' => 'pending',
-            'bukti_pembayaran' => 'pembayaran/reguler/' . $namaFile,
-            'jumlah_pertemuan' => ($request->tipe_paket === 'intensif') ? 12 : 8, 
+            'payment_method' => $paymentMethod,
+            'bukti_pembayaran' => $buktiPembayaranPath,
+            'jumlah_pertemuan' => ($request->tipe_paket === 'intensif') ? 12 : 8,
             'pertemuan_selesai' => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
+        $snapRedirectUrl = null;
+
+        if ($paymentMethod === 'midtrans') {
+            $serverKey = config('midtrans.server_key');
+            $clientKey = config('midtrans.client_key');
+
+            if (
+                empty($serverKey)
+                || empty($clientKey)
+                || str_contains($serverKey, 'REPLACE_WITH_YOUR_SANDBOX_SERVER_KEY')
+                || str_contains($clientKey, 'REPLACE_WITH_YOUR_SANDBOX_CLIENT_KEY')
+            ) {
+                Log::error('Midtrans server key is missing in configuration.');
+                throw new \Exception('Pembayaran online belum aktif. Silakan hubungi admin untuk mengaktifkan gateway pembayaran.');
+            }
+
+            $orderId = 'MANDALA-ENR-' . $enrollmentId . '-' . now()->format('YmdHis');
+
+            DB::table('enrollments')->where('id', $enrollmentId)->update([
+                'midtrans_order_id' => $orderId,
+                'midtrans_transaction_status' => 'initiated',
+                'updated_at' => now(),
+            ]);
+
+            $midtransBaseUrl = config('midtrans.is_production')
+                ? 'https://app.midtrans.com'
+                : 'https://app.sandbox.midtrans.com';
+
+            $payload = [
+                'transaction_details' => [
+                    'order_id' => $orderId,
+                    'gross_amount' => (int) $finalAmount,
+                ],
+                'customer_details' => [
+                    'first_name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->whatsapp,
+                ],
+                'item_details' => [
+                    [
+                        'id' => (string) $program->id,
+                        'price' => (int) $finalAmount,
+                        'quantity' => 1,
+                        'name' => substr(($program->name ?? 'Program Reguler') . ' - ' . ($request->kelas ?? '-'), 0, 50),
+                    ],
+                ],
+                'callbacks' => [
+                    'finish' => route('midtrans.finish') . '?order_id=' . $orderId,
+                    'unfinish' => route('midtrans.unfinish') . '?order_id=' . $orderId,
+                    'error' => route('midtrans.error') . '?order_id=' . $orderId,
+                ],
+                'custom_field1' => 'enrollment_id:' . $enrollmentId,
+            ];
+
+            $http = Http::withBasicAuth($serverKey, '')
+                ->acceptJson()
+                ->asJson();
+
+            if (config('midtrans.disable_ssl_verification')) {
+                $http = $http->withoutVerifying();
+            }
+
+            $response = $http->post($midtransBaseUrl . '/snap/v1/transactions', $payload);
+            if (!$response->successful()) {
+                Log::error('Midtrans create transaction failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                if ($response->status() === 401) {
+                    throw new \Exception('Access Key Midtrans tidak valid atau tidak sesuai mode (Sandbox/Production).');
+                }
+
+                throw new \Exception('Gagal membuat transaksi Midtrans. Coba lagi beberapa saat.');
+            }
+
+            $snapData = $response->json();
+            $snapRedirectUrl = $snapData['redirect_url'] ?? null;
+
+            if (empty($snapRedirectUrl)) {
+                throw new \Exception('Midtrans tidak mengembalikan redirect URL.');
+            }
+
+            DB::table('enrollments')->where('id', $enrollmentId)->update([
+                'midtrans_snap_token' => $snapData['token'] ?? null,
+                'midtrans_payload' => json_encode($snapData),
+                'updated_at' => now(),
+            ]);
+        }
+
         DB::commit();
-        
-        return redirect()->route('siswa.overview')->with('success', 'Pendaftaran Berhasil! Admin akan segera memverifikasi pembayaran Anda.');
-        
+
+        if ($paymentMethod === 'midtrans' && $snapRedirectUrl) {
+            return redirect()->away($snapRedirectUrl);
+        }
+
+        return redirect()->route('siswa.overview')->with('success', 'Pendaftaran berhasil! Menunggu verifikasi admin.');
+
     } catch (\Exception $e) {
         DB::rollBack();
-        return redirect()->back()->with('error', 'Sistem Error: ' . $e->getMessage());
+        Log::error('Program enrollment failed', [
+            'user_id' => Auth::id(),
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        $safePaymentMessages = [
+            'Pembayaran online belum aktif. Silakan hubungi admin untuk mengaktifkan gateway pembayaran.',
+            'Access Key Midtrans tidak valid atau tidak sesuai mode (Sandbox/Production).',
+            'Gagal membuat transaksi Midtrans. Coba lagi beberapa saat.',
+            'Koneksi SSL ke Midtrans gagal di server lokal. Aktifkan MIDTRANS_DISABLE_SSL_VERIFICATION=true untuk testing lokal.',
+        ];
+
+        if (
+            str_contains($e->getMessage(), 'cURL error 60')
+            || str_contains($e->getMessage(), 'SSL certificate problem')
+        ) {
+            $e = new \Exception('Koneksi SSL ke Midtrans gagal di server lokal. Aktifkan MIDTRANS_DISABLE_SSL_VERIFICATION=true untuk testing lokal.');
+        }
+
+        $userMessage = in_array($e->getMessage(), $safePaymentMessages, true)
+            ? $e->getMessage()
+            : 'Pendaftaran belum berhasil diproses. Silakan coba lagi.';
+
+        return redirect()->back()->with('error', $userMessage);
     }
 }
+
+    public function midtransCallback(Request $request)
+    {
+        $payload = $request->all();
+        if (empty($payload)) {
+            $payload = json_decode($request->getContent(), true) ?: [];
+        }
+
+        $orderId = $payload['order_id'] ?? null;
+        $statusCode = (string) ($payload['status_code'] ?? '');
+        $grossAmount = (string) ($payload['gross_amount'] ?? '');
+        $signatureKey = (string) ($payload['signature_key'] ?? '');
+        $serverKey = config('midtrans.server_key');
+
+        if (!$orderId || !$statusCode || !$grossAmount || !$signatureKey || !$serverKey) {
+            return response()->json(['message' => 'Invalid payload'], 400);
+        }
+
+        $generatedSignature = hash('sha512', $orderId . $statusCode . $grossAmount . $serverKey);
+        if (!hash_equals($generatedSignature, $signatureKey)) {
+            return response()->json(['message' => 'Invalid signature'], 403);
+        }
+
+        $this->syncMidtransStatusToEnrollment($payload);
+
+        return response()->json(['message' => 'ok']);
+    }
+
+    public function midtransFinish(Request $request)
+    {
+        $orderId = $request->query('order_id');
+
+        $enrollment = null;
+        if ($orderId) {
+            $statusPayload = $this->fetchMidtransStatus($orderId);
+            if ($statusPayload) {
+                $this->syncMidtransStatusToEnrollment($statusPayload);
+            }
+
+            $enrollment = DB::table('enrollments')
+                ->where('midtrans_order_id', $orderId)
+                ->first();
+        }
+
+        if ($enrollment && $enrollment->status_pembayaran === 'verified') {
+            return redirect()->route('siswa.overview')->with('success', 'Pembayaran berhasil. Selamat datang di dashboard siswa!');
+        }
+
+        if ($enrollment && $enrollment->status_pembayaran === 'pending') {
+            return redirect()->route('siswa.billing')->with('success', 'Pembayaran sedang diproses. Status akan ter-update otomatis.');
+        }
+
+        if ($enrollment && $enrollment->status_pembayaran === 'rejected') {
+            return redirect()->route('siswa.billing')->with('error', 'Pembayaran tidak berhasil. Silakan coba metode pembayaran lain.');
+        }
+
+        return redirect()->route('siswa.overview')->with('success', 'Transaksi telah diproses.');
+    }
+
+    public function adminSyncMidtrans(Request $request)
+    {
+        $orderId = $request->query('order_id');
+        if (empty($orderId)) {
+            return redirect()->route('admin.payments')->with('error', 'Order ID Midtrans tidak ditemukan.');
+        }
+
+        $statusPayload = $this->fetchMidtransStatus($orderId);
+        if (!$statusPayload) {
+            return redirect()->route('admin.payments')->with('error', 'Gagal sinkron status Midtrans. Coba lagi beberapa saat.');
+        }
+
+        $this->syncMidtransStatusToEnrollment($statusPayload);
+
+        $enrollment = DB::table('enrollments')
+            ->where('midtrans_order_id', $orderId)
+            ->first();
+
+        if (!$enrollment) {
+            return redirect()->route('admin.payments')->with('error', 'Data enrollment untuk order Midtrans tidak ditemukan.');
+        }
+
+        if ($enrollment->status_pembayaran === 'verified') {
+            return redirect()->route('admin.payments')->with('success', 'Status Midtrans berhasil disinkronkan: pembayaran sudah verified.');
+        }
+
+        if ($enrollment->status_pembayaran === 'rejected') {
+            return redirect()->route('admin.payments')->with('error', 'Status Midtrans: pembayaran ditolak/expire/cancel.');
+        }
+
+        return redirect()->route('admin.payments')->with('success', 'Status Midtrans berhasil disinkronkan: transaksi masih pending.');
+    }
+
+    public function midtransUnfinish()
+    {
+        return redirect()->route('siswa.billing')->with('error', 'Pembayaran belum selesai. Silakan lanjutkan transaksi dari halaman tagihan.');
+    }
+
+    public function midtransError()
+    {
+        return redirect()->route('siswa.billing')->with('error', 'Terjadi kendala pada pembayaran Midtrans. Silakan coba kembali.');
+    }
+
+    private function fetchMidtransStatus(string $orderId): ?array
+    {
+        $serverKey = config('midtrans.server_key');
+        if (empty($serverKey)) {
+            return null;
+        }
+
+        $midtransBaseUrl = config('midtrans.is_production')
+            ? 'https://api.midtrans.com'
+            : 'https://api.sandbox.midtrans.com';
+
+        $http = Http::withBasicAuth($serverKey, '')
+            ->acceptJson();
+
+        if (config('midtrans.disable_ssl_verification')) {
+            $http = $http->withoutVerifying();
+        }
+
+        $response = $http->get($midtransBaseUrl . '/v2/' . $orderId . '/status');
+        if (!$response->successful()) {
+            return null;
+        }
+
+        return $response->json();
+    }
+
+    private function syncMidtransStatusToEnrollment(array $payload): void
+    {
+        $orderId = $payload['order_id'] ?? null;
+        if (!$orderId) {
+            return;
+        }
+
+        $enrollment = DB::table('enrollments')
+            ->where('midtrans_order_id', $orderId)
+            ->first();
+        if (!$enrollment) {
+            return;
+        }
+
+        $transactionStatus = strtolower((string) ($payload['transaction_status'] ?? 'pending'));
+        $fraudStatus = strtolower((string) ($payload['fraud_status'] ?? 'accept'));
+        $paymentType = $payload['payment_type'] ?? null;
+
+        $statusPembayaran = 'pending';
+
+        if (in_array($transactionStatus, ['capture', 'settlement'], true)) {
+            $statusPembayaran = ($fraudStatus === 'challenge') ? 'pending' : 'verified';
+        } elseif (in_array($transactionStatus, ['deny', 'cancel', 'expire', 'failure', 'refund', 'partial_refund'], true)) {
+            $statusPembayaran = 'rejected';
+        }
+
+        // Jika sudah diverifikasi manual/admin, jangan diturunkan lagi ke pending/rejected.
+        if (($enrollment->status_pembayaran ?? null) === 'verified' && $statusPembayaran !== 'verified') {
+            $statusPembayaran = 'verified';
+        }
+
+        DB::table('enrollments')
+            ->where('id', $enrollment->id)
+            ->update([
+                'status_pembayaran' => $statusPembayaran,
+                'midtrans_transaction_status' => $transactionStatus,
+                'midtrans_payment_type' => $paymentType,
+                'midtrans_payload' => json_encode($payload),
+                'paid_at' => $statusPembayaran === 'verified' ? ($enrollment->paid_at ?? now()) : null,
+                'updated_at' => now(),
+            ]);
+    }
     
     /**
      * ==========================================
@@ -985,10 +1590,32 @@ public function login()
     $user = Auth::user();
     $hari_ini = Carbon::now()->locale('id')->dayName;
 
+    $pendingApprovals = DB::table('enrollments')
+        ->join('users', 'enrollments.user_id', '=', 'users.id')
+        ->leftJoin('programs', 'enrollments.program_id', '=', 'programs.id')
+        ->where('enrollments.mentor_id', $user->id)
+        ->where('enrollments.status_pembayaran', 'verified')
+        ->where('enrollments.mentor_assignment_status', 'pending')
+        ->select(
+            'enrollments.id',
+            'enrollments.jadwal_detail',
+            'enrollments.kelas',
+            'enrollments.mapel',
+            'users.name as student_name',
+            'programs.name as program_name',
+            'programs.jenjang as program_jenjang'
+        )
+        ->orderByDesc('enrollments.mentor_requested_at')
+        ->get();
+
     $today_schedule = DB::table('enrollments')
         ->join('users', 'enrollments.user_id', '=', 'users.id')
         ->where('enrollments.mentor_id', $user->id)
         ->where('enrollments.status_pembayaran', 'verified')
+        ->where(function ($query) {
+            $query->where('enrollments.mentor_assignment_status', 'approved')
+                ->orWhereNull('enrollments.mentor_assignment_status');
+        })
         ->select(
             'enrollments.id', 
             'enrollments.mapel as program_name', 
@@ -1043,15 +1670,83 @@ public function login()
         'total_siswa' => DB::table('enrollments')
             ->where('mentor_id', $user->id)
             ->where('status_pembayaran', 'verified')
+            ->where(function ($query) {
+                $query->where('mentor_assignment_status', 'approved')
+                    ->orWhereNull('mentor_assignment_status');
+            })
             ->distinct('user_id')->count(),
         'total_kelas' => DB::table('enrollments')
             ->where('mentor_id', $user->id)
             ->where('status_pembayaran', 'verified')
+            ->where(function ($query) {
+                $query->where('mentor_assignment_status', 'approved')
+                    ->orWhereNull('mentor_assignment_status');
+            })
             ->distinct('mapel')->count(),
     ];
 
-    return view('mentor.overview', compact('user', 'today_schedule', 'stats', 'assignments'));
+    return view('mentor.overview', compact('user', 'today_schedule', 'stats', 'assignments', 'pendingApprovals'));
 }
+
+    public function mentorApprovePlacement($id) {
+        $enrollment = DB::table('enrollments')
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->where('enrollments.id', $id)
+            ->where('enrollments.mentor_id', Auth::id())
+            ->where('enrollments.status_pembayaran', 'verified')
+            ->select('enrollments.*', 'users.name as student_name')
+            ->first();
+
+        if (!$enrollment) {
+            return back()->with('error', 'Data penempatan tidak ditemukan.');
+        }
+
+        if (($enrollment->mentor_assignment_status ?? 'approved') !== 'pending') {
+            return back()->with('error', 'Penempatan ini sudah diproses sebelumnya.');
+        }
+
+        $jadwalDetail = trim((string) ($enrollment->jadwal_detail ?? ''));
+        if ($jadwalDetail !== '') {
+            $conflicts = $this->getMentorScheduleConflicts((int) Auth::id(), $jadwalDetail, (int) $enrollment->id);
+            if (!empty($conflicts)) {
+                $firstConflict = $conflicts[0];
+                return back()->with('error', 'Tidak bisa approve, jadwal tabrakan dengan siswa ' . $firstConflict['student_name'] . ' (' . $firstConflict['day'] . ' ' . $firstConflict['time_range'] . ').');
+            }
+        }
+
+        DB::table('enrollments')->where('id', $id)->update([
+            'mentor_assignment_status' => 'approved',
+            'mentor_assignment_note' => 'Disetujui mentor',
+            'mentor_responded_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('success', 'Penempatan disetujui. Jadwal masuk ke daftar mengajar Anda.');
+    }
+
+    public function mentorRejectPlacement(Request $request, $id) {
+        $request->validate([
+            'reason' => 'required|string|max:255',
+        ]);
+
+        $updated = DB::table('enrollments')
+            ->where('id', $id)
+            ->where('mentor_id', Auth::id())
+            ->where('status_pembayaran', 'verified')
+            ->where('mentor_assignment_status', 'pending')
+            ->update([
+                'mentor_assignment_status' => 'rejected',
+                'mentor_assignment_note' => $request->reason,
+                'mentor_responded_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        if (!$updated) {
+            return back()->with('error', 'Penempatan tidak bisa ditolak karena status sudah berubah.');
+        }
+
+        return back()->with('success', 'Penempatan ditolak. Admin akan melakukan penjadwalan ulang.');
+    }
 
     public function storeAssignment(Request $request) {
         $request->validate([
@@ -1104,6 +1799,10 @@ public function login()
         ->join('users', 'enrollments.user_id', '=', 'users.id') 
         ->where('enrollments.mentor_id', $user->id)
         ->where('enrollments.status_pembayaran', 'verified')
+        ->where(function ($query) {
+            $query->where('enrollments.mentor_assignment_status', 'approved')
+                ->orWhereNull('enrollments.mentor_assignment_status');
+        })
         ->when($targetId, function($query, $targetId) {
             return $query->where('enrollments.id', $targetId);
         })
@@ -1305,6 +2004,10 @@ public function login()
         ->where('enrollments.mentor_id', $user->id)
         // REVISI: Menggunakan where standar agar sinkron dengan dashboard admin & mentor lainnya
         ->where('enrollments.status_pembayaran', 'verified')
+        ->where(function ($query) {
+            $query->where('enrollments.mentor_assignment_status', 'approved')
+                ->orWhereNull('enrollments.mentor_assignment_status');
+        })
         ->select(
             'enrollments.id',
             'enrollments.mapel as program_name', 
@@ -1353,11 +2056,139 @@ public function login()
             ->join('users', 'task_submissions.user_id', '=', 'users.id')
             ->join('enrollments', 'users.id', '=', 'enrollments.user_id')
             ->where('enrollments.mentor_id', Auth::id())
+            ->where('enrollments.status_pembayaran', 'verified')
+            ->where(function ($query) {
+                $query->where('enrollments.mentor_assignment_status', 'approved')
+                    ->orWhereNull('enrollments.mentor_assignment_status');
+            })
             ->select('task_submissions.*', 'users.name as student_name', 'program_materials.title as session_title')
             ->orderBy('task_submissions.created_at', 'desc')
             ->get();
 
         return view('mentor.submissions', compact('submissions'));
+    }
+
+    private function parseScheduleSlots(?string $jadwalDetail): array {
+        if (empty($jadwalDetail)) {
+            return [];
+        }
+
+        $dayMap = [
+            'senin' => 'Senin',
+            'selasa' => 'Selasa',
+            'rabu' => 'Rabu',
+            'kamis' => 'Kamis',
+            'jumat' => 'Jumat',
+            'sabtu' => 'Sabtu',
+            'minggu' => 'Minggu',
+        ];
+
+        $slots = [];
+        $parts = preg_split('/[,;\n]+/', strtolower($jadwalDetail));
+
+        foreach ($parts as $part) {
+            $segment = trim($part);
+            if ($segment === '') {
+                continue;
+            }
+
+            $detectedDay = null;
+            foreach ($dayMap as $key => $label) {
+                if (str_contains($segment, $key)) {
+                    $detectedDay = $label;
+                    break;
+                }
+            }
+
+            if (!$detectedDay) {
+                continue;
+            }
+
+            $startMinutes = null;
+            $endMinutes = null;
+
+            if (preg_match('/(\d{1,2})[.:](\d{2})\s*[-]\s*(\d{1,2})[.:](\d{2})/', $segment, $rangeMatch)) {
+                $startMinutes = (((int) $rangeMatch[1]) * 60) + ((int) $rangeMatch[2]);
+                $endMinutes = (((int) $rangeMatch[3]) * 60) + ((int) $rangeMatch[4]);
+            } elseif (preg_match('/(\d{1,2})[.:](\d{2})/', $segment, $singleMatch)) {
+                $startMinutes = (((int) $singleMatch[1]) * 60) + ((int) $singleMatch[2]);
+                $endMinutes = $startMinutes + 90;
+            }
+
+            if ($startMinutes === null || $endMinutes === null) {
+                continue;
+            }
+
+            if ($endMinutes <= $startMinutes) {
+                $endMinutes += 24 * 60;
+            }
+
+            $slots[] = [
+                'day' => $detectedDay,
+                'start' => $startMinutes,
+                'end' => $endMinutes,
+            ];
+        }
+
+        return $slots;
+    }
+
+    private function formatMinutesToTime(int $minutes): string {
+        $normalized = $minutes % (24 * 60);
+        $hours = intdiv($normalized, 60);
+        $mins = $normalized % 60;
+        return sprintf('%02d:%02d', $hours, $mins);
+    }
+
+    private function getMentorScheduleConflicts(int $mentorId, ?string $jadwalDetail, ?int $ignoreEnrollmentId = null): array {
+        $targetSlots = $this->parseScheduleSlots($jadwalDetail);
+        if (empty($targetSlots)) {
+            return [];
+        }
+
+        $mentorSchedules = DB::table('enrollments')
+            ->join('users', 'enrollments.user_id', '=', 'users.id')
+            ->where('enrollments.mentor_id', $mentorId)
+            ->where('enrollments.status_pembayaran', 'verified')
+            ->where(function ($query) {
+                $query->where('enrollments.mentor_assignment_status', 'approved')
+                    ->orWhereNull('enrollments.mentor_assignment_status');
+            })
+            ->when($ignoreEnrollmentId, function ($query, $ignoreEnrollmentId) {
+                return $query->where('enrollments.id', '!=', $ignoreEnrollmentId);
+            })
+            ->select('enrollments.id', 'enrollments.jadwal_detail', 'users.name as student_name')
+            ->get();
+
+        $conflicts = [];
+
+        foreach ($mentorSchedules as $schedule) {
+            $existingSlots = $this->parseScheduleSlots($schedule->jadwal_detail);
+            foreach ($targetSlots as $targetSlot) {
+                foreach ($existingSlots as $existingSlot) {
+                    if ($targetSlot['day'] !== $existingSlot['day']) {
+                        continue;
+                    }
+
+                    $isOverlap = $targetSlot['start'] < $existingSlot['end'] && $existingSlot['start'] < $targetSlot['end'];
+                    if (!$isOverlap) {
+                        continue;
+                    }
+
+                    $key = $schedule->id . '-' . $targetSlot['day'];
+                    if (!isset($conflicts[$key])) {
+                        $conflicts[$key] = [
+                            'enrollment_id' => (int) $schedule->id,
+                            'student_name' => $schedule->student_name,
+                            'day' => $targetSlot['day'],
+                            'time_range' => $this->formatMinutesToTime($existingSlot['start']) . '-' . $this->formatMinutesToTime($existingSlot['end']),
+                        ];
+                    }
+                }
+            }
+        }
+
+        return array_values($conflicts);
     }
 
     public function storeMessage(Request $request) {

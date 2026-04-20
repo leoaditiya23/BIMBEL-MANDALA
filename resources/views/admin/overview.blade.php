@@ -1,10 +1,10 @@
 @extends('admin.dashboard_admin')
 
 @section('admin_content')
-    <div class="w-full pb-20 relative z-10" 
-         x-transition:enter="transition ease-out duration-300" 
-         x-transition:enter-start="opacity-0 translate-y-4" 
-         x-data="{ statusFilter: 'semua', showModalJadwal: false, selectedEnrollment: null }">
+        <div class="w-full pb-20 relative z-10" 
+            x-transition:enter="transition ease-out duration-300" 
+            x-transition:enter-start="opacity-0 translate-y-4" 
+            x-data="{ statusFilter: 'semua' }">
         
         <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Ringkasan <span class="text-slate-800">Dashboard</span></h2>
         <p class="text-sm text-slate-500 mt-1 font-medium mb-8">Lihat ringkasan data dan statistik penting aplikasi Mandala.</p>
@@ -16,7 +16,26 @@
                     <div class="flex-1">
                         <p class="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest italic group-hover:text-green-500 transition-colors">Total Pendapatan</p>
                         <p class="text-2xl font-black text-green-600">Rp {{ number_format($stats['total_pendapatan'] ?? 0, 0, ',', '.') }}</p>
+                        <p class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
+                            {{ ($filterBulan ?? 'semua') === 'semua' ? 'Semua Bulan' : \Carbon\Carbon::createFromDate($filterTahun ?? now()->year, $filterBulan, 1)->translatedFormat('F') }}
+                            {{ $filterTahun ?? now()->year }}
+                        </p>
                     </div>
+                    <form method="GET" action="{{ route('admin.overview') }}" class="flex flex-col gap-1 min-w-[110px]">
+                        <select name="bulan" onchange="this.form.submit()" class="text-[9px] font-black uppercase tracking-widest bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-600 focus:ring-0">
+                            <option value="semua" {{ ($filterBulan ?? 'semua') === 'semua' ? 'selected' : '' }}>Semua Bulan</option>
+                            @for($bulan = 1; $bulan <= 12; $bulan++)
+                                <option value="{{ $bulan }}" {{ (int) ($filterBulan ?? 0) === $bulan ? 'selected' : '' }}>
+                                    {{ \Carbon\Carbon::createFromDate($filterTahun ?? now()->year, $bulan, 1)->translatedFormat('M') }}
+                                </option>
+                            @endfor
+                        </select>
+                        <select name="tahun" onchange="this.form.submit()" class="text-[9px] font-black uppercase tracking-widest bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-600 focus:ring-0">
+                            @foreach(($availableYears ?? [now()->year]) as $year)
+                                <option value="{{ $year }}" {{ (int) ($filterTahun ?? now()->year) === (int) $year ? 'selected' : '' }}>{{ $year }}</option>
+                            @endforeach
+                        </select>
+                    </form>
                     <div class="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform text-green-500">
                         <i class="fas fa-wallet text-lg"></i>
                     </div>
@@ -77,7 +96,7 @@
             <div class="p-8 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 flex-shrink-0">
                 <div>
                     <h3 class="text-lg font-bold text-slate-800 tracking-tight">Pendaftaran Terbaru</h3>
-                    <p class="text-xs text-slate-400 mt-1">Pantau lokasi dan pilihan jadwal siswa</p>
+                    <p class="text-xs text-slate-400 mt-1">Pantau lokasi dan pilihan jadwal siswa (tanpa aksi langsung)</p>
                 </div>
 
                 <div class="flex items-center gap-2 bg-slate-50 p-1 rounded-xl">
@@ -86,9 +105,7 @@
                     <button @click="statusFilter = 'pending'" :class="statusFilter === 'pending' ? 'bg-white shadow-sm text-amber-600' : 'text-slate-400'" class="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">Pending</button>
                 </div>
 
-                <a href="{{ route('admin.payments') }}" class="text-blue-600 hover:text-blue-700 text-xs font-bold flex items-center transition-colors">
-                    Verifikasi Pembayaran <i class="fas fa-chevron-right ml-2 text-[10px]"></i>
-                </a>
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Mode Ringkasan (Read Only)</p>
             </div>
             
             <div class="flex-1 overflow-x-auto">
@@ -99,7 +116,6 @@
                             <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Kelas & Program</th>
                             <th class="py-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Detail Pertemuan</th>
                             <th class="py-4 px-6 text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                            <th class="py-4 px-8 text-right text-[11px] font-black text-slate-400 uppercase tracking-widest">Penugasan</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">
@@ -160,12 +176,6 @@
                                     {{ $enrollment->status_pembayaran ?? 'pending' }}
                                 </span>
                             </td>
-                            <td class="py-4 px-8 text-right">
-                                <button @click="showModalJadwal = true; selectedEnrollment = {{ json_encode($enrollment) }}" 
-                                        class="px-4 py-2 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-sm">
-                                    {{ ($enrollment->mentor_id ?? null) ? 'Ganti Mentor' : 'Pilih Mentor' }}
-                                </button>
-                            </td>
                         </tr>
                     @endforeach
                     </tbody>
@@ -183,42 +193,5 @@
             </div>
         </div>
 
-        {{-- MODAL PILIH MENTOR --}}
-        <div x-show="showModalJadwal" 
-             class="fixed inset-0 z-[99] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
-             x-cloak>
-            <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl" @click.away="showModalJadwal = false">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-black text-slate-800 tracking-tighter">Tugaskan <span class="text-indigo-600">Mentor</span></h3>
-                    <button @click="showModalJadwal = false" class="text-slate-400 hover:text-rose-500"><i class="fas fa-times"></i></button>
-                </div>
-
-                <div class="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-100">
-                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Pilihan Jadwal Siswa:</p>
-                    <p class="text-xs font-bold text-slate-700" x-text="selectedEnrollment?.jadwal_detail || selectedEnrollment?.jadwal_pertemuan || '-'"></p>
-                </div>
-
-                <form :action="'/admin/enrollment/update-jadwal/' + selectedEnrollment?.id" method="POST">
-                    @csrf
-                    @method('PUT')
-                    
-                    <input type="hidden" name="jadwal_pertemuan" :value="selectedEnrollment?.jadwal_detail || selectedEnrollment?.jadwal_pertemuan">
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Pilih Mentor Tersedia</label>
-                            <select name="mentor_id" class="w-full mt-2 p-4 bg-slate-50 border-none rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500">
-                                <option value="">-- Pilih Mentor --</option>
-                                @foreach($mentors as $m)
-                                    <option value="{{ $m->id }}">{{ $m->name }} ({{ $m->specialization ?? 'Umum' }})</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="w-full mt-8 py-4 bg-indigo-600 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">Konfirmasi Penugasan</button>
-                </form>
-            </div>
-        </div>
     </div>
 @endsection

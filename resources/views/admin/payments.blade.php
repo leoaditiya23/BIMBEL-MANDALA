@@ -35,6 +35,8 @@
                                     <p class="font-black text-slate-800 text-lg tracking-tight">{{ $payment->user_name ?? 'N/A' }}</p>
                                     @if($payment->bukti_pembayaran)
                                         <span class="px-2 py-0.5 bg-blue-100 text-blue-600 text-[9px] font-black rounded-md uppercase tracking-tighter">Sudah Upload</span>
+                                    @elseif(($payment->payment_method ?? 'manual') === 'midtrans')
+                                        <span class="px-2 py-0.5 bg-indigo-100 text-indigo-600 text-[9px] font-black rounded-md uppercase tracking-tighter">Midtrans Gateway</span>
                                     @else
                                         <span class="px-2 py-0.5 bg-amber-100 text-amber-600 text-[9px] font-black rounded-md uppercase tracking-tighter">Belum Upload</span>
                                     @endif
@@ -72,7 +74,11 @@
                                 <p class="font-black text-slate-800 text-xl tracking-tighter">
                                     Rp {{ number_format($payment->total_harga ?? 0, 0, ',', '.') }}
                                 </p>
-                                <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest">Unik: #{{ $payment->kode_unik_tampil ?? '000' }}</p>
+                                @if(($payment->payment_method ?? 'manual') === 'midtrans')
+                                    <p class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Gateway: Midtrans</p>
+                                @else
+                                    <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest">Unik: #{{ $payment->kode_unik_tampil ?? '000' }}</p>
+                                @endif
                             </div>
                         </div>
 
@@ -83,26 +89,49 @@
                                     class="h-11 w-11 flex items-center justify-center rounded-xl border-2 border-blue-50 bg-white text-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all">
                                     <i class="fas fa-image text-sm"></i>
                                 </button>
+                            @elseif(($payment->payment_method ?? 'manual') === 'midtrans')
+                                <button disabled class="h-11 w-11 flex items-center justify-center rounded-xl border-2 border-indigo-100 bg-indigo-50 text-indigo-300 cursor-not-allowed" title="Transaksi Midtrans tidak memakai upload bukti manual">
+                                    <i class="fas fa-credit-card text-sm"></i>
+                                </button>
                             @else
                                 <button disabled class="h-11 w-11 flex items-center justify-center rounded-xl border-2 border-slate-50 bg-slate-50 text-slate-200 cursor-not-allowed">
                                     <i class="fas fa-image text-sm"></i>
                                 </button>
                             @endif
 
-                            <form action="{{ route('admin.payments.verify', $payment->id) }}" method="POST">
-                                @csrf
-                                <button type="submit" class="h-11 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-emerald-100 flex items-center">
-                                    ✓ Verifikasi
-                                </button>
-                            </form>
+                            @if(($payment->payment_method ?? 'manual') === 'midtrans')
+                                <a href="{{ route('admin.payments.midtrans.sync', ['order_id' => $payment->midtrans_order_id]) }}" class="h-11 px-5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-indigo-100 flex items-center">
+                                    Sync Midtrans
+                                </a>
+                                <form action="{{ route('admin.payments.verify', $payment->id) }}" method="POST" onsubmit="return confirm('Verifikasi manual transaksi Midtrans ini?')">
+                                    @csrf
+                                    <button type="submit" class="h-11 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-100 flex items-center">
+                                        ✓ Verifikasi Manual
+                                    </button>
+                                </form>
+                                <form action="{{ route('admin.payments.reject', $payment->id) }}" method="POST" onsubmit="return confirm('Tolak dan hapus pendaftaran ini?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="h-11 w-11 flex items-center justify-center rounded-xl border-2 border-red-50 hover:bg-red-50 text-red-400 hover:text-red-600 transition-all">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            @else
+                                <form action="{{ route('admin.payments.verify', $payment->id) }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="h-11 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-emerald-100 flex items-center">
+                                        ✓ Verifikasi
+                                    </button>
+                                </form>
 
-                            <form action="{{ route('admin.payments.reject', $payment->id) }}" method="POST" onsubmit="return confirm('Tolak dan hapus pendaftaran ini?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="h-11 w-11 flex items-center justify-center rounded-xl border-2 border-red-50 hover:bg-red-50 text-red-400 hover:text-red-600 transition-all">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </form>
+                                <form action="{{ route('admin.payments.reject', $payment->id) }}" method="POST" onsubmit="return confirm('Tolak dan hapus pendaftaran ini?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="h-11 w-11 flex items-center justify-center rounded-xl border-2 border-red-50 hover:bg-red-50 text-red-400 hover:text-red-600 transition-all">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </div>
                 @endforeach

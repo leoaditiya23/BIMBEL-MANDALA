@@ -72,7 +72,11 @@
                                 <td class="py-5 px-4">
                                     <p class="font-black text-slate-800 text-sm">Rp {{ number_format($payment->total_harga ?? 0, 0, ',', '.') }}</p>
                                     {{-- Menampilkan 3 digit terakhir nomor WA sebagai kode unik dinamis --}}
-                                    <p class="text-[10px] text-orange-500 font-bold uppercase italic">Unik: #{{ substr(preg_replace('/[^0-9]/', '', Auth::user()->whatsapp), -3) }}</p>
+                                    @if(($payment->payment_method ?? 'manual') === 'midtrans')
+                                        <p class="text-[10px] text-indigo-500 font-bold uppercase italic">Gateway: Midtrans</p>
+                                    @else
+                                        <p class="text-[10px] text-orange-500 font-bold uppercase italic">Unik: #{{ substr(preg_replace('/[^0-9]/', '', Auth::user()->whatsapp), -3) }}</p>
+                                    @endif
                                 </td>
                                 <td class="py-5 px-4">
                                     @if($payment->status_pembayaran === 'verified')
@@ -102,6 +106,14 @@
                                             class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300 flex items-center justify-center ml-auto shadow-sm border border-blue-100">
                                             <i class="fas fa-image"></i>
                                         </button>
+                                    @elseif(($payment->payment_method ?? 'manual') === 'midtrans')
+                                        <div class="flex flex-col items-end gap-1">
+                                            <span class="text-[9px] font-black text-indigo-600 uppercase">Midtrans</span>
+                                            @if(!empty($payment->midtrans_order_id))
+                                                <span class="text-[8px] text-slate-400 font-bold">{{ $payment->midtrans_order_id }}</span>
+                                                <a href="{{ route('midtrans.finish', ['order_id' => $payment->midtrans_order_id]) }}" class="text-[8px] px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all">Sync Status</a>
+                                            @endif
+                                        </div>
                                     @else
                                         <span class="text-slate-300 text-[10px] italic font-medium">No Image</span>
                                     @endif

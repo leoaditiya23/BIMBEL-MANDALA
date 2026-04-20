@@ -15,6 +15,60 @@
         </div>
     </div>
 
+    @if(session('success'))
+        <div class="mb-6 p-4 rounded-2xl bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-100">
+            <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="mb-6 p-4 rounded-2xl bg-rose-500 text-white text-sm font-bold shadow-lg shadow-rose-100">
+            <i class="fas fa-triangle-exclamation mr-2"></i>{{ session('error') }}
+        </div>
+    @endif
+
+    @if(($pendingApprovals ?? collect())->count() > 0)
+        <div class="mb-8 bg-white rounded-[2rem] border border-amber-100 shadow-sm p-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
+                <h3 class="text-sm font-black uppercase tracking-widest text-amber-600 flex items-center">
+                    <i class="fas fa-hourglass-half mr-2"></i> Permintaan Penempatan Mentor
+                </h3>
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">{{ count($pendingApprovals) }} Menunggu Respons</p>
+            </div>
+
+            <div class="space-y-4">
+                @foreach($pendingApprovals as $pending)
+                    <div class="p-4 rounded-2xl border border-slate-100 bg-slate-50">
+                        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-black text-slate-800">{{ $pending->student_name }} - {{ $pending->program_name ?? ($pending->mapel ?? 'Program') }}</p>
+                                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{{ $pending->program_jenjang ?? '-' }} • Kelas {{ $pending->kelas ?? '-' }}</p>
+                                <p class="text-[10px] text-slate-600 mt-2">{{ $pending->jadwal_detail ?: 'Jadwal belum tersedia.' }}</p>
+                            </div>
+
+                            <div class="w-full lg:w-auto lg:min-w-[320px] grid grid-cols-1 gap-2">
+                                <form action="{{ route('mentor.placement.approve', $pending->id) }}" method="POST" class="w-full">
+                                    @csrf
+                                    <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition">
+                                        Approve Penempatan
+                                    </button>
+                                </form>
+
+                                <form action="{{ route('mentor.placement.reject', $pending->id) }}" method="POST" class="w-full flex gap-2">
+                                    @csrf
+                                    <input type="text" name="reason" required maxlength="255" placeholder="Alasan tolak (mis. jadwal bentrok)" class="flex-1 px-3 py-2.5 rounded-xl border border-rose-200 bg-white text-[10px] font-bold text-slate-700 focus:ring-2 focus:ring-rose-500">
+                                    <button type="submit" class="px-4 py-2.5 rounded-xl bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition">
+                                        Tolak
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300">
             <p class="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest italic">Siswa Terbimbing</p>
